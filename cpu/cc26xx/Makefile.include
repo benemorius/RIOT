@@ -1,0 +1,6 @@
+TI_XXWARE_PATH = tilib/lib/cc26xxware
+
+export CPU_FAMILY = cc26xx
+
+include $(RIOTCPU)/cc26xx-cc13xx_common/Makefile.include
+include $(RIOTCPU)/Makefile.include.cortexm_common
