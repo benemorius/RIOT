@@ -3,6 +3,8 @@
 
 #include <stdint.h>
 
+#include "cpu.h"
+
 #ifdef __cplusplus
 extern "C" {
 #endif //__cplusplus
