@@ -30,6 +30,13 @@ void board_init(void)
 {
 // 	SystemInit();
 
+
+    // measure current to check whether execution reaches here and sleeps
+    // it doesn't :(
+    while(1) {
+        __WFI();
+    }
+
     /* initialize the CPU */
     cpu_init();
 

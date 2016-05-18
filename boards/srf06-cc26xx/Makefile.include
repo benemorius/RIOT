@@ -1,6 +1,5 @@
-# define the cpu used by the efm32gg-st3700 board
 export CPU = cc26xx
-export CPU_MODEL = EFM32LG232F256
+export CPU_MODEL = cc2650
 
 #define the default port depending on the host OS
 PORT ?= -p /dev/ttyUSB0
