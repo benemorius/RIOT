@@ -100,6 +100,7 @@
 #define UART_1_EN           0
 #define UART_2_EN           0
 #define UART_IRQ_PRIO       1
+#define UART_STDIO_DEV      (UART0_BASE)
 
 #define UART_0_DEV          (uint32_t*)(UART0_BASE)
 #define UART_0_CLKEN()      CMU_ClockEnable(cmuClock_USART0, true)

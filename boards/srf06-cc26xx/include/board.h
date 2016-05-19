@@ -4,6 +4,7 @@
 #include <stdint.h>
 
 #include "cpu.h"
+#include "periph_conf.h"
 
 #ifdef __cplusplus
 extern "C" {
