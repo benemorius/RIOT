@@ -49,10 +49,10 @@ int main()
 
 // 	SysTick_Config(SystemCoreClockGet()/1000 - 1); //interrupt period 1ms
 
-    printf("\n************ sensortag ***********\n");
+    printf("\n************ Sensortag ***********\n");
     printf("\n");
 
-    printf("starting Remote\r\n");
+    printf("starting Sensortag\r\n");
 
     Sensortag* sensortag = new Sensortag();
 
