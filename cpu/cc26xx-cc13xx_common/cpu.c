@@ -38,67 +38,17 @@
 #include "periph_conf.h"
 #include "periph/cpuid.h"
 
-#include <string.h>
-
-extern void board_init(void);
-extern void __libc_init_array(void);
-extern void kernel_init(void);
-extern void isr_svc(void);
-extern void isr_pendsv(void);
-
-static void cpu_clock_init(void);
+#include "driverlib/setup.h"
 
 /**
- * @brief Initialize the CPU, set IRQ priorities
+ * @brief Initialize the CPU
  */
 void cpu_init(void)
 {
     /* initialize the Cortex-M core */
     cortexm_init();
     /* initialize the clock system */
-    cpu_clock_init();
-}
-
-/**
- * @brief Configure the controllers clock system
- *
- */
-static void cpu_clock_init(void)
-{
-//     /*  Enable high speed crystal */
-//     CMU->OSCENCMD |= CMU_OSCENCMD_HFXOEN;
-//
-//     /*  Wait for high speed crystal to stabilise */
-//     while (!(CMU->STATUS & CMU_STATUS_HFXORDY)) {
-//         ;
-//     }
-//
-//     /*  Set high speed crystal as core clock with divisor of 1 */
-//     CMU->CMD |= CMU_CMD_HFCLKSEL_HFXO;
-// //     CMU->CTRL |= (1 << 14);
-//
-//     /*  Wait for clock switch */
-//     while ((CMU->STATUS & CMU_STATUS_HFRCOSEL)) {
-//         ;
-//     }
-//
-//     /*  Disable high speed oscillator */
-//     CMU->OSCENCMD |= CMU_OSCENCMD_HFRCODIS;
-//
-//     /*  Enable low energy interface (for watchdog) */
-//     CMU->HFCORECLKEN0 |= CMU_HFCORECLKEN0_LE;
-}
-
-/* Replacement start function */
-/* STM port has this in the startup_ */
-void _start(void)
-{
-    /* initialize the board and startup the kernel */
-    board_init();
-    /* initialize std-c library (this should be done after board_init) */
-    __libc_init_array();
-    /* startup the kernel */
-    kernel_init();
+    trimDevice();
 }
 
 void cpuid_get(void* id)

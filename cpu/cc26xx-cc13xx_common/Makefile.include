@@ -9,6 +9,8 @@ export USEMODULE += cortexm_common
 export CORTEX_COMMON = $(RIOTCPU)/cortexm_common/
 
 export USEMODULE += cc26xx-cc13xx_common
+export USEMODULE += tilib lib cc26xxware driverlib
+
 export CC26XX-CC13XX_COMMON = $(RIOTCPU)/cc26xx-cc13xx_common/
 
 export INCLUDES += -I$(RIOTCPU)/$(CPU)/include
