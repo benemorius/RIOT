@@ -33,6 +33,9 @@
 
 #include <stdio.h>
 
+#include "driverlib/gpio.h" //FIXME remove
+
+
 #ifndef GIT_VERSION
 #define GIT_VERSION "undefined"
 #endif
@@ -61,6 +64,12 @@ Sensortag::Sensortag() :
 main_pid(thread_getpid())
 {
     sensortagS = this;
+
+    gpio_init(GPIO_PIN_18, GPIO_OUT);
+    while(1) {
+        __WFI();
+    }
+    gpio_set(GPIO_PIN_18);
 
 	DEBUG("firmware version: %s\r\n", GIT_VERSION);
 

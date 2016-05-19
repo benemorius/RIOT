@@ -1,19 +1,36 @@
 /*
- * Copyright (C) 2014 Freie Universität Berlin
+ *    Copyright (c) 2016 Thomas Stilwell <stilwellt@openlabs.co>
  *
- * This file is subject to the terms and conditions of the GNU Lesser General
- * Public License v2.1. See the file LICENSE in the top level directory for more
- * details.
+ *    Permission is hereby granted, free of charge, to any person
+ *    obtaining a copy of this software and associated documentation
+ *    files (the "Software"), to deal in the Software without
+ *    restriction, including without limitation the rights to use,
+ *    copy, modify, merge, publish, distribute, sublicense, and/or sell
+ *    copies of the Software, and to permit persons to whom the
+ *    Software is furnished to do so, subject to the following
+ *    conditions:
+ *
+ *    The above copyright notice and this permission notice shall be
+ *    included in all copies or substantial portions of the Software.
+ *
+ *    THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+ *    EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES
+ *    OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+ *    NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT
+ *    HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,
+ *    WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+ *    FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
+ *    OTHER DEALINGS IN THE SOFTWARE.
  */
 
 /**
- * @ingroup     cpu_efm32
+ * @ingroup     cpu_cc26xx-cc13xx
  * @{
  *
  * @file
  * @brief       Implementation of the CPU initialization
  *
- * @author      Hauke Petersen <hauke.petersen@fu-berlin.de>
+ * @author      Thomas Stilwell <stilwellt@openlabs.co>
  * @}
  */
 
@@ -29,25 +46,24 @@ extern void kernel_init(void);
 extern void isr_svc(void);
 extern void isr_pendsv(void);
 
-static void clock_init(void);
+static void cpu_clock_init(void);
 
 /**
  * @brief Initialize the CPU, set IRQ priorities
  */
 void cpu_init(void)
 {
+    /* initialize the Cortex-M core */
+    cortexm_init();
     /* initialize the clock system */
-    clock_init();
-
-    /* set pendSV interrupt to lowest possible priority */
-    NVIC_SetPriority(PendSV_IRQn, 0xff);
+    cpu_clock_init();
 }
 
 /**
  * @brief Configure the controllers clock system
  *
  */
-static void clock_init(void)
+static void cpu_clock_init(void)
 {
 //     /*  Enable high speed crystal */
 //     CMU->OSCENCMD |= CMU_OSCENCMD_HFXOEN;

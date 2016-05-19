@@ -42,9 +42,9 @@ void board_init(void)
 {
     // measure current to check whether execution reaches here and sleeps
     // it does :)
-    while(1) {
-        __WFI();
-    }
+//     while(1) {
+//         __WFI();
+//     }
 
     cpu_init();
 
