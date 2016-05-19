@@ -58,20 +58,29 @@ UART_INT_RX | UART_INT_CTS)
 /**
  * @brief Unified interrupt handler for all UART devices
  *
- * @param uartnum       the number of the UART that triggered the ISR
  * @param uart          the UART device that triggered the ISR
  */
-static inline void irq_handler(uart_t uartnum, uint32_t *uart);
-
+static inline void irq_handler(uart_t uart);
 
 /**
- * @brief Allocate memory to store the callback functions.
+ * @brief   Allocate memory to store the callback functions
  */
-// static uart_conf_t config[UART_NUMOF];
+static uart_isr_ctx_t uart_ctx[UART_NUMOF];
 
+/**
+ * @brief   Get the base register for the given UART device
+ */
+static inline uart_t _dev(uart_t uart)
+{
+    return uart_config[uart].dev;
+}
 
 int uart_init(uart_t uart, uint32_t baudrate, uart_rx_cb_t rx_cb, void *arg)
 {
+    /* remember callback addresses and argument */
+    uart_ctx[uart].rx_cb = rx_cb;
+    uart_ctx[uart].arg = arg;
+
     /* Enable peripheral power domain */
     if(PRCMPowerDomainStatus(PRCM_DOMAIN_PERIPH) != PRCM_DOMAIN_POWER_ON) {
         PRCMPowerDomainOn(PRCM_DOMAIN_PERIPH);
@@ -86,39 +95,42 @@ int uart_init(uart_t uart, uint32_t baudrate, uart_rx_cb_t rx_cb, void *arg)
 
     /* Enable UART0 peripheral */
     PRCMPeripheralRunEnable(PRCM_PERIPH_GPIO);
-    PRCMPeripheralRunEnable(PRCM_PERIPH_UART0);
+    PRCMPeripheralRunEnable(uart_config[uart].prcmp);
 
     /* Apply settings and wait for them to take effect */
     PRCMLoadSet();
     while(!PRCMLoadGet());
 
-    UARTDisable(UART0_BASE);
+    UARTDisable(_dev(uart));
 
     /* Acknowledge UART interrupts */
-    IntDisable(INT_UART0);
+    IntDisable(uart_config[uart].irqn);
 
     /* Disable all UART module interrupts */
-    UARTIntDisable(UART0_BASE, CC26XX_UART_INTERRUPT_ALL);
+    UARTIntDisable(_dev(uart), CC26XX_UART_INTERRUPT_ALL);
 
     /* Clear all UART interrupts */
-    UARTIntClear(UART0_BASE, CC26XX_UART_INTERRUPT_ALL);
+    UARTIntClear(_dev(uart), CC26XX_UART_INTERRUPT_ALL);
 
     uint32_t ctl_val = UART_CTL_UARTEN | UART_CTL_TXE;
     /*
      * Make sure the TX pin is output / high before assigning it to UART control
      * to avoid falling edge glitches
      */
-    IOCPinTypeGpioOutput(GPIO_PIN_3);
-    GPIOPinWrite(GPIO_PIN_3, 1);
+    IOCPinTypeGpioOutput(uart_config[uart].gpio_tx);
+    GPIOPinWrite(uart_config[uart].gpio_tx, 1);
 
     /*
      * Map UART signals to the correct GPIO pins and configure them as
      * hardware controlled.
      */
-    IOCPinTypeUart(UART0_BASE, IOID_2, IOID_3,
-                             IOID_4, IOID_5); //FIXME
+    IOCPinTypeUart(_dev(uart),
+                   uart_config[uart].ioid_rx,
+                   uart_config[uart].ioid_tx,
+                   IOID_UNUSED,
+                   IOID_UNUSED);
 
-    UARTConfigSetExpClk(UART0_BASE, SysCtrlClockGet(),
+    UARTConfigSetExpClk(_dev(uart), SysCtrlClockGet(),
                                    baudrate,
                                    (UART_CONFIG_WLEN_8 | UART_CONFIG_STOP_ONE |
                                    UART_CONFIG_PAR_NONE));
@@ -127,17 +139,20 @@ int uart_init(uart_t uart, uint32_t baudrate, uart_rx_cb_t rx_cb, void *arg)
      * Generate an RX interrupt at FIFO 1/2 full.
      * We don't really care about the TX interrupt
      */
-    UARTFIFOLevelSet(UART0_BASE, UART_FIFO_TX7_8, UART_FIFO_RX4_8);
+//     UARTFIFOLevelSet(_dev(uart), UART_FIFO_TX7_8, UART_FIFO_RX4_8);
 
     /* Enable FIFOs */
-    HWREG(UART0_BASE + UART_O_LCRH) |= UART_LCRH_FEN;
+//     HWREG(_dev(uart) + UART_O_LCRH) |= UART_LCRH_FEN;
 
-//     if(input_handler) {
-//         ctl_val += UART_CTL_RXE;
-//     }
+    if(rx_cb) {
+        ctl_val += UART_CTL_RXE;
+    }
 
     /* Enable TX, RX (conditionally), and the UART. */
-    HWREG(UART0_BASE + UART_O_CTL) = ctl_val;
+    HWREG(_dev(uart) + UART_O_CTL) = ctl_val;
+
+    UARTIntEnable(_dev(uart), UART_INT_RX);
+    IntEnable(uart_config[uart].irqn);
 
     return 0;
 }
@@ -147,93 +162,30 @@ void uart_write(uart_t uart, const uint8_t *data, size_t len)
     char *c = (char *)data;
     for (int i = 0; i < len; i++) {
         if (c[i] == '\n') {
-            UARTCharPut(UART0_BASE, '\r');
+            UARTCharPut(_dev(uart), '\r');
         }
-        UARTCharPut(UART0_BASE, c[i]);
+        UARTCharPut(_dev(uart), c[i]);
     }
 }
 
 #ifdef UART_0_EN
-__attribute__((naked)) void UART_0_RX_ISR(void)
+void UART0IntHandler(void)
 {
-    ISR_ENTER();
-    irq_handler(UART_0, UART_0_DEV);
-    ISR_EXIT();
-}
-
-__attribute__((naked)) void UART_0_TX_ISR(void)
-{
-    ISR_ENTER();
-    irq_handler(UART_0, UART_0_DEV);
-    ISR_EXIT();
+    uart_t uart = UART_DEV(0);
+    irq_handler(uart);
 }
 #endif
 
-#ifdef UART_1_EN
-# if defined UART_1_RX_ISR && defined UART1_TX_ISR
-__attribute__((naked)) void UART_1_RX_ISR(void)
+static inline void irq_handler(uart_t uart)
 {
-    ISR_ENTER();
-    irq_handler(UART_1, UART_1_DEV);
-    ISR_EXIT();
-}
+// 	if(lpm_get() >= LPM_SLEEP)
+// 		lpm_awake();
 
-__attribute__((naked)) void UART_1_TX_ISR(void)
-{
-    ISR_ENTER();
-    irq_handler(UART_1, UART_1_DEV);
-    ISR_EXIT();
-}
-# elifdef UART_1_ISR
-__attribute__((naked)) void UART_1_ISR(void)
-{
-	ISR_ENTER();
-	irq_handler(UART_1, UART_1_DEV);
-	ISR_EXIT();
-}
-# endif
-#endif //UART_1_EN
+    uint8_t c = UARTCharGet(_dev(uart));
+    UARTCharPut(_dev(uart), c);
+    uart_ctx[uart].rx_cb(uart_ctx[uart].arg, c);
 
-#ifdef UART_2_EN
-# if defined UART_2_RX_ISR && defined UART_2_TX_ISR
-__attribute__((naked)) void UART_2_RX_ISR(void)
-{
-	ISR_ENTER();
-	irq_handler(UART_2, UART_2_DEV);
-	ISR_EXIT();
-}
-
-__attribute__((naked)) void UART_2_TX_ISR(void)
-{
-	ISR_ENTER();
-	irq_handler(UART_2, UART_2_DEV);
-	ISR_EXIT();
-}
-# elifdef UART_2_ISR
-__attribute__((naked)) void UART_2_ISR(void)
-{
-	ISR_ENTER();
-	irq_handler(UART_2, UART_2_DEV);
-	ISR_EXIT();
-}
-# endif
-#endif //UART_2_EN
-
-static inline void irq_handler(uart_t uartnum, uint32_t *dev)
-{
-// // 	if(lpm_get() >= LPM_SLEEP)
-// // 		lpm_awake();
-// //
-// //     if (dev->IF & USART_IF_RXDATAV) {
-// //         char data = (char)USART_RxDataGet(dev);
-// //         config[uartnum].rx_cb(config[uartnum].arg, data);
-// //
-// //     } else if (dev->IF & USART_IF_TXC) {
-// //         config[uartnum].tx_cb(config[uartnum].arg);
-// //         dev->IFC |= USART_IFC_TXC;
-// //     }
-// //
-// //     if (sched_context_switch_request) {
-// // 		thread_yield();
-// // 	}
+    if (sched_context_switch_request) {
+		thread_yield();
+	}
 }

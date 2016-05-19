@@ -1,40 +1,52 @@
 /*
- * Copyright (C) 2014 Freie Universität Berlin
+ *    Copyright (c) 2016 Thomas Stilwell <stilwellt@openlabs.co>
  *
- * This file is subject to the terms and conditions of the GNU Lesser General
- * Public License v2.1. See the file LICENSE in the top level directory for more
- * details.
+ *    Permission is hereby granted, free of charge, to any person
+ *    obtaining a copy of this software and associated documentation
+ *    files (the "Software"), to deal in the Software without
+ *    restriction, including without limitation the rights to use,
+ *    copy, modify, merge, publish, distribute, sublicense, and/or sell
+ *    copies of the Software, and to permit persons to whom the
+ *    Software is furnished to do so, subject to the following
+ *    conditions:
+ *
+ *    The above copyright notice and this permission notice shall be
+ *    included in all copies or substantial portions of the Software.
+ *
+ *    THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+ *    EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES
+ *    OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+ *    NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT
+ *    HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,
+ *    WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+ *    FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
+ *    OTHER DEALINGS IN THE SOFTWARE.
  */
 
+
 /**
- * @ingroup     board_efm32gg-st3700
+ * @ingroup     board_srf06-cc26xx
  * @{
  *
  * @file
- * @brief       Peripheral MCU configuration for the STM32F0discovery board
+ * @brief       Peripheral MCU configuration for the Sensortag CC2650 board
  *
- * @author      Hauke Petersen <hauke.petersen@fu-berlin.de>
- * @author		Ryan Kurte <ryankurte@gmail.com>
+ * @author      Thomas Stilwell <stilwellt@openlabs.co>
  */
 
-#ifndef __PERIPH_CONF_H
-#define __PERIPH_CONF_H
+#ifndef PERIPH_CONF_H_
+#define PERIPH_CONF_H_
 
+#include "periph_cpu.h"
 #include "hw_memmap.h"
+#include "driverlib/uart.h"
+#include "driverlib/gpio.h"
+#include "driverlib/ioc.h"
+#include "driverlib/prcm.h"
 
-/******     From cortex-m3_common/cpu.h for RIOT compatibility      ******/
-/**
- * @brief Macro has to be called in the beginning of each ISR
- */
-#define ISR_ENTER()     asm("push {LR}")
-
-/**
- * @brief Macro has to be called on each exit of an ISR
- */
-#define ISR_EXIT()      asm("pop {r0} \n bx r0")
-/******     End     ******/
-
-
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 /**
  * @name Clock system configuration
@@ -97,10 +109,7 @@
  */
 #define UART_NUMOF          (1U)
 #define UART_0_EN           1
-#define UART_1_EN           0
-#define UART_2_EN           0
-#define UART_IRQ_PRIO       1
-#define UART_STDIO_DEV      (UART0_BASE)
+#define UART_STDIO_DEV      (UART_DEV(0))
 
 #define UART_0_DEV          (uint32_t*)(UART0_BASE)
 #define UART_0_CLKEN()      CMU_ClockEnable(cmuClock_USART0, true)
@@ -108,33 +117,22 @@
 #define UART_0_TX_IRQ       USART0_TX_IRQn
 #define UART_0_RX_ISR       USART0_RX_IRQHandler
 #define UART_0_TX_ISR       USART0_TX_IRQHandler
-#define UART_0_PORT         gpioPortE
-#define UART_0_PORT_CLKEN() CMU_ClockEnable(cmuClock_GPIO, true)
-#define UART_0_TX_PIN       10
-#define UART_0_RX_PIN       11
-#define UART_0_ROUTE        USART_ROUTE_LOCATION_LOC0
 
-#define UART_1_DEV          LEUART0
-#define UART_1_CLKEN()      CMU_ClockEnable(cmuClock_LEUART0, true)
-#define UART_1_RX_IRQ       LEUART0_IRQn
-#define UART_1_TX_IRQ       LEUART0_IRQn
-#define UART_1_ISR          LEUART0_IRQHandler
-#define UART_1_PORT         gpioPortD
-#define UART_1_PORT_CLKEN() CMU_ClockEnable(cmuClock_GPIO, true)
-#define UART_1_TX_PIN       4
-#define UART_1_RX_PIN       5
-#define UART_1_ROUTE        USART_ROUTE_LOCATION_LOC0
-
-#define UART_2_DEV          LEUART1
-#define UART_2_CLKEN()      CMU_ClockEnable(cmuClock_LEUART1, true)
-#define UART_2_RX_IRQ       LEUART1_IRQn
-#define UART_2_TX_IRQ       LEUART1_IRQn
-#define UART_2_ISR          LEUART1_IRQHandler
-#define UART_2_PORT         gpioPortC
-#define UART_2_PORT_CLKEN() CMU_ClockEnable(cmuClock_GPIO, true)
-#define UART_2_TX_PIN       6
-#define UART_2_RX_PIN       7
-#define UART_2_ROUTE        USART_ROUTE_LOCATION_LOC0
+/**
+ * @brief   UART configuration
+ * @{
+ */
+static const uart_conf_t uart_config[] = {
+    {
+        .dev        = UART0_BASE,
+        .prcmp      = PRCM_PERIPH_UART0,
+        .irqn       = INT_UART0,
+        .gpio_rx    = GPIO_PIN_2,
+        .gpio_tx    = GPIO_PIN_3,
+        .ioid_rx    = IOID_2,
+        .ioid_tx    = IOID_3,
+    },
+};
 
 
 /**
@@ -373,5 +371,8 @@
 #define GPIO_0_PORT         gpioPortD
 #define GPIO_0_PIN          6
 
+#ifdef __cplusplus
+}
+#endif
 
-#endif /* __PERIPH_CONF_H */
+#endif /* PERIPH_CONF_H_ */

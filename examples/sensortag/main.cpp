@@ -56,9 +56,9 @@ int main()
 
     Sensortag* sensortag = new Sensortag();
 
-// 	thread_create(shell_thread_stack, sizeof(shell_thread_stack), 13,
-// 				  CREATE_STACKTEST | CREATE_WOUT_YIELD, shell_thread,
-// 			   NULL, "shell");
+	thread_create(shell_thread_stack, sizeof(shell_thread_stack), 13,
+				  THREAD_CREATE_STACKTEST | THREAD_CREATE_WOUT_YIELD, shell_thread,
+                  NULL, "shell");
 
     sensortag->mainloop();
 
@@ -67,10 +67,7 @@ int main()
 
 void *shell_thread(void *arg)
 {
-// 	posix_open(uart0_handler_pid, 0);
-// 	shell_t shell;
-// 	shell_init(&shell, NULL, UART0_BUFSIZE, uart0_readc, uart0_putc);
-// 	shell_run(&shell);
-
+    char input_buf[SHELL_DEFAULT_BUFSIZE];
+    shell_run(NULL, input_buf, SHELL_DEFAULT_BUFSIZE);
     return NULL;
 }

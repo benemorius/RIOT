@@ -97,5 +97,11 @@ void Sensortag::mainloop()
 
 	DEBUG("starting mainloop...\r\n");
 
+//     int i =0;
+//     while(1) {
+//         printf("%i\n", i++);
+//         for(volatile int d = 0; d < (115200/8); d++)
+//             printf("\r");
+//     }
 
 }
