@@ -42,6 +42,7 @@
 #include "periph_conf.h"
 
 #include "driverlib/gpio.h"
+#include "driverlib/prcm.h"
 
 /**
  * @brief   16 EXTI channels
@@ -55,32 +56,34 @@ static gpio_isr_ctx_t exti_chan[EXTI_NUMOF];
 
 int gpio_init(gpio_t pin, gpio_mode_t mode)
 {
-
-    uint32_t ui32Reg;
-
-    //
-    // Check the arguments.
-    //
-    ASSERT(ui32Pins & GPIO_PIN_MASK);
-    ASSERT((mode == GPIO_DIR_MODE_IN) ||
-    (mode == GPIO_DIR_MODE_OUT));
-
-    //
-    // Update the output pin enable bit.
-    //
-    ui32Reg = HWREG(GPIO_BASE + GPIO_O_DOE31_0); //FIXME hangs here
-    if(mode == GPIO_DIR_MODE_IN)
-    {
-        ui32Reg &= ~pin;
+    /* Enable peripheral power domain */
+    if(PRCMPowerDomainStatus(PRCM_DOMAIN_PERIPH) != PRCM_DOMAIN_POWER_ON) {
+        PRCMPowerDomainOn(PRCM_DOMAIN_PERIPH);
+        while(PRCMPowerDomainStatus(PRCM_DOMAIN_PERIPH) != PRCM_DOMAIN_POWER_ON);
     }
-    else
-    {
-        ui32Reg |= pin;
+
+    /* Enable GPIO peripheral */
+    PRCMPeripheralRunEnable(PRCM_PERIPH_GPIO);
+
+    /* Apply settings and wait for them to take effect */
+    PRCMLoadSet();
+    while(!PRCMLoadGet());
+
+    /* Decode GPIO mode */
+    switch(mode) {
+        case GPIO_OUT:
+            mode = GPIO_DIR_MODE_OUT;
+            break;
+        case GPIO_IN:
+        case GPIO_IN_PU:
+        case GPIO_IN_PD:
+            mode = GPIO_DIR_MODE_IN;
+            break;
+        default:
+            return 1;
     }
-    HWREG(GPIO_BASE + GPIO_O_DOE31_0) = ui32Reg;
 
-
-//     GPIODirModeSet(pin, GPIO_DIR_MODE_OUT);
+    GPIODirModeSet(pin, mode);
 
     return 0;
 }

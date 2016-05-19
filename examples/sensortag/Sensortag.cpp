@@ -66,10 +66,8 @@ main_pid(thread_getpid())
     sensortagS = this;
 
     gpio_init(GPIO_PIN_18, GPIO_OUT);
-    while(1) {
-        __WFI();
-    }
     gpio_set(GPIO_PIN_18);
+    while(1) __WFI();
 
 	DEBUG("firmware version: %s\r\n", GIT_VERSION);
 
