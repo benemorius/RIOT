@@ -1,5 +1,5 @@
 /*
-    Copyright (c) 2016 <stilwellt@openlabs.co>
+    Copyright (c) 2016 Thomas Stilwell <stilwellt@openlabs.co>
 
     Permission is hereby granted, free of charge, to any person
     obtaining a copy of this software and associated documentation
@@ -33,7 +33,9 @@
 
 #include <stdio.h>
 
-#include "driverlib/gpio.h" //FIXME remove
+//FIXME remove
+#include "driverlib/gpio.h"
+#include "periph/uart.h"
 
 
 #ifndef GIT_VERSION
@@ -57,7 +59,8 @@ void debug_printf(const char *format, ...) {
 //     va_end(args);
 }
 
-#define DEBUG(...) debug_printf(__VA_ARGS__)
+// #define DEBUG(...) debug_printf(__VA_ARGS__)
+#define DEBUG(...) printf(__VA_ARGS__)
 
 
 Sensortag::Sensortag() :
@@ -67,7 +70,7 @@ main_pid(thread_getpid())
 
     gpio_init(GPIO_PIN_18, GPIO_OUT);
     gpio_set(GPIO_PIN_18);
-    while(1) __WFI();
+//     while(1) __WFI();
 
 	DEBUG("firmware version: %s\r\n", GIT_VERSION);
 
