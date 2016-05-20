@@ -58,50 +58,14 @@ extern "C" {
  * @name Timer configuration
  * @{
  */
-#define TIMER_NUMOF         (3U)
+#define TIMER_NUMOF         (1U)
 #define TIMER_0_EN          1
-#define TIMER_1_EN          1
-#define TIMER_2_EN          1
+#define XTIMER_SHIFT        (4U)
 
 /* Timer 0 configuration */
-#define TIMER_0_DEV         TIMER0
-#define TIMER_0_CHANNELS    3
-#define TIMER_0_PRESCALER   (timerPrescale64)
-#define TIMER_0_MAX_VALUE   (0xffff)
-#define TIMER_0_CLKEN()     CMU_ClockEnable(cmuClock_TIMER0, true)
-#define TIMER_0_ISR         TIMER0_IRQHandler
-//#define TIMER_0_IRQ_CHAN    TIM2_IRQn
-#define TIMER_0_IRQ_PRIO    1
-
-/* Timer 1 configuration */
-#define TIMER_1_DEV         TIMER1
-#define TIMER_1_CHANNELS    3
-#define TIMER_1_PRESCALER   (timerPrescale1)
-#define TIMER_1_MAX_VALUE   (0xffff)
-#define TIMER_1_CLKEN()     CMU_ClockEnable(cmuClock_TIMER1, true)
-#define TIMER_1_ISR         TIMER1_IRQHandler
-//#define TIMER_0_IRQ_CHAN    TIM2_IRQn
-#define TIMER_1_IRQ_PRIO    1
-
-/* Low Energy Timer 0 configuration */
-#define TIMER_2_DEV         LETIMER0
-#define TIMER_2_CHANNELS    2
-#define TIMER_2_PRESCALER   (timerPrescale1024)
-#define TIMER_2_MAX_VALUE   (0xffff)
-#define TIMER_2_CLKEN()     CMU_ClockEnable(cmuClock_LETIMER0, true);CMU_ClockEnable(cmuClock_CORELE, true)
-#define TIMER_2_ISR         LETIMER0_IRQHandler
-//#define TIMER_2_IRQ_CHAN    LETIMER0_IRQn
-#define TIMER_2_IRQ_PRIO    1
-
-#define WTIMER TIMER_2
-#define WTIMER_CHAN 0
-#define WTIMER_US_PER_TICK 31
-#define WTIMER_BACKOFF 3
-#define WTIMER_OVERHEAD 1
-#define WTIMER_ISR_BACKOFF 1
-#define WTIMER_USLEEP_UNTIL_OVERHEAD 1
-#define WTIMER_MASK 0xFFFF0000
-
+#define TIMER_0_DEV         AON_RTC_BASE
+#define TIMER_0_CHANNELS    (1U)
+#define TIMER_0_MAX_VALUE   (0xffffffff)
 
 /**
  * @name UART configuration
@@ -109,9 +73,9 @@ extern "C" {
  */
 #define UART_NUMOF          (1U)
 #define UART_0_EN           1
-#define UART_STDIO_DEV      (UART_DEV(0))
+#define UART_STDIO_DEV      UART_DEV(0)
 
-#define UART_0_DEV          (uint32_t*)(UART0_BASE)
+#define UART_0_DEV          UART0_BASE
 #define UART_0_CLKEN()      CMU_ClockEnable(cmuClock_USART0, true)
 #define UART_0_RX_IRQ       USART0_RX_IRQn
 #define UART_0_TX_IRQ       USART0_TX_IRQn
