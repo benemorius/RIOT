@@ -30,6 +30,7 @@
 #include "periph/cpuid.h"
 #include "periph/gpio.h"
 #include "thread.h"
+#include "xtimer.h"
 
 #include <stdio.h>
 
@@ -97,11 +98,13 @@ void Sensortag::mainloop()
 
 	DEBUG("starting mainloop...\r\n");
 
-//     int i =0;
-//     while(1) {
-//         printf("%i\n", i++);
-//         for(volatile int d = 0; d < (115200/8); d++)
-//             printf("\r");
-//     }
+    xtimer_t t;
+    int i =0;
+    while(1) {
+        printf("%i %lu %u\n", i++, xtimer_now() / 1000, timer_read(TIMER_DEV(0)));
+
+        xtimer_set_wakeup(&t, 1000*1000, thread_getpid());
+        thread_sleep();
+    }
 
 }

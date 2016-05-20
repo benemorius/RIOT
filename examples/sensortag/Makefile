@@ -53,7 +53,7 @@ USEMODULE += shell
 USEMODULE += shell_commands
 # USEMODULE += uart0
 USEMODULE += ps
-# USEMODULE += wtimer
+USEMODULE += xtimer
 
 # USEMODULE += sixlowpan
 # USEMODULE += aodvv2
