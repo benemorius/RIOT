@@ -36,7 +36,7 @@ public:
     Sensortag();
 	void mainloop();
 
-	uint8_t cpuid[CPUID_ID_LEN];
+    uint8_t cpuid[CPUID_LEN];
 
     kernel_pid_t main_pid;
 

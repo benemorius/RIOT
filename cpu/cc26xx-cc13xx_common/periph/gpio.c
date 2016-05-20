@@ -75,8 +75,6 @@ int gpio_init(gpio_t pin, gpio_mode_t mode)
             mode = GPIO_DIR_MODE_OUT;
             break;
         case GPIO_IN:
-        case GPIO_IN_PU:
-        case GPIO_IN_PD:
             mode = GPIO_DIR_MODE_IN;
             break;
         default:

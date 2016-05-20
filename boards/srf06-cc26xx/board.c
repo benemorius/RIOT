@@ -24,14 +24,13 @@
  */
 
 /**
- * @ingroup     board_efm32gg-stk3700
+ * @ingroup     board_srf06-cc26xx
  * @{
  *
  * @file
- * @brief       Board specific implementations for the STM32F3Discovery evaluation board
+ * @brief       Board specific implementations for Sensortag CC2650
  *
- * @author      Hauke Petersen <hauke.petersen@fu-berlin.de>
- * @author		Ryan Kurte <ryankurte@gmail.com>
+ * @author      Thomas Stilwell <stilwellt@openlabs.co>
  *
  * @}
  */
@@ -40,12 +39,5 @@
 
 void board_init(void)
 {
-    // measure current to check whether execution reaches here and sleeps
-    // it does :)
-//     while(1) {
-//         __WFI();
-//     }
-
     cpu_init();
-
 }
