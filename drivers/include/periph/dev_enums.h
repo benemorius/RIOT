@@ -217,6 +217,25 @@ enum {
     PWM_UNDEFINED       /**< Deprecated symbol, use PWM_UNDEF instead */
 };
 
+/**
+ * @brief Legacy definitions of SPI devices
+ */
+enum {
+#if SPI_0_EN
+    SPI_0 = 0,          /**< SPI device 0 */
+#endif
+#if SPI_1_EN
+    SPI_1,              /**< SPI device 1 */
+#endif
+#if SPI_2_EN
+    SPI_2,              /**< SPI device 2 */
+#endif
+#if SPI_3_EN
+    SPI_3,              /**< SPI device 3 */
+#endif
+    SPI_UNDEFINED       /**< Deprecated symbol, use SPI_UNDEF instead */
+};
+
 #ifdef __cplusplus
 }
 #endif

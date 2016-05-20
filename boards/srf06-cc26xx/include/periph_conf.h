@@ -82,10 +82,6 @@ extern "C" {
 #define UART_0_RX_ISR       USART0_RX_IRQHandler
 #define UART_0_TX_ISR       USART0_TX_IRQHandler
 
-/**
- * @brief   UART configuration
- * @{
- */
 static const uart_conf_t uart_config[] = {
     {
         .dev        = UART0_BASE,
@@ -144,16 +140,22 @@ static const uart_conf_t uart_config[] = {
 #define SPI_0_CS_PIN        3
 #define SPI_0_ROUTE         USART_ROUTE_LOCATION_LOC1
 
-/* SPI 1 device configuration */
-#define SPI_1_DEV           USART2
-#define SPI_1_CLKEN()       CMU_ClockEnable(cmuClock_USART2, true);
-#define SPI_1_PORT          gpioPortC
-#define SPI_1_PORT_CLKEN()  CMU_ClockEnable(cmuClock_GPIO, true)
-#define SPI_1_MOSI_PIN      2
-#define SPI_1_MISO_PIN      3
-#define SPI_1_CLK_PIN       4
-#define SPI_1_CS_PIN        5
-#define SPI_1_ROUTE         USART_ROUTE_LOCATION_LOC0
+static const ssi_conf_t spi_config[] = {
+    {
+        .dev        = SSI0_BASE,
+        .prcmp      = PRCM_PERIPH_SSI0,
+        .bits       = 8,
+        .irqn       = INT_SSI0,
+        .gpio_mosi  = GPIO_PIN_9,
+        .gpio_miso  = GPIO_PIN_8,
+        .gpio_clk   = GPIO_PIN_10,
+        .gpio_cs    = GPIO_PIN_11,
+        .ioid_mosi  = IOID_9,
+        .ioid_miso  = IOID_8,
+        .ioid_clk   = IOID_10,
+        .ioid_cs    = IOID_11,
+    },
+};
 
 
 /**
