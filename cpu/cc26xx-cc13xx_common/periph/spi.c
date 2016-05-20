@@ -1,54 +1,147 @@
 /*
- * Copyright (C) 2014 Freie Universität Berlin
+ *    Copyright (c) 2016 Thomas Stilwell <stilwellt@openlabs.co>
  *
- * This file is subject to the terms and conditions of the GNU Lesser General
- * Public License v2.1. See the file LICENSE in the top level directory for more
- * details.
+ *    Permission is hereby granted, free of charge, to any person
+ *    obtaining a copy of this software and associated documentation
+ *    files (the "Software"), to deal in the Software without
+ *    restriction, including without limitation the rights to use,
+ *    copy, modify, merge, publish, distribute, sublicense, and/or sell
+ *    copies of the Software, and to permit persons to whom the
+ *    Software is furnished to do so, subject to the following
+ *    conditions:
+ *
+ *    The above copyright notice and this permission notice shall be
+ *    included in all copies or substantial portions of the Software.
+ *
+ *    THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+ *    EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES
+ *    OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+ *    NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT
+ *    HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,
+ *    WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+ *    FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
+ *    OTHER DEALINGS IN THE SOFTWARE.
  */
 
+
 /**
- * @ingroup     cpu_stm32f0
+ * @ingroup     cpu_cc26xx-cc13xx
  * @{
  *
  * @file
  * @brief       Low-level SPI driver implementation
  *
- * @author      Ryan Kurte <ryankurte@gmail.com>
+ * @author      Thomas Stilwell <stilwellt@openlabs.co>
  *
  * @}
  */
 
 #include <math.h>
 
-#include "cpu.h"
 #include "board.h"
-#include "periph_conf.h"
 #include "periph/spi.h"
 #include "mutex.h"
+#include <periph_cpu_common.h>
+
+#include "driverlib/ssi.h"
+#include "driverlib/sys_ctrl.h"
 
 #if SPI_NUMOF
 
 // static uint32_t speed_to_baud(spi_speed_t speed);
 // static uint32_t conf_to_cpol(spi_conf_t conf);
 
-mutex_t locks[2];
+/**
+ * @brief Data-structure holding the state for a SPI device
+ */
+typedef struct {
+    char(*cb)(char data);
+} spi_state_t;
 
-//SPI configuration storage
-//static spi_state_t spi_config[SPI_NUMOF];
-//TODO: add configuration for async mode
+// static inline void irq_handler_transfer(spi_t *spi, spi_t dev);
+
+/**
+ * @brief Reserve memory for saving the SPI device's state
+ */
+// static spi_state_t spi_config[SPI_NUMOF];
+
+/**
+ * @brief Array holding one pre-initialized mutex for each SPI device
+ */
+static mutex_t locks[] =  {
+    #if SPI_0_EN
+    [0] = MUTEX_INIT,
+    #endif
+    #if SPI_1_EN
+    [1] = MUTEX_INIT,
+    #endif
+    #if SPI_2_EN
+    [2] = MUTEX_INIT
+    #endif
+};
+
+/**
+ * @brief   Get the base register for the given UART device
+ */
+static inline spi_t _dev(spi_t spi)
+{
+    return spi_config[spi].dev;
+}
 
 int spi_init_master(spi_t spi, spi_conf_t conf, spi_speed_t speed)
 {
+    printf("spi %i init start\n", spi);
+
+    const ssi_conf_t *config = &spi_config[spi];
+    int proto = 0;
+
+    /* Enable peripheral power domain */
+    if(PRCMPowerDomainStatus(PRCM_DOMAIN_PERIPH) != PRCM_DOMAIN_POWER_ON) {
+        PRCMPowerDomainOn(PRCM_DOMAIN_PERIPH);
+        while(PRCMPowerDomainStatus(PRCM_DOMAIN_PERIPH) != PRCM_DOMAIN_POWER_ON);
+    }
+
+    /* Enable serial power domain */
+    if(PRCMPowerDomainStatus(PRCM_DOMAIN_SERIAL) != PRCM_DOMAIN_POWER_ON) {
+        PRCMPowerDomainOn(PRCM_DOMAIN_SERIAL);
+        while(PRCMPowerDomainStatus(PRCM_DOMAIN_SERIAL) != PRCM_DOMAIN_POWER_ON);
+    }
+
+    /* Enable SSI0 peripheral */
+    PRCMPeripheralRunEnable(PRCM_PERIPH_GPIO);
+    PRCMPeripheralRunEnable(spi_config[spi].prcmp);
+
+    /* Apply settings and wait for them to take effect */
+    PRCMLoadSet();
+    while(!PRCMLoadGet());
+
+    SSIDisable(_dev(spi));
+
+    /*
+     * Map SSI signals to the correct GPIO pins and configure them as
+     * hardware controlled.
+     */
+    IOCPinTypeSsiMaster(_dev(spi),
+                        spi_config[spi].ioid_miso,
+                        spi_config[spi].ioid_mosi,
+                        spi_config[spi].ioid_cs,
+                        spi_config[spi].ioid_clk
+                       );
+
+    SSIConfigSetExpClk(_dev(spi), SysCtrlClockGet(), proto, SSI_MODE_MASTER, 100000, config->bits);
+
+    SSIEnable(_dev(spi));
+
     return 0;
 }
 
 int spi_transfer_byte(spi_t spi, char out, char *in)
 {
-    return 0;
-}
-
-int spi_transfer_bytes(spi_t spi, char *out, char *in, unsigned int length)
-{
+    SSIDataPut(_dev(spi), out);
+    while((SSIStatus(_dev(spi)) & SSI_RX_NOT_EMPTY) == 0);
+    uint32_t receive;
+    SSIDataGet(_dev(spi), &receive);
+    *in = receive;
     return 0;
 }
 
@@ -70,38 +163,6 @@ int spi_release(spi_t dev)
 // 	printf("release\n");
     mutex_unlock(&locks[dev]);
 	return 0;
-}
-
-int spi_transfer_reg(spi_t dev, uint8_t reg, char out, char *in)
-{
-	int trans_ret;
-
-	trans_ret = spi_transfer_byte(dev, reg, in);
-	if (trans_ret < 0) {
-		return -1;
-	}
-	trans_ret = spi_transfer_byte(dev, out, in);
-	if (trans_ret < 0) {
-		return -1;
-	}
-
-	return 1;
-}
-
-int spi_transfer_regs(spi_t dev, uint8_t reg, char *out, char *in, unsigned int length)
-{
-	int trans_ret;
-
-	trans_ret = spi_transfer_byte(dev, reg, in);
-	if (trans_ret < 0) {
-		return -1;
-	}
-	trans_ret = spi_transfer_bytes(dev, out, in, length);
-	if (trans_ret < 0) {
-		return -1;
-	}
-
-	return trans_ret;
 }
 
 // //Convert speeds to integers
