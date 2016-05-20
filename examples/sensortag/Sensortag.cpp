@@ -34,11 +34,6 @@
 
 #include <stdio.h>
 
-//FIXME remove
-#include "driverlib/gpio.h"
-#include "periph/uart.h"
-
-
 #ifndef GIT_VERSION
 #define GIT_VERSION "undefined"
 #endif
@@ -77,8 +72,8 @@ main_pid(thread_getpid())
 {
     sensortagS = this;
 
-    gpio_init(GPIO_PIN_18, GPIO_OUT);
-    flash_led(GPIO_PIN_18, 3);
+    gpio_init(GPIO_PIN(18), GPIO_OUT);
+    flash_led(GPIO_PIN(18), 3);
 
 	DEBUG("firmware version: %s\r\n", GIT_VERSION);
 
@@ -111,11 +106,9 @@ void Sensortag::mainloop()
     while(1) {
         printf("%i %lu %u\n", i++, xtimer_now() / 1000, timer_read(TIMER_DEV(0)));
 
-        xtimer_set_wakeup(&t, 1000*1000, thread_getpid());
-
-        flash_led(GPIO_PIN_18, 1);
-
+        xtimer_set_wakeup(&t, 3000*1000, thread_getpid());
         thread_sleep();
-    }
 
+        flash_led(GPIO_PIN(18), 2);
+    }
 }
