@@ -40,6 +40,7 @@
 
 #include "board.h"
 #include "periph/timer.h"
+#include "lpm.h"
 
 #include "driverlib/aon_rtc.h"
 #include "driverlib/aon_event.h"
@@ -162,6 +163,7 @@ void AONRTCIntHandler(void)
 
 static inline void irq_handler(tim_t timer)
 {
+    lpm_awake();
 
     DEBUG("timer irq_handler(): timer %d\n", timer);
 

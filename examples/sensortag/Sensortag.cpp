@@ -63,6 +63,14 @@ void debug_printf(const char *format, ...) {
 // #define DEBUG(...) debug_printf(__VA_ARGS__)
 #define DEBUG(...) printf(__VA_ARGS__)
 
+void flash_led(gpio_t led, uint flashes) {
+    for (uint flash = 0; flash < flashes; flash++) {
+        gpio_set(led);
+        xtimer_usleep(200*1000);
+        gpio_clear(led);
+        xtimer_usleep(150*1000);
+    }
+}
 
 Sensortag::Sensortag() :
 main_pid(thread_getpid())
@@ -70,8 +78,7 @@ main_pid(thread_getpid())
     sensortagS = this;
 
     gpio_init(GPIO_PIN_18, GPIO_OUT);
-    gpio_set(GPIO_PIN_18);
-//     while(1) __WFI();
+    flash_led(GPIO_PIN_18, 3);
 
 	DEBUG("firmware version: %s\r\n", GIT_VERSION);
 
@@ -100,10 +107,14 @@ void Sensortag::mainloop()
 
     xtimer_t t;
     int i =0;
+
     while(1) {
         printf("%i %lu %u\n", i++, xtimer_now() / 1000, timer_read(TIMER_DEV(0)));
 
         xtimer_set_wakeup(&t, 1000*1000, thread_getpid());
+
+        flash_led(GPIO_PIN_18, 1);
+
         thread_sleep();
     }
 

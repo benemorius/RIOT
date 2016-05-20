@@ -1,99 +1,97 @@
 /*
- * Copyright (C) 2014 Freie Universität Berlin
+ *    Copyright (c) 2016 Thomas Stilwell <stilwellt@openlabs.co>
  *
- * This file is subject to the terms and conditions of the GNU Lesser General
- * Public License v2.1. See the file LICENSE in the top level directory for more
- * details.
+ *    Permission is hereby granted, free of charge, to any person
+ *    obtaining a copy of this software and associated documentation
+ *    files (the "Software"), to deal in the Software without
+ *    restriction, including without limitation the rights to use,
+ *    copy, modify, merge, publish, distribute, sublicense, and/or sell
+ *    copies of the Software, and to permit persons to whom the
+ *    Software is furnished to do so, subject to the following
+ *    conditions:
+ *
+ *    The above copyright notice and this permission notice shall be
+ *    included in all copies or substantial portions of the Software.
+ *
+ *    THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+ *    EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES
+ *    OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+ *    NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT
+ *    HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,
+ *    WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+ *    FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
+ *    OTHER DEALINGS IN THE SOFTWARE.
  */
 
 /**
- * @ingroup     cpu_efm32
+ * @ingroup     cpu_cc26xx-cc13xx
  * @{
  *
  * @file
- * @brief       Implementation of the kernels power management interface
+ * @brief       Implementation of the kernel's power management interface
  *
- * @author      Hauke Petersen <hauke.petersen@fu-berlin.de>
- * @author      Ryan Kurte <ryankurte@gmail.com>
+ * @author      Thomas Stilwell <stilwellt@openlabs.co>
  *
  * @}
  */
 
-#include "arch/lpm_arch.h"
 #include "cpu.h"
+#include "arch/lpm_arch.h"
 
-#define NON_WIC_INT_MASK_0    (~(0xff020e63U))
-#define NON_WIC_INT_MASK_1    (~(0x00000046U))
-uint32_t nonWicIntEn[2];
+#include "driverlib/uart.h"
+#include "driverlib/sys_ctrl.h"
 
 static enum lpm_mode current_mode = LPM_UNKNOWN;
-// static uint16_t cmuStatus;
 
 void lpm_arch_init(void)
 {
-	current_mode = LPM_ON;
+    current_mode = LPM_ON;
 }
 
 enum lpm_mode lpm_arch_set(enum lpm_mode target)
 {
 	enum lpm_mode last_mode = current_mode;
 
-//     switch (target) {
-// 		case LPM_ON:
-// 			current_mode = LPM_ON;
-// 			break;
-//
-// 		case LPM_IDLE:
-// 			current_mode = LPM_IDLE;
-// 			SCB->SCR &= ~SCB_SCR_SLEEPDEEP_Msk;
-// 			__WFI();
-// // 			BSP_TraceSwoSetup();
-// 			break;
-//
-// 		case LPM_SLEEP:
-// 			current_mode = LPM_SLEEP;
-//
-// 			//wait for uart tx to complete
-// 			while (!(USART0->STATUS & USART_STATUS_TXC));
-//
-// 			cmuStatus = (uint16_t)(CMU->STATUS);
-// 			SCB->SCR |= SCB_SCR_SLEEPDEEP_Msk;
-//
-// 			//errata EMU_E107
-// 			nonWicIntEn[0] = NVIC->ISER[0] & NON_WIC_INT_MASK_0;
-// 			NVIC->ICER[0] = nonWicIntEn[0];
-//
-// #if (NON_WIC_INT_MASK_1 != (~(0x0U)))
-// 			nonWicIntEn[1] = NVIC->ISER[1] & NON_WIC_INT_MASK_1;
-// 			NVIC->ICER[1] = nonWicIntEn[1];
-// #endif
-//
-// 			__WFI();
-//
-//
-//
-// 			break;
-//
-// 		case LPM_POWERDOWN:
-// 			break;
-//
-// 		case LPM_OFF:
-// 			break;
-//
-// 		case LPM_UNKNOWN:
-// 			break;
-//     }
+    switch (target) {
+		case LPM_ON:
+			current_mode = LPM_ON;
+			break;
 
+		case LPM_IDLE:
+			current_mode = LPM_IDLE;
+            SCB->SCR &= ~(SCB_SCR_SLEEPDEEP_Msk);
+
+            //wait for uart tx to complete
+            while (UARTBusy(UART0_BASE));
+
+            __WFI();
+			break;
+
+		case LPM_SLEEP:
+			current_mode = LPM_SLEEP;
+            SCB->SCR |= SCB_SCR_SLEEPDEEP_Msk;
+
+			//wait for uart tx to complete
+            while (UARTBusy(UART0_BASE));
+
+			__WFI();
+
+			break;
+
+		case LPM_POWERDOWN:
+			break;
+
+		case LPM_OFF:
+			break;
+
+		case LPM_UNKNOWN:
+			break;
+    }
     return last_mode;
 }
 
-enum lpm_mode inline lpm_arch_get(void)
-{
-    return current_mode;
-}
-
-void lpm_arch_awake(void)
-{
+// void lpm_arch_awake(void)
+// {
 // 	//errata EMU_E107
 // 	NVIC->ISER[0] = nonWicIntEn[0];
 // #if (NON_WIC_INT_MASK_1 != (~(0x0U)))
@@ -173,14 +171,49 @@ void lpm_arch_awake(void)
 // 	{
 // 		CMU->OSCENCMD = CMU_OSCENCMD_HFRCODIS;
 // 	}
+// }
+
+enum lpm_mode lpm_arch_get(void)
+{
+    return current_mode;
 }
 
-void lpm_arch_begin_awake(void)
+void lpm_arch_awake(void)
 {
-    /* TODO */
+    if (current_mode == LPM_SLEEP) {
+
+        /* Sync so that we get the latest values before adjusting recharge settings */
+        SysCtrlAonSync();
+
+        /* Adjust recharge settings */
+        SysCtrlAdjustRechargeAfterPowerDown();
+
+        /*
+         * Release the request to the uLDO
+         * This is likely not required, since the switch to GLDO/DCDC is automatic
+         * when coming back from deep sleep
+         */
+        PRCMMcuUldoConfigure(false);
+
+        /* Turn on cache again */
+        VIMSModeSet(VIMS_BASE, VIMS_MODE_ENABLED);
+        PRCMCacheRetentionEnable();
+
+        AONIOCFreezeDisable();
+        SysCtrlAonSync();
+
+        /* Check operating conditions, optimally choose DCDC versus GLDO */
+        SysCtrl_DCDC_VoltageConditionalControl();
+
+
+        /* After stop mode, the clock system needs to be reconfigured */
+        cpu_init();
+    }
+    current_mode = LPM_ON;
 }
 
-void lpm_arch_end_awake(void)
-{
-    /* TODO */
-}
+/** Not provided */
+inline void lpm_arch_begin_awake(void) { }
+
+/** Not provided */
+inline void lpm_arch_end_awake(void) { }
