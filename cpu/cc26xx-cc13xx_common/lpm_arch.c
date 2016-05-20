@@ -40,6 +40,9 @@
 
 #include "driverlib/uart.h"
 #include "driverlib/sys_ctrl.h"
+#include "driverlib/pwr_ctrl.h"
+
+void osc_switch_to_hf_rc(void);
 
 static enum lpm_mode current_mode = LPM_UNKNOWN;
 
@@ -51,6 +54,9 @@ void lpm_arch_init(void)
 enum lpm_mode lpm_arch_set(enum lpm_mode target)
 {
 	enum lpm_mode last_mode = current_mode;
+
+    if(target == LPM_IDLE)
+        target = LPM_SLEEP;
 
     switch (target) {
 		case LPM_ON:
@@ -69,12 +75,66 @@ enum lpm_mode lpm_arch_set(enum lpm_mode target)
 
 		case LPM_SLEEP:
 			current_mode = LPM_SLEEP;
-            SCB->SCR |= SCB_SCR_SLEEPDEEP_Msk;
 
-			//wait for uart tx to complete
+			/* wait for uart tx to complete */
             while (UARTBusy(UART0_BASE));
 
-			__WFI();
+            AONIOCFreezeEnable();
+
+//             PRCMPowerDomainOff(0);
+
+            osc_switch_to_hf_rc();
+
+            /* Configure clock sources for MCU and AUX: No clock */
+            AONWUCMcuPowerDownConfig(AONWUC_NO_CLOCK);
+            AONWUCAuxPowerDownConfig(AONWUC_NO_CLOCK);
+
+            /* Full RAM retention. */
+            AONWUCMcuSRamConfig(MCU_RAM0_RETENTION | MCU_RAM1_RETENTION |
+            MCU_RAM2_RETENTION | MCU_RAM3_RETENTION);
+
+            /* Disable retention of AUX RAM */
+            AONWUCAuxSRamConfig(false);
+
+            /*
+             * Always turn off RFCORE, CPU, SYSBUS and VIMS. RFCORE should be off
+             * already
+             */
+            PRCMPowerDomainOff(PRCM_DOMAIN_RFCORE | PRCM_DOMAIN_CPU |
+            PRCM_DOMAIN_VIMS | PRCM_DOMAIN_SYSBUS |
+            PRCM_DOMAIN_PERIPH);
+
+            /* Request JTAG domain power off */
+            AONWUCJtagPowerOff();
+
+            /* Turn off AUX */
+//             AUXWUCPowerCtrl(AUX_WUC_POWER_OFF);
+            AONWUCDomainPowerDownEnable();
+            while(AONWUCPowerStatusGet() & AONWUC_AUX_POWER_ON);
+
+            /* Configure the recharge controller */
+            SysCtrlSetRechargeBeforePowerDown(XOSC_IN_HIGH_POWER_MODE);
+
+            //
+            // Request the uLDO for standby power consumption.
+            //
+            PowerCtrlSourceSet(PWRCTRL_PWRSRC_ULDO);
+
+            /* Sync the AON interface to ensure all writes have gone through. */
+            SysCtrlAonSync();
+
+            /*
+             * Explicitly turn off VIMS cache, CRAM and TRAM. Needed because of
+             * retention mismatch between VIMS logic and cache. We wait to do this
+             * until right before deep sleep to be able to use the cache for as long
+             * as possible.
+             */
+            PRCMCacheRetentionDisable();
+            VIMSModeSet(VIMS_BASE, VIMS_MODE_OFF);
+
+            /* Deep Sleep */
+            SCB->SCR |= SCB_SCR_SLEEPDEEP_Msk;
+            __WFI();
 
 			break;
 
@@ -90,92 +150,46 @@ enum lpm_mode lpm_arch_set(enum lpm_mode target)
     return last_mode;
 }
 
-// void lpm_arch_awake(void)
-// {
-// 	//errata EMU_E107
-// 	NVIC->ISER[0] = nonWicIntEn[0];
-// #if (NON_WIC_INT_MASK_1 != (~(0x0U)))
-//     NVIC->ISER[1] = nonWicIntEn[1];
-// #endif
-//
-//
-// 	/*  Enable high speed crystal */
-// 	CMU->OSCENCMD |= CMU_OSCENCMD_HFXOEN;
-//
-// 	/*  Wait for high speed crystal to stabilise */
-// 	while (!(CMU->STATUS & CMU_STATUS_HFXORDY)) {
-// 		;
-// 	}
-//
-// 	/*  Set high speed crystal as core clock with divisor of 1 */
-// 	CMU->CMD |= CMU_CMD_HFCLKSEL_HFXO;
-// // 	CMU->CTRL |= (1 << 14);
-//
-// 	/*  Wait for clock switch */
-// 	while ((CMU->STATUS & CMU_STATUS_HFRCOSEL)) {
-// 		;
-// 	}
-//
-// 	/*  Disable high speed oscillator */
-// 	CMU->OSCENCMD |= CMU_OSCENCMD_HFRCODIS;
-//
-// 	/*  Enable low energy interface (for watchdog) */
-// 	CMU->HFCORECLKEN0 |= CMU_HFCORECLKEN0_LE;
-//
-//
-//
-//
-// 	/* AUXHFRCO was automatically disabled (except if using debugger). */
-// 	/* HFXO was automatically disabled. */
-// 	/* LFRCO/LFXO were possibly disabled by SW in EM3. */
-// 	/* Restore according to status prior to entering EM. */
-// 	CMU->OSCENCMD = cmuStatus & (CMU_STATUS_AUXHFRCOENS |
-// 	CMU_STATUS_HFXOENS |
-// 	CMU_STATUS_LFRCOENS |
-// 	CMU_STATUS_LFXOENS);
-//
-// 	/* Restore oscillator used for clocking core */
-// 	switch (cmuStatus & (CMU_STATUS_HFXOSEL | CMU_STATUS_HFRCOSEL |
-// 		CMU_STATUS_LFXOSEL | CMU_STATUS_LFRCOSEL))
-// 	{
-// 		case CMU_STATUS_LFRCOSEL:
-// 			/* Wait for LFRCO to stabilize */
-// 			while (!(CMU->STATUS & CMU_STATUS_LFRCORDY))
-// 				;
-// 			CMU->CMD = CMU_CMD_HFCLKSEL_LFRCO;
-// 			break;
-//
-// 		case CMU_STATUS_LFXOSEL:
-// 			/* Wait for LFXO to stabilize */
-// 			while (!(CMU->STATUS & CMU_STATUS_LFXORDY))
-// 				;
-// 			CMU->CMD = CMU_CMD_HFCLKSEL_LFXO;
-// 			break;
-//
-// 		case CMU_STATUS_HFXOSEL:
-// 			/* Wait for HFXO to stabilize */
-// 			while (!(CMU->STATUS & CMU_STATUS_HFXORDY))
-// 				;
-// 			CMU->CMD = CMU_CMD_HFCLKSEL_HFXO;
-// 			break;
-//
-// 		default: /* CMU_STATUS_HFRCOSEL */
-// 			/* If core clock was HFRCO core clock, it is automatically restored to */
-// 			/* state prior to entering energy mode. No need for further action. */
-// 			break;
-// 	}
-//
-// 	/* If HFRCO was disabled before entering Energy Mode, turn it off again */
-// 	/* as it is automatically enabled by wake up */
-// 	if ( ! (cmuStatus & CMU_STATUS_HFRCOENS) )
-// 	{
-// 		CMU->OSCENCMD = CMU_OSCENCMD_HFRCODIS;
-// 	}
-// }
-
 enum lpm_mode lpm_arch_get(void)
 {
     return current_mode;
+}
+
+static void uart_init(void) {
+    /* Enable peripheral power domain */
+    if(PRCMPowerDomainStatus(PRCM_DOMAIN_PERIPH) != PRCM_DOMAIN_POWER_ON) {
+        PRCMPowerDomainOn(PRCM_DOMAIN_PERIPH);
+        while(PRCMPowerDomainStatus(PRCM_DOMAIN_PERIPH) != PRCM_DOMAIN_POWER_ON);
+    }
+
+    /* Enable serial power domain */
+    if(PRCMPowerDomainStatus(PRCM_DOMAIN_SERIAL) != PRCM_DOMAIN_POWER_ON) {
+        PRCMPowerDomainOn(PRCM_DOMAIN_SERIAL);
+        while(PRCMPowerDomainStatus(PRCM_DOMAIN_SERIAL) != PRCM_DOMAIN_POWER_ON);
+    }
+
+    /* Enable UART0 peripheral */
+    PRCMPeripheralRunEnable(PRCM_PERIPH_GPIO);
+//     PRCMPeripheralRunEnable(uart_config[uart].prcmp);
+
+    /* Apply settings and wait for them to take effect */
+    PRCMLoadSet();
+    while(!PRCMLoadGet());
+}
+
+static void gpio_init(void) {
+    /* Enable peripheral power domain */
+    if(PRCMPowerDomainStatus(PRCM_DOMAIN_PERIPH) != PRCM_DOMAIN_POWER_ON) {
+        PRCMPowerDomainOn(PRCM_DOMAIN_PERIPH);
+        while(PRCMPowerDomainStatus(PRCM_DOMAIN_PERIPH) != PRCM_DOMAIN_POWER_ON);
+    }
+
+    /* Enable GPIO peripheral */
+    PRCMPeripheralRunEnable(PRCM_PERIPH_GPIO);
+
+    /* Apply settings and wait for them to take effect */
+    PRCMLoadSet();
+    while(!PRCMLoadGet());
 }
 
 void lpm_arch_awake(void)
@@ -208,6 +222,8 @@ void lpm_arch_awake(void)
 
         /* After stop mode, the clock system needs to be reconfigured */
         cpu_init();
+        gpio_init();
+        uart_init();
     }
     current_mode = LPM_ON;
 }
@@ -217,3 +233,21 @@ inline void lpm_arch_begin_awake(void) { }
 
 /** Not provided */
 inline void lpm_arch_end_awake(void) { }
+
+void osc_switch_to_hf_rc(void)
+{
+    /* Enable the Osc interface and remember the state of the SMPH clock */
+    OSCInterfaceEnable();
+
+    /* Set all clock sources to the HF RC Osc */
+    OSCClockSourceSet(OSC_SRC_CLK_MF | OSC_SRC_CLK_HF, OSC_RCOSC_HF);
+
+    /* Check to not enable HF RC oscillator if already enabled */
+    if(OSCClockSourceGet(OSC_SRC_CLK_HF) != OSC_RCOSC_HF) {
+        /* Switch the HF clock source (cc26xxware executes this from ROM) */
+        OSCHfSourceSwitch();
+    }
+
+    /* Restore the SMPH clock and disable the OSC interface */
+    OSCInterfaceDisable();
+}
