@@ -178,8 +178,7 @@ void UART0IntHandler(void)
 
 static inline void irq_handler(uart_t uart)
 {
-// 	if(lpm_get() >= LPM_SLEEP)
-// 		lpm_awake();
+    lpm_awake();
 
     uint8_t c = UARTCharGet(_dev(uart));
     UARTCharPut(_dev(uart), c);
