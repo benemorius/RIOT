@@ -127,6 +127,20 @@ typedef struct {
 } ssi_conf_t;
 
 /**
+ * @brief   I2C configuration
+ */
+typedef struct {
+    uint32_t dev;           /**< I2C base address */
+    uint32_t prcmp;
+    uint32_t bits;          /**< data width (4 <= bits <= 16) */
+    uint8_t irqn;
+    gpio_t gpio_scl;
+    gpio_t gpio_sda;
+    uint32_t ioid_scl;
+    uint32_t ioid_sda;
+} i2c_conf_t;
+
+/**
  * @brief   DAC line configuration
  */
 typedef struct {
