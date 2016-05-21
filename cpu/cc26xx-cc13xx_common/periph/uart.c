@@ -117,7 +117,7 @@ int uart_init(uart_t uart, uint32_t baudrate, uart_rx_cb_t rx_cb, void *arg)
      * Make sure the TX pin is output / high before assigning it to UART control
      * to avoid falling edge glitches
      */
-    IOCPinTypeGpioOutput(uart_config[uart].gpio_tx);
+    IOCPinTypeGpioOutput(uart_config[uart].ioid_tx);
     GPIOPinWrite(uart_config[uart].gpio_tx, 1);
 
     /*
