@@ -40,8 +40,9 @@
 
 #include "board.h"
 #include "periph/spi.h"
+#include "periph/gpio.h"
 #include "mutex.h"
-#include <periph_cpu_common.h>
+#include "periph_cpu_common.h"
 
 #include "driverlib/ssi.h"
 #include "driverlib/sys_ctrl.h"
@@ -124,7 +125,7 @@ int spi_init_master(spi_t spi, spi_conf_t conf, spi_speed_t speed)
     IOCPinTypeSsiMaster(_dev(spi),
                         spi_config[spi].ioid_miso,
                         spi_config[spi].ioid_mosi,
-                        spi_config[spi].ioid_cs,
+                        IOID_UNUSED,
                         spi_config[spi].ioid_clk
                        );
 

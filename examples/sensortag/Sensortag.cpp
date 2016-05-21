@@ -31,12 +31,20 @@
 #include "periph/gpio.h"
 #include "thread.h"
 #include "xtimer.h"
+#include "periph/spi.h"
+#include "s25fl.h"
 
 #include <stdio.h>
 
 #ifndef GIT_VERSION
 #define GIT_VERSION "undefined"
 #endif
+
+#define GPIO_MEM_PWR GPIO_PIN(22)
+#define GPIO_MEM_RST GPIO_PIN(21)
+#define GPIO_MEM_CS GPIO_PIN(20)
+#define GPIO_MEM_WP GPIO_PIN(19)
+#define GPIO_LED GPIO_PIN(18)
 
 Sensortag* sensortagS;
 
@@ -72,8 +80,8 @@ main_pid(thread_getpid())
 {
     sensortagS = this;
 
-    gpio_init(GPIO_PIN(18), GPIO_OUT);
-    flash_led(GPIO_PIN(18), 3);
+    gpio_init(GPIO_LED, GPIO_OUT);
+    flash_led(GPIO_LED, 3);
 
 	DEBUG("firmware version: %s\r\n", GIT_VERSION);
 
@@ -92,6 +100,23 @@ main_pid(thread_getpid())
 //     gpio_init_int(BTN_2, GPIO_PULLDOWN, GPIO_RISING, button_handler, NULL);
 
 
+    s25fl_t flash;
+    s25fl_init(&flash, SPI_DEV(0), GPIO_MEM_CS, GPIO_MEM_RST, GPIO_MEM_WP, GPIO_MEM_PWR);
+
+    uint8_t buf[128];
+    s25fl_read(&flash, 0, buf, 128);
+
+    for(int i = 0; i < 128; i++) {
+        printf("%02x ", buf[i]);
+        if ((i+1) % 16 == 0)
+            printf("\n");
+    }
+    s25fl_power(&flash, false);
+
+
+
+
+
 }
 
 void Sensortag::mainloop()
@@ -105,6 +130,10 @@ void Sensortag::mainloop()
 
     while(1) {
         printf("%i %lu %u\n", i++, xtimer_now() / 1000, timer_read(TIMER_DEV(0)));
+
+//         char receive;
+//         spi_transfer_byte(SPI_DEV(0), 0x55, &receive);
+//         printf("got byte 0x%02x\n", receive);
 
         xtimer_set_wakeup(&t, 3000*1000, thread_getpid());
         thread_sleep();
