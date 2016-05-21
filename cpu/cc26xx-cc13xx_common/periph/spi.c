@@ -82,7 +82,7 @@ static mutex_t locks[] =  {
 };
 
 /**
- * @brief   Get the base register for the given UART device
+ * @brief   Get the base register for the given SPI device
  */
 static inline spi_t _dev(spi_t spi)
 {

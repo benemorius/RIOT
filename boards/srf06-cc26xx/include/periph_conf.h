@@ -94,7 +94,6 @@ static const uart_conf_t uart_config[] = {
     },
 };
 
-
 /**
  * @name ADC configuration
  * @{
@@ -112,7 +111,6 @@ static const uart_conf_t uart_config[] = {
 #define ADC_0_CH0           1
 #define ADC_0_CH0_PIN       1
 
-
 /**
  * @name PWM configuration
  * @{
@@ -125,21 +123,8 @@ static const uart_conf_t uart_config[] = {
  * @name SPI configuration
  * @{
  */
-#define SPI_NUMOF           (2U)
+#define SPI_NUMOF           (1U)
 #define SPI_0_EN            1
-#define SPI_1_EN            1
-
-/* SPI 0 device configuration */
-#define SPI_0_DEV           USART1
-#define SPI_0_CLKEN()       CMU_ClockEnable(cmuClock_USART1, true);
-#define SPI_0_PORT          gpioPortD
-#define SPI_0_PORT_CLKEN()  CMU_ClockEnable(cmuClock_GPIO, true)
-#define SPI_0_MOSI_PIN      0
-#define SPI_0_MISO_PIN      1
-#define SPI_0_CLK_PIN       2
-#define SPI_0_CS_PIN        3
-#define SPI_0_ROUTE         USART_ROUTE_LOCATION_LOC1
-
 static const ssi_conf_t spi_config[] = {
     {
         .dev        = SSI0_BASE,
@@ -157,21 +142,24 @@ static const ssi_conf_t spi_config[] = {
     },
 };
 
-
 /**
  * @name I2C configuration
  * @{
  */
-#define I2C_NUMOF (1U)
-
-#define I2C_0_EN (1)
-#define I2C_0_DEV (I2C0)
-#define I2C_0_ROUTE (0)
-#define I2C_0_SDA_PORT (gpioPortA)
-#define I2C_0_SDA_PIN (0)
-#define I2C_0_SCL_PORT (gpioPortA)
-#define I2C_0_SCL_PIN (1)
-
+#define I2C_NUMOF       (1U)
+#define I2C_0_EN        (1)
+static const i2c_conf_t i2c_config[] = {
+    {
+        .dev        = I2C0_BASE,
+        .prcmp      = PRCM_PERIPH_I2C0,
+        .bits       = 8,
+        .irqn       = INT_I2C,
+        .gpio_scl   = GPIO_PIN_26,
+        .gpio_sda   = GPIO_PIN_25,
+        .ioid_scl   = IOID_26,
+        .ioid_sda   = IOID_25,
+    },
+};
 
 /**
  * @name GPIO configuration
