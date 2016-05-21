@@ -33,6 +33,7 @@
 #include "xtimer.h"
 #include "periph/spi.h"
 #include "s25fl.h"
+#include "si70xx.h"
 
 #include <stdio.h>
 
@@ -100,18 +101,18 @@ main_pid(thread_getpid())
 //     gpio_init_int(BTN_2, GPIO_PULLDOWN, GPIO_RISING, button_handler, NULL);
 
 
-    s25fl_t flash;
-    s25fl_init(&flash, SPI_DEV(0), GPIO_MEM_CS, GPIO_MEM_RST, GPIO_MEM_WP, GPIO_MEM_PWR);
-
-    uint8_t buf[128];
-    s25fl_read(&flash, 0, buf, 128);
-
-    for(int i = 0; i < 128; i++) {
-        printf("%02x ", buf[i]);
-        if ((i+1) % 16 == 0)
-            printf("\n");
-    }
-    s25fl_power(&flash, false);
+//     s25fl_t flash;
+//     s25fl_init(&flash, SPI_DEV(0), GPIO_MEM_CS, GPIO_MEM_RST, GPIO_MEM_WP, GPIO_MEM_PWR);
+//
+//     uint8_t buf[128];
+//     s25fl_read(&flash, 0, buf, 128);
+//
+//     for(int i = 0; i < 128; i++) {
+//         printf("%02x ", buf[i]);
+//         if ((i+1) % 16 == 0)
+//             printf("\n");
+//     }
+//     s25fl_power(&flash, false);
 
 
 
@@ -125,17 +126,30 @@ void Sensortag::mainloop()
 
 	DEBUG("starting mainloop...\r\n");
 
+    printf("do si70xx_test\n");
+    si70xx_t si;
+    si70xx_init(&si, I2C_DEV(0), 0x40);
+    int ret = si70xx_test(&si);
+    printf("si70xx_test returned %i\n", ret);
+
     xtimer_t t;
     int i =0;
+    int16_t temperature;
+    uint16_t humidity;
 
     while(1) {
-        printf("%i %lu %u\n", i++, xtimer_now() / 1000, timer_read(TIMER_DEV(0)));
+        si70xx_get_both(&si, &humidity, &temperature);
+
+        printf("%i %lu %u ", i++, xtimer_now() / 1000, timer_read(TIMER_DEV(0)));
+        printf("%i.%02uC %u.%02u%%\n",
+               temperature / 100, temperature % 100,
+               humidity / 100, humidity % 100);
 
 //         char receive;
 //         spi_transfer_byte(SPI_DEV(0), 0x55, &receive);
 //         printf("got byte 0x%02x\n", receive);
 
-        xtimer_set_wakeup(&t, 3000*1000, thread_getpid());
+        xtimer_set_wakeup(&t, 2000*1000, thread_getpid());
         thread_sleep();
 
         flash_led(GPIO_PIN(18), 2);

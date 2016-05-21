@@ -56,6 +56,7 @@ USEMODULE += ps
 USEMODULE += xtimer
 
 USEMODULE += s25fl
+USEMODULE += si70xx
 
 # USEMODULE += sixlowpan
 # USEMODULE += aodvv2
