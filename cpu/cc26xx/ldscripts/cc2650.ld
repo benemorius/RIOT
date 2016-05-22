@@ -2,8 +2,11 @@
 
 MEMORY
 {
-    /* Flash Size 128 KB minus the CCA area below (88 bytes) */
-    rom (RX) : ORIGIN = 0x00000000, LENGTH = 0x0001FFA8
+    /* Bootloader flash 4 KB */
+    boot (RX) : ORIGIN = 0x00000000, LENGTH = 0x1000
+
+    /* Flash Size 128 KB minus bootloader sector (4 KB) and CCA area below (88 bytes) */
+    rom (RX) : ORIGIN = 0x00001000, LENGTH = 0x1F7A8  /* (was LENGTH = 0x1FFA8 without bootloader) */
 
     /*
      * Customer Configuration Area and Bootloader Backdoor configuration
@@ -21,12 +24,18 @@ MEMORY
 /*. Highest address of the stack. Used in startup file .*/
 _estack = ORIGIN(ram) + LENGTH(ram); /* End of SRAM */
 
+INCLUDE cortexm_base.ld
+
 SECTIONS
 {
+    .boot :
+    {
+        KEEP(*(.boot_vectors .boot_vectors.*))
+    } > boot
+
     .ccfg :
     {
         KEEP(*(.ccfg))
     } > rom_ccfg
 }
 
-INCLUDE cortexm_base.ld
