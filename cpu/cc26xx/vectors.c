@@ -88,7 +88,7 @@ WEAK_DEFAULT void AUXCompAIntHandler(void);
 WEAK_DEFAULT void AUXADCIntHandler(void);
 WEAK_DEFAULT void TRNGIntHandler(void);
 
-ISR_VECTORS const void *interrupt_vector[] = {
+__attribute__((used,section(".boot_vectors"))) const void *interrupt_vector[] = {
     (void*) (&_estack),                     /* pointer to the top of the stack */
     /* Cortex-M3 handlers */
     (void*) reset_handler_default,  /* entry point of the program */
