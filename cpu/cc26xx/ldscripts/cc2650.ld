@@ -21,4 +21,12 @@ MEMORY
 /*. Highest address of the stack. Used in startup file .*/
 _estack = ORIGIN(ram) + LENGTH(ram); /* End of SRAM */
 
+SECTIONS
+{
+    .ccfg :
+    {
+        KEEP(*(.ccfg))
+    } > rom_ccfg
+}
+
 INCLUDE cortexm_base.ld
