@@ -23,23 +23,16 @@
  *    OTHER DEALINGS IN THE SOFTWARE.
  */
 
-/**
- * @ingroup     board_srf06-cc26xx
- * @{
- *
- * @file
- * @brief       Board specific implementations for Sensortag CC2650
- *
- * @author      Thomas Stilwell <stilwellt@openlabs.co>
- *
- * @}
- */
-
-#include "board.h"
 #include "bootloader.h"
+#include "flash.h"
 
-void board_init(void)
-{
-    cpu_init();
-    bootloader();
+BOOT_FUNC void bootloader_arch(void) {
+
+    // flash_copy_test() works from Sensortag.cpp but it doesn't work here yet
+
+//     uint32_t now = xtimer_now();
+//     int ret = flash_copy_test();
+//     ret = ret;
+//     uint32_t later = xtimer_now();
+//     printf("flash_copy_test returned %i after %lu us\n", ret, later - now);
 }

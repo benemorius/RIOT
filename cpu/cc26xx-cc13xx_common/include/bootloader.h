@@ -23,23 +23,14 @@
  *    OTHER DEALINGS IN THE SOFTWARE.
  */
 
-/**
- * @ingroup     board_srf06-cc26xx
- * @{
- *
- * @file
- * @brief       Board specific implementations for Sensortag CC2650
- *
- * @author      Thomas Stilwell <stilwellt@openlabs.co>
- *
- * @}
- */
+#ifdef __cplusplus
+extern "C" {
+#endif
 
-#include "board.h"
-#include "bootloader.h"
+#define bootloader() bootloader_arch()
 
-void board_init(void)
-{
-    cpu_init();
-    bootloader();
+void bootloader_arch(void);
+
+#ifdef __cplusplus
 }
+#endif
