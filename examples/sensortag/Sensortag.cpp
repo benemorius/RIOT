@@ -37,6 +37,8 @@
 
 #include <stdio.h>
 
+#include "flash.h"
+
 #ifndef GIT_VERSION
 #define GIT_VERSION "undefined"
 #endif
@@ -115,9 +117,10 @@ main_pid(thread_getpid())
 //     s25fl_power(&flash, false);
 
 
-
-
-
+    uint32_t now = xtimer_now();
+    int ret = flash_copy_test();
+    uint32_t later = xtimer_now();
+    printf("flash_copy_test returned %i after %lu us\n", ret, later - now);
 }
 
 void Sensortag::mainloop()
@@ -144,10 +147,6 @@ void Sensortag::mainloop()
         printf("%i.%02uC %u.%02u%%\n",
                temperature / 100, temperature % 100,
                humidity / 100, humidity % 100);
-
-//         char receive;
-//         spi_transfer_byte(SPI_DEV(0), 0x55, &receive);
-//         printf("got byte 0x%02x\n", receive);
 
         xtimer_set_wakeup(&t, 2000*1000, thread_getpid());
         thread_sleep();
