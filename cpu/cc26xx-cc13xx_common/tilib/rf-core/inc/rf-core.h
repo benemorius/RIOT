@@ -58,7 +58,7 @@
 #include <stdint.h>
 #include <stdbool.h>
 
-#define CC_ALIGN()
+#define CC_ALIGN(x)
 
 /*---------------------------------------------------------------------------*/
 /* The channel to use in IEEE or prop mode. */
@@ -235,9 +235,39 @@ typedef struct rf_core_primary_mode_s {
 
 #define RADIO_TX_OK 0
 #define RADIO_TX_ERR 1
+#define RADIO_RESULT_ERROR 2
+#define RADIO_RESULT_OK 3
+#define RADIO_RESULT_NOT_SUPPORTED 4
+#define RADIO_RESULT_INVALID_VALUE 5
+
+#define RADIO_PARAM_POWER_MODE 0
+#define RADIO_PARAM_CHANNEL 1
+#define RADIO_PARAM_TXPOWER 2
+#define RADIO_PARAM_CCA_THRESHOLD 3
+#define RADIO_PARAM_RSSI 4
+#define RADIO_CONST_CHANNEL_MIN 5
+#define RADIO_CONST_CHANNEL_MAX 6
+#define RADIO_CONST_TXPOWER_MIN 7
+#define RADIO_CONST_TXPOWER_MAX 8
+#define RADIO_PARAM_PAN_ID 9
+#define RADIO_PARAM_16BIT_ADDR 10
+#define RADIO_PARAM_RX_MODE 11
+#define RADIO_RX_MODE_ADDRESS_FILTER 12
+#define RADIO_RX_MODE_AUTOACK 13
+#define RADIO_PARAM_64BIT_ADDR 14
+
+#define RADIO_POWER_MODE_ON 1
+#define RADIO_POWER_MODE_OFF 0
+
+typedef uint8_t radio_value_t;
+typedef uint8_t radio_param_t;
+typedef uint8_t radio_result_t;
+
+#define RTIMER_SECOND (1000000u)
+#define CLOCK_SECOND (1000000u)
 
 /* Make the main driver process visible to mode drivers */
-PROCESS_NAME(rf_core_process);
+kernel_pid_t rf_core_pid;
 void *rf_core_thread(void *arg);
 char rf_core_thread_stack [THREAD_STACKSIZE_MAIN + 512];
 #define RF_CORE_THREAD_NAME "CC13xx / CC26xx RF driver"

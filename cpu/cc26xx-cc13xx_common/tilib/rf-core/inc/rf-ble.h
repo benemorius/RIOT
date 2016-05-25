@@ -65,7 +65,7 @@
  * this function can be used to configure a single parameter at a time if so
  * desired.
  */
-void rf_ble_beacond_config(clock_time_t interval, const char *name);
+void rf_ble_beacond_config(uint32_t interval, const char *name);
 
 /**
  * \brief Start the BLE advertisement/beacon daemon

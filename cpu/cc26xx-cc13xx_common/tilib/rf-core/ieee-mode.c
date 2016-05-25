@@ -45,6 +45,9 @@
 #include "ti-lib.h"
 #include "rf-core.h"
 #include "rf-ble.h"
+
+#include "xtimer.h"
+#include "lpm.h"
 /*---------------------------------------------------------------------------*/
 /* RF core and RF HAL API */
 #include "hw_rfc_dbell.h"
@@ -414,7 +417,7 @@ set_tx_power(radio_value_t power)
 }
 /*---------------------------------------------------------------------------*/
 static uint8_t
-rf_radio_setup()
+rf_radio_setup(void)
 {
   uint32_t cmd_status;
   rfc_CMD_RADIO_SETUP_t cmd;
@@ -456,10 +459,10 @@ rf_radio_setup()
  * or through Contiki's extended RF API (set_value, set_object)
  */
 static uint8_t
-rf_cmd_ieee_rx()
+rf_cmd_ieee_rx(void)
 {
   uint32_t cmd_status;
-  rtimer_clock_t t0;
+  uint32_t t0;
   int ret;
 
   ret = rf_core_send_cmd((uint32_t)cmd_ieee_rx_buf, &cmd_status);
@@ -470,10 +473,10 @@ rf_cmd_ieee_rx()
     return RF_CORE_CMD_ERROR;
   }
 
-  t0 = RTIMER_NOW();
+  t0 = xtimer_now();
 
   while(RF_RADIO_OP_GET_STATUS(cmd_ieee_rx_buf) != RF_CORE_RADIO_OP_STATUS_ACTIVE &&
-        (RTIMER_CLOCK_LT(RTIMER_NOW(), t0 + ENTER_RX_WAIT_TIMEOUT)));
+        xtimer_now() < t0 + ENTER_RX_WAIT_TIMEOUT);
 
   /* Wait to enter RX */
   if(RF_RADIO_OP_GET_STATUS(cmd_ieee_rx_buf) != RF_CORE_RADIO_OP_STATUS_ACTIVE) {
@@ -605,7 +608,6 @@ rx_on(void)
   ret = rf_cmd_ieee_rx();
 
   if(ret) {
-    ENERGEST_ON(ENERGEST_TYPE_LISTEN);
   }
 
   return ret;
@@ -636,7 +638,6 @@ rx_off(void)
   if(RF_RADIO_OP_GET_STATUS(cmd_ieee_rx_buf) == IEEE_DONE_STOPPED ||
      RF_RADIO_OP_GET_STATUS(cmd_ieee_rx_buf) == IEEE_DONE_ABORT) {
     /* Stopped gracefully */
-    ENERGEST_OFF(ENERGEST_TYPE_LISTEN);
     ret = RF_CORE_CMD_OK;
   } else {
     PRINTF("RX off: BG status=0x%04x\n", RF_RADIO_OP_GET_STATUS(cmd_ieee_rx_buf));
@@ -654,13 +655,11 @@ request(void)
    * will only allow sleep, standby otherwise
    */
   if(rf_is_on()) {
-    return LPM_MODE_SLEEP;
+    return LPM_IDLE;
   }
 
-  return LPM_MODE_MAX_SUPPORTED;
+  return LPM_SLEEP;
 }
-/*---------------------------------------------------------------------------*/
-LPM_MODULE(cc26xx_rf_lpm_module, request, NULL, NULL, LPM_DOMAIN_NONE);
 /*---------------------------------------------------------------------------*/
 static void
 soft_off(void)
@@ -704,8 +703,6 @@ static const rf_core_primary_mode_t mode_ieee = {
 static int
 init(void)
 {
-  lpm_register_module(&cc26xx_rf_lpm_module);
-
   rf_core_set_modesel();
 
   /* Initialise RX buffers */
@@ -730,8 +727,6 @@ init(void)
     return RF_CORE_CMD_ERROR;
   }
 
-  ENERGEST_ON(ENERGEST_TYPE_LISTEN);
-
   rf_core_primary_mode_register(&mode_ieee);
 
   process_start(&rf_core_process, NULL);
@@ -741,7 +736,9 @@ init(void)
 static int
 prepare(const void *payload, unsigned short payload_len)
 {
-  int len = MIN(payload_len, TX_BUF_PAYLOAD_LEN);
+  int len = payload_len;
+  if (len > TX_BUF_PAYLOAD_LEN)
+      len = TX_BUF_PAYLOAD_LEN;
 
   memcpy(&tx_buf[TX_BUF_HDR_LEN], payload, len);
   return RF_CORE_CMD_OK;
@@ -755,7 +752,7 @@ transmit(unsigned short transmit_len)
   uint32_t cmd_status;
   uint16_t stat;
   uint8_t tx_active = 0;
-  rtimer_clock_t t0;
+  uint32_t t0;
   volatile rfc_CMD_IEEE_TX_t cmd;
 
   if(!rf_is_on()) {
@@ -771,12 +768,11 @@ transmit(unsigned short transmit_len)
    * be in the process of TXing an ACK. In that case, wait for the TX to finish
    * or return after approx TX_WAIT_TIMEOUT
    */
-  t0 = RTIMER_NOW();
+  t0 = xtimer_now();
 
   do {
     tx_active = transmitting();
-  } while(tx_active == 1 &&
-          (RTIMER_CLOCK_LT(RTIMER_NOW(), t0 + TX_WAIT_TIMEOUT)));
+  } while(tx_active == 1 && xtimer_now() < t0 + TX_WAIT_TIMEOUT);
 
   if(tx_active) {
     PRINTF("transmit: Already TXing and wait timed out\n");
@@ -801,20 +797,17 @@ transmit(unsigned short transmit_len)
 
   if(ret) {
     /* If we enter here, TX actually started */
-    ENERGEST_OFF(ENERGEST_TYPE_LISTEN);
-    ENERGEST_ON(ENERGEST_TYPE_TRANSMIT);
 
     /* Idle away while the command is running */
     while((cmd.status & RF_CORE_RADIO_OP_MASKED_STATUS)
           == RF_CORE_RADIO_OP_MASKED_STATUS_RUNNING) {
-      lpm_sleep();
+//       lpm_sleep();
     }
 
     stat = cmd.status;
 
     if(stat == RF_CORE_RADIO_OP_STATUS_IEEE_DONE_OK) {
       /* Sent OK */
-      RIMESTATS_ADD(lltx);
       ret = RADIO_TX_OK;
     } else {
       /* Operation completed, but frame was not sent */
@@ -829,13 +822,6 @@ transmit(unsigned short transmit_len)
 
     ret = RADIO_TX_ERR;
   }
-
-  /*
-   * Update ENERGEST state here, before a potential call to off(), which
-   * will correctly update it if required.
-   */
-  ENERGEST_OFF(ENERGEST_TYPE_TRANSMIT);
-  ENERGEST_ON(ENERGEST_TYPE_LISTEN);
 
   /*
    * Disable LAST_FG_COMMAND_DONE interrupt. We don't really care about it
@@ -884,7 +870,6 @@ read_frame(void *buf, unsigned short buf_len)
 
   if(rx_read_entry[8] < 4) {
     PRINTF("RF: too short\n");
-    RIMESTATS_ADD(tooshort);
 
     release_data_entry();
     return 0;
@@ -894,7 +879,6 @@ read_frame(void *buf, unsigned short buf_len)
 
   if(len > buf_len) {
     PRINTF("RF: too long\n");
-    RIMESTATS_ADD(toolong);
 
     release_data_entry();
     return 0;
@@ -904,8 +888,7 @@ read_frame(void *buf, unsigned short buf_len)
 
   rssi = (int8_t)rx_read_entry[9 + len + 2];
 
-  packetbuf_set_attr(PACKETBUF_ATTR_RSSI, rssi);
-  RIMESTATS_ADD(llrx);
+//   packetbuf_set_attr(PACKETBUF_ATTR_RSSI, rssi);
 
   release_data_entry();
 
@@ -1024,7 +1007,7 @@ pending_packet(void)
   do {
     if(entry->status == DATA_ENTRY_STATUS_FINISHED) {
       rv = 1;
-      process_poll(&rf_core_process);
+      thread_wakeup(rf_core_pid);
     }
 
     entry = (rfc_dataEntry_t *)entry->pNextEntry;
@@ -1099,8 +1082,6 @@ off(void)
   /* stopping the rx explicitly results in lower sleep-mode power usage */
   rx_off();
   rf_core_power_down();
-
-  ENERGEST_OFF(ENERGEST_TYPE_LISTEN);
 
   /* Switch HF clock source to the RCOSC to preserve power */
   oscillators_switch_to_hf_rc();
@@ -1358,22 +1339,22 @@ set_object(radio_param_t param, const void *src, size_t size)
   return RADIO_RESULT_NOT_SUPPORTED;
 }
 /*---------------------------------------------------------------------------*/
-const struct radio_driver ieee_mode_driver = {
-  init,
-  prepare,
-  transmit,
-  send,
-  read_frame,
-  channel_clear,
-  receiving_packet,
-  pending_packet,
-  on,
-  off,
-  get_value,
-  set_value,
-  get_object,
-  set_object,
-};
+// const struct radio_driver ieee_mode_driver = {
+//   init,
+//   prepare,
+//   transmit,
+//   send,
+//   read_frame,
+//   channel_clear,
+//   receiving_packet,
+//   pending_packet,
+//   on,
+//   off,
+//   get_value,
+//   set_value,
+//   get_object,
+//   set_object,
+// };
 /*---------------------------------------------------------------------------*/
 /**
  * @}

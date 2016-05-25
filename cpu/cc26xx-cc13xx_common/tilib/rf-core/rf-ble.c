@@ -86,7 +86,7 @@ static default_ble_tx_power_t tx_power = { 0x29, 0x00, 0x00, 0x00 };
 /*---------------------------------------------------------------------------*/
 /* BLE beacond config */
 static struct ble_beacond_config {
-  clock_time_t interval;
+  uint32_t interval;
   char adv_name[BLE_ADV_NAME_BUF_LEN];
 } beacond_config = { .interval = BLE_ADV_INTERVAL };
 /*---------------------------------------------------------------------------*/
@@ -151,7 +151,7 @@ send_ble_adv_nc(int channel, uint8_t *adv_payload, int adv_payload_len)
 }
 /*---------------------------------------------------------------------------*/
 void
-rf_ble_beacond_config(clock_time_t interval, const char *name)
+rf_ble_beacond_config(uint32_t interval, const char *name)
 {
   if(RF_BLE_ENABLED == 0) {
     return;

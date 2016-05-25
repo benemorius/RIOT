@@ -390,7 +390,7 @@ prop_div_radio_setup(void)
 }
 /*---------------------------------------------------------------------------*/
 static uint8_t
-rf_cmd_prop_rx()
+rf_cmd_prop_rx(void)
 {
   uint32_t cmd_status;
   uint32_t t0;
@@ -479,6 +479,7 @@ rx_off_prop(void)
 }
 /*---------------------------------------------------------------------------*/
 static uint8_t
+__attribute__((used))
 request(void)
 {
   /*
@@ -557,6 +558,7 @@ static const rf_core_primary_mode_t mode_prop = {
 };
 /*---------------------------------------------------------------------------*/
 static int
+__attribute__((used))
 init(void)
 {
   rfc_dataEntry_t *entry;
@@ -604,8 +606,7 @@ init(void)
 
   rf_core_primary_mode_register(&mode_prop);
 
-  process_start(&rf_core_process, NULL);
-  thread_create(rf_core_thread_stack, sizeof(rf_core_thread_stack), 13,
+  rf_core_pid = thread_create(rf_core_thread_stack, sizeof(rf_core_thread_stack), 13,
                 THREAD_CREATE_STACKTEST | THREAD_CREATE_WOUT_YIELD, rf_core_thread,
                 NULL, RF_CORE_THREAD_NAME);
 
@@ -718,6 +719,7 @@ transmit(unsigned short transmit_len)
 }
 /*---------------------------------------------------------------------------*/
 static int
+__attribute__((used))
 send(const void *payload, unsigned short payload_len)
 {
   prepare(payload, payload_len);
@@ -725,6 +727,7 @@ send(const void *payload, unsigned short payload_len)
 }
 /*---------------------------------------------------------------------------*/
 static int
+__attribute__((used))
 read_frame(void *buf, unsigned short buf_len)
 {
   rfc_dataEntryGeneral_t *entry = (rfc_dataEntryGeneral_t *)rx_read_entry;
@@ -747,7 +750,7 @@ read_frame(void *buf, unsigned short buf_len)
         memcpy(buf, data_ptr, len);
       }
 
-      packetbuf_set_attr(PACKETBUF_ATTR_RSSI, (int8_t)data_ptr[len]);
+//       packetbuf_set_attr(PACKETBUF_ATTR_RSSI, (int8_t)data_ptr[len]);
 
 #if PROP_MODE_SNIFFER
       {
@@ -832,6 +835,7 @@ channel_clear(void)
 }
 /*---------------------------------------------------------------------------*/
 static int
+__attribute__((used))
 receiving_packet(void)
 {
   if(!rf_is_on()) {
@@ -846,6 +850,7 @@ receiving_packet(void)
 }
 /*---------------------------------------------------------------------------*/
 static int
+__attribute__((used))
 pending_packet(void)
 {
   int rv = 0;
@@ -855,7 +860,7 @@ pending_packet(void)
   do {
     if(entry->status == DATA_ENTRY_STATUS_FINISHED) {
       rv += 1;
-      process_poll(&rf_core_process);
+      thread_wakeup(rf_core_pid);
     }
 
     entry = (rfc_dataEntry_t *)entry->pNextEntry;
@@ -960,6 +965,7 @@ off(void)
 }
 /*---------------------------------------------------------------------------*/
 static radio_result_t
+__attribute__((used))
 get_value(radio_param_t param, radio_value_t *value)
 {
   if(!value) {
@@ -1006,6 +1012,7 @@ get_value(radio_param_t param, radio_value_t *value)
 }
 /*---------------------------------------------------------------------------*/
 static radio_result_t
+__attribute__((used))
 set_value(radio_param_t param, radio_value_t value)
 {
   uint8_t was_off = 0;
@@ -1089,33 +1096,35 @@ set_value(radio_param_t param, radio_value_t value)
 }
 /*---------------------------------------------------------------------------*/
 static radio_result_t
+__attribute__((used))
 get_object(radio_param_t param, void *dest, size_t size)
 {
   return RADIO_RESULT_NOT_SUPPORTED;
 }
 /*---------------------------------------------------------------------------*/
 static radio_result_t
+__attribute__((used))
 set_object(radio_param_t param, const void *src, size_t size)
 {
   return RADIO_RESULT_NOT_SUPPORTED;
 }
 /*---------------------------------------------------------------------------*/
-const struct radio_driver prop_mode_driver = {
-  init,
-  prepare,
-  transmit,
-  send,
-  read_frame,
-  channel_clear,
-  receiving_packet,
-  pending_packet,
-  on,
-  off,
-  get_value,
-  set_value,
-  get_object,
-  set_object,
-};
+// const struct radio_driver prop_mode_driver = {
+//   init,
+//   prepare,
+//   transmit,
+//   send,
+//   read_frame,
+//   channel_clear,
+//   receiving_packet,
+//   pending_packet,
+//   on,
+//   off,
+//   get_value,
+//   set_value,
+//   get_object,
+//   set_object,
+// };
 /*---------------------------------------------------------------------------*/
 /**
  * @}

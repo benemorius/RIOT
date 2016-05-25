@@ -96,8 +96,6 @@ static rfc_radioOp_t *last_radio_op = NULL;
 /* A struct holding pointers to the primary mode's abort() and restore() */
 static const rf_core_primary_mode_t *primary_mode = NULL;
 /*---------------------------------------------------------------------------*/
-PROCESS(rf_core_process, "CC13xx / CC26xx RF driver");
-/*---------------------------------------------------------------------------*/
 #define RF_CORE_CLOCKS_MASK (RFC_PWR_PWMCLKEN_RFC_M | RFC_PWR_PWMCLKEN_CPE_M \
                              | RFC_PWR_PWMCLKEN_CPERAM_M)
 /*---------------------------------------------------------------------------*/
@@ -452,33 +450,29 @@ rf_core_primary_mode_restore(void)
   return RF_CORE_CMD_ERROR;
 }
 /*---------------------------------------------------------------------------*/
-PROCESS_THREAD(rf_core_process, ev, data)
+void* rf_core_thread(void* arg)
 {
-  int len;
-
-  PROCESS_BEGIN();
-
-  while(1) {
-    PROCESS_YIELD_UNTIL(ev == PROCESS_EVENT_POLL);
-    do {
-      watchdog_periodic();
-      packetbuf_clear();
-      len = NETSTACK_RADIO.read(packetbuf_dataptr(), PACKETBUF_SIZE);
-
-      if(len > 0) {
-        packetbuf_set_datalen(len);
-
-        NETSTACK_RDC.input();
-      }
-    } while(len > 0);
-  }
-  PROCESS_END();
+//   int len;
+//
+//   while(1) {
+//     thread_sleep();
+//     do {
+//       packetbuf_clear();
+//       len = NETSTACK_RADIO.read(packetbuf_dataptr(), PACKETBUF_SIZE);
+//
+//       if(len > 0) {
+//         packetbuf_set_datalen(len);
+//
+//         NETSTACK_RDC.input();
+//       }
+//     } while(len > 0);
+//   }
+    return NULL;
 }
 /*---------------------------------------------------------------------------*/
 static void
 rx_nok_isr(void)
 {
-  RIMESTATS_ADD(badcrc);
   PRINTF("RF: Bad CRC\n");
 }
 /*---------------------------------------------------------------------------*/
@@ -513,7 +507,7 @@ cc26xx_rf_cpe0_isr(void)
   if(HWREG(RFC_DBELL_NONBUF_BASE + RFC_DBELL_O_RFCPEIFG) & RX_FRAME_IRQ) {
     /* Clear the RX_ENTRY_DONE interrupt flag */
     HWREG(RFC_DBELL_NONBUF_BASE + RFC_DBELL_O_RFCPEIFG) = 0xFF7FFFFF;
-    process_poll(&rf_core_process);
+    thread_wakeup(rf_core_pid);
   }
 
   if(RF_CORE_DEBUG_CRC) {
