@@ -40,33 +40,22 @@
  * Implementation of the CC13xx/CC26xx IEEE mode NETSTACK_RADIO driver
  */
 /*---------------------------------------------------------------------------*/
-#include "contiki.h"
-#include "dev/radio.h"
-#include "dev/cc26xx-uart.h"
-#include "dev/oscillators.h"
-#include "net/packetbuf.h"
-#include "net/rime/rimestats.h"
-#include "net/linkaddr.h"
-#include "net/netstack.h"
-#include "sys/energest.h"
-#include "sys/clock.h"
-#include "sys/rtimer.h"
-#include "sys/cc.h"
-#include "lpm.h"
+#include "cc26xx-uart.h"
+#include "oscillators.h"
 #include "ti-lib.h"
-#include "rf-core/rf-core.h"
-#include "rf-core/rf-ble.h"
+#include "rf-core.h"
+#include "rf-ble.h"
 /*---------------------------------------------------------------------------*/
 /* RF core and RF HAL API */
 #include "hw_rfc_dbell.h"
 #include "hw_rfc_pwr.h"
 /*---------------------------------------------------------------------------*/
 /* RF Core Mailbox API */
-#include "rf-core/api/mailbox.h"
-#include "rf-core/api/common_cmd.h"
-#include "rf-core/api/ieee_cmd.h"
-#include "rf-core/api/data_entry.h"
-#include "rf-core/api/ieee_mailbox.h"
+#include "mailbox.h"
+#include "common_cmd.h"
+#include "ieee_cmd.h"
+#include "data_entry.h"
+#include "ieee_mailbox.h"
 /*---------------------------------------------------------------------------*/
 #include "smartrf-settings.h"
 /*---------------------------------------------------------------------------*/

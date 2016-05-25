@@ -43,8 +43,7 @@
 #ifndef RF_BLE_H_
 #define RF_BLE_H_
 /*---------------------------------------------------------------------------*/
-#include "contiki-conf.h"
-#include "rf-core/rf-core.h"
+#include "rf-core.h"
 
 #include <stdint.h>
 /*---------------------------------------------------------------------------*/

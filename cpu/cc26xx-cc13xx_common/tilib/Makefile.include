@@ -1,1 +1,1 @@
-export USEMODULE += lib
+export USEMODULE += lib tilib-rf-core tilib-dev

@@ -1,5 +1,5 @@
 MODULE = tilib
 
-DIRS = lib
+DIRS = lib rf-core dev
 
 include $(RIOTBASE)/Makefile.base
