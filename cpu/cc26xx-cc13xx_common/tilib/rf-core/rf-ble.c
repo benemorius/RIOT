@@ -43,6 +43,8 @@
 #include "driverlib/chipinfo.h"
 #include "driverlib/interrupt.h"
 #include "oscillators.h"
+
+#include "xtimer.h"
 /*---------------------------------------------------------------------------*/
 #include <stdint.h>
 #include <stdbool.h>
@@ -70,7 +72,7 @@
 /*---------------------------------------------------------------------------*/
 static unsigned char ble_params_buf[32] CC_ALIGN(4);
 static uint8_t ble_mode_on = RF_BLE_IDLE;
-static struct etimer ble_adv_et;
+static xtimer_t ble_adv_et;
 static uint8_t payload[BLE_ADV_PAYLOAD_BUF_LEN];
 static int p = 0;
 static int i;
@@ -101,7 +103,7 @@ static uint32_t ble_overrides[] = {
   0xFFFFFFFF, /* End of override list */
 };
 /*---------------------------------------------------------------------------*/
-PROCESS(rf_ble_beacon_process, "CC13xx / CC26xx RF BLE Beacon Process");
+// PROCESS(rf_ble_beacon_process, "CC13xx / CC26xx RF BLE Beacon Process");
 /*---------------------------------------------------------------------------*/
 static int
 send_ble_adv_nc(int channel, uint8_t *adv_payload, int adv_payload_len)
@@ -125,7 +127,7 @@ send_ble_adv_nc(int channel, uint8_t *adv_payload, int adv_payload_len)
   cmd.channel = channel;
 
   /* Set up BLE Advertisement parameters */
-  params->pDeviceAddress = (uint16_t *)&linkaddr_node_addr.u8[LINKADDR_SIZE - 2];
+//   params->pDeviceAddress = (uint16_t *)&linkaddr_node_addr.u8[LINKADDR_SIZE - 2];
   params->endTrigger.triggerType = TRIG_NEVER;
   params->endTime = TRIG_NEVER;
 
@@ -172,7 +174,7 @@ rf_ble_beacond_config(uint32_t interval, const char *name)
 }
 /*---------------------------------------------------------------------------*/
 uint8_t
-rf_ble_beacond_start()
+rf_ble_beacond_start(void)
 {
   if(RF_BLE_ENABLED == 0) {
     return RF_CORE_CMD_ERROR;
@@ -188,25 +190,25 @@ rf_ble_beacond_start()
 
   ble_mode_on = RF_BLE_IDLE;
 
-  process_start(&rf_ble_beacon_process, NULL);
+//   process_start(&rf_ble_beacon_process, NULL);
 
   return RF_CORE_CMD_OK;
 }
 /*---------------------------------------------------------------------------*/
 uint8_t
-rf_ble_is_active()
+rf_ble_is_active(void)
 {
   return ble_mode_on;
 }
 /*---------------------------------------------------------------------------*/
 void
-rf_ble_beacond_stop()
+rf_ble_beacond_stop(void)
 {
-  process_exit(&rf_ble_beacon_process);
+//   process_exit(&rf_ble_beacon_process);
 }
 /*---------------------------------------------------------------------------*/
 static uint8_t
-rf_radio_setup()
+rf_radio_setup(void)
 {
   uint32_t cmd_status;
   rfc_CMD_RADIO_SETUP_t cmd;
@@ -238,23 +240,21 @@ rf_radio_setup()
   return RF_CORE_CMD_OK;
 }
 /*---------------------------------------------------------------------------*/
-PROCESS_THREAD(rf_ble_beacon_process, ev, data)
+void* ble_beacon_thread(void* arg)
 {
   uint8_t was_on;
   int j;
   uint32_t cmd_status;
   bool interrupts_disabled;
 
-  PROCESS_BEGIN();
-
   while(1) {
-    etimer_set(&ble_adv_et, beacond_config.interval);
+    xtimer_set(&ble_adv_et, beacond_config.interval);
 
-    PROCESS_WAIT_EVENT_UNTIL(etimer_expired(&ble_adv_et) || ev == PROCESS_EVENT_EXIT);
+//     PROCESS_WAIT_EVENT_UNTIL(etimer_expired(&ble_adv_et) || ev == PROCESS_EVENT_EXIT);
 
-    if(ev == PROCESS_EVENT_EXIT) {
-      PROCESS_EXIT();
-    }
+//     if(ev == PROCESS_EVENT_EXIT) {
+//       PROCESS_EXIT();
+//     }
 
     /* Set the adv payload each pass: The device name may have changed */
     p = 0;
@@ -300,12 +300,12 @@ PROCESS_THREAD(rf_ble_beacon_process, ev, data)
          * BLE beacon burst. Otherwise, terminate the primary radio Op so we
          * can switch to BLE mode
          */
-        if(NETSTACK_RADIO.receiving_packet()) {
-          PRINTF("rf_ble_beacon_process: We were receiving\n");
-
-          /* Abort this pass */
-          break;
-        }
+//         if(NETSTACK_RADIO.receiving_packet()) {
+//           PRINTF("rf_ble_beacon_process: We were receiving\n");
+//
+//           /* Abort this pass */
+//           break;
+//         }
 
         rf_core_primary_mode_abort();
       } else {
@@ -356,7 +356,7 @@ PROCESS_THREAD(rf_ble_beacon_process, ev, data)
         /* Switch HF clock source to the RCOSC to preserve power */
         oscillators_switch_to_hf_rc();
       }
-      etimer_set(&ble_adv_et, BLE_ADV_DUTY_CYCLE);
+      xtimer_set(&ble_adv_et, BLE_ADV_DUTY_CYCLE);
 
       interrupts_disabled = IntMasterDisable();
 
@@ -368,7 +368,7 @@ PROCESS_THREAD(rf_ble_beacon_process, ev, data)
 
       /* Wait unless this is the last burst */
       if(i < BLE_ADV_MESSAGES - 1) {
-        PROCESS_WAIT_EVENT_UNTIL(etimer_expired(&ble_adv_et));
+//         PROCESS_WAIT_EVENT_UNTIL(etimer_expired(&ble_adv_et));
       }
     }
 
@@ -380,7 +380,6 @@ PROCESS_THREAD(rf_ble_beacon_process, ev, data)
       IntMasterEnable();
     }
   }
-  PROCESS_END();
 }
 /*---------------------------------------------------------------------------*/
 /**
