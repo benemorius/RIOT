@@ -92,6 +92,11 @@ TI_XXWARE_STARTUP_SRCS = ccfg.c startup_gcc.c
 export INCLUDES += -I$(TI_XXWARE) -I$(CONTIKI)/$(TI_XXWARE_SRC)
 export INCLUDES += -I$(TI_XXWARE)/inc
 
+export INCLUDES += -I$(RIOTCPU)/cc26xx-cc13xx_common/tilib/inc
+export INCLUDES += -I$(RIOTCPU)/cc26xx-cc13xx_common/tilib/dev/inc
+export INCLUDES += -I$(RIOTCPU)/cc26xx-cc13xx_common/tilib/rf-core/inc
+export INCLUDES += -I$(RIOTCPU)/cc26xx-cc13xx_common/tilib/rf-core/api
+
 # MODULES += $(TI_XXWARE_SRC)
 
 

@@ -44,8 +44,6 @@
 #ifndef DOT_15_4G_H_
 #define DOT_15_4G_H_
 /*---------------------------------------------------------------------------*/
-#include "contiki-conf.h"
-/*---------------------------------------------------------------------------*/
 /* IEEE 802.15.4g frequency band identifiers (Table 68f) */
 #define DOT_15_4G_FREQUENCY_BAND_169  0 /* 169.400–169.475 (Europe) - 169 MHz band */
 #define DOT_15_4G_FREQUENCY_BAND_450  1 /* 450–470 (US FCC Part 22/90) - 450 MHz band */

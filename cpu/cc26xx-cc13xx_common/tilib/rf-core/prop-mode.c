@@ -40,40 +40,32 @@
  * Implementation of the CC13xx prop mode NETSTACK_RADIO driver
  */
 /*---------------------------------------------------------------------------*/
-#include "contiki.h"
-#include "dev/radio.h"
-#include "dev/cc26xx-uart.h"
-#include "dev/oscillators.h"
-#include "dev/watchdog.h"
-#include "net/packetbuf.h"
-#include "net/rime/rimestats.h"
-#include "net/linkaddr.h"
-#include "net/netstack.h"
-#include "sys/energest.h"
-#include "sys/clock.h"
-#include "sys/rtimer.h"
-#include "sys/cc.h"
-#include "lpm.h"
+#include "cc26xx-uart.h"
+#include "oscillators.h"
 #include "ti-lib.h"
-#include "rf-core/rf-core.h"
-#include "rf-core/rf-ble.h"
-#include "rf-core/dot-15-4g.h"
+#include "rf-core.h"
+#include "rf-ble.h"
+#include "dot-15-4g.h"
+
+#include "thread.h"
+#include "xtimer.h"
+#include "lpm.h"
 /*---------------------------------------------------------------------------*/
 /* RF core and RF HAL API */
 #include "hw_rfc_dbell.h"
 #include "hw_rfc_pwr.h"
 /*---------------------------------------------------------------------------*/
 /* RF Core Mailbox API */
-#include "rf-core/api/mailbox.h"
-#include "rf-core/api/common_cmd.h"
-#include "rf-core/api/data_entry.h"
-#include "rf-core/api/prop_mailbox.h"
-#include "rf-core/api/prop_cmd.h"
+#include "mailbox.h"
+#include "common_cmd.h"
+#include "data_entry.h"
+#include "prop_mailbox.h"
+#include "prop_cmd.h"
 /*---------------------------------------------------------------------------*/
 /* CC13xxware patches */
-#include "rf_patches/rf_patch_cpe_genfsk.h"
+// #include "rf_patches/rf_patch_cpe_genfsk.h"
 /*---------------------------------------------------------------------------*/
-#include "rf-core/smartrf-settings.h"
+#include "smartrf-settings.h"
 /*---------------------------------------------------------------------------*/
 #include <stdint.h>
 #include <string.h>
@@ -401,7 +393,7 @@ static uint8_t
 rf_cmd_prop_rx()
 {
   uint32_t cmd_status;
-  rtimer_clock_t t0;
+  uint32_t t0;
   volatile rfc_CMD_PROP_RX_ADV_t *cmd_rx_adv;
   int ret;
 
@@ -422,10 +414,10 @@ rf_cmd_prop_rx()
     return RF_CORE_CMD_ERROR;
   }
 
-  t0 = RTIMER_NOW();
+  t0 = xtimer_now();
 
   while(cmd_rx_adv->status != RF_CORE_RADIO_OP_STATUS_ACTIVE &&
-        (RTIMER_CLOCK_LT(RTIMER_NOW(), t0 + ENTER_RX_WAIT_TIMEOUT)));
+      xtimer_now() < t0 + ENTER_RX_WAIT_TIMEOUT);
 
   /* Wait to enter RX */
   if(cmd_rx_adv->status != RF_CORE_RADIO_OP_STATUS_ACTIVE) {
@@ -450,10 +442,6 @@ rx_on_prop(void)
 
   /* Put CPE in RX using the currently configured parameters */
   ret = rf_cmd_prop_rx();
-
-  if(ret) {
-    ENERGEST_ON(ENERGEST_TYPE_LISTEN);
-  }
 
   return ret;
 }
@@ -480,7 +468,6 @@ rx_off_prop(void)
   if(smartrf_settings_cmd_prop_rx_adv.status == PROP_DONE_STOPPED ||
      smartrf_settings_cmd_prop_rx_adv.status == PROP_DONE_ABORT) {
     /* Stopped gracefully */
-    ENERGEST_OFF(ENERGEST_TYPE_LISTEN);
     ret = RF_CORE_CMD_OK;
   } else {
     PRINTF("rx_off_prop: status=0x%04x\n",
@@ -499,13 +486,11 @@ request(void)
    * will only allow sleep, standby otherwise
    */
   if(rf_is_on()) {
-    return LPM_MODE_SLEEP;
+    return LPM_IDLE;
   }
 
-  return LPM_MODE_MAX_SUPPORTED;
+  return LPM_SLEEP;
 }
-/*---------------------------------------------------------------------------*/
-LPM_MODULE(prop_lpm_module, request, NULL, NULL, LPM_DOMAIN_NONE);
 /*---------------------------------------------------------------------------*/
 static int
 prop_fs(void)
@@ -576,8 +561,6 @@ init(void)
 {
   rfc_dataEntry_t *entry;
 
-  lpm_register_module(&prop_lpm_module);
-
   if(ti_lib_chipinfo_chip_family_is_cc13xx() == false) {
     return RF_CORE_CMD_ERROR;
   }
@@ -619,11 +602,13 @@ init(void)
     return RF_CORE_CMD_ERROR;
   }
 
-  ENERGEST_ON(ENERGEST_TYPE_LISTEN);
-
   rf_core_primary_mode_register(&mode_prop);
 
   process_start(&rf_core_process, NULL);
+  thread_create(rf_core_thread_stack, sizeof(rf_core_thread_stack), 13,
+                THREAD_CREATE_STACKTEST | THREAD_CREATE_WOUT_YIELD, rf_core_thread,
+                NULL, RF_CORE_THREAD_NAME);
+
 
   return 1;
 }
@@ -631,7 +616,9 @@ init(void)
 static int
 prepare(const void *payload, unsigned short payload_len)
 {
-  int len = MIN(payload_len, TX_BUF_PAYLOAD_LEN);
+  int len = payload_len;
+  if (len > TX_BUF_PAYLOAD_LEN)
+      len = TX_BUF_PAYLOAD_LEN;
 
   memcpy(&tx_buf[TX_BUF_HDR_LEN], payload, len);
   return RF_CORE_CMD_OK;
@@ -689,20 +676,15 @@ transmit(unsigned short transmit_len)
 
   if(ret) {
     /* If we enter here, TX actually started */
-    ENERGEST_OFF(ENERGEST_TYPE_LISTEN);
-    ENERGEST_ON(ENERGEST_TYPE_TRANSMIT);
-
-    watchdog_periodic();
 
     /* Idle away while the command is running */
     while((cmd_tx_adv->status & RF_CORE_RADIO_OP_MASKED_STATUS)
           == RF_CORE_RADIO_OP_MASKED_STATUS_RUNNING) {
-      lpm_sleep();
+//       lpm_sleep();
     }
 
     if(cmd_tx_adv->status == RF_CORE_RADIO_OP_STATUS_PROP_DONE_OK) {
       /* Sent OK */
-      RIMESTATS_ADD(lltx);
       ret = RADIO_TX_OK;
     } else {
       /* Operation completed, but frame was not sent */
@@ -716,13 +698,6 @@ transmit(unsigned short transmit_len)
            ret, cmd_status, cmd_tx_adv->status);
     ret = RADIO_TX_ERR;
   }
-
-  /*
-   * Update ENERGEST state here, before a potential call to off(), which
-   * will correctly update it if required.
-   */
-  ENERGEST_OFF(ENERGEST_TYPE_TRANSMIT);
-  ENERGEST_ON(ENERGEST_TYPE_LISTEN);
 
   /*
    * Disable LAST_FG_COMMAND_DONE interrupt. We don't really care about it
@@ -922,8 +897,6 @@ on(void)
       return RF_CORE_CMD_ERROR;
     }
 
-    rf_patch_cpe_genfsk();
-
     if(rf_core_start_rat() != RF_CORE_CMD_OK) {
       PRINTF("on: rf_core_start_rat() failed\n");
 
@@ -970,8 +943,6 @@ off(void)
 
   rx_off_prop();
   rf_core_power_down();
-
-  ENERGEST_OFF(ENERGEST_TYPE_LISTEN);
 
   /* Switch HF clock source to the RCOSC to preserve power */
   oscillators_switch_to_hf_rc();

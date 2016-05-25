@@ -36,19 +36,13 @@
  * Implementation of the CC13xx/CC26xx RF BLE driver
  */
 /*---------------------------------------------------------------------------*/
-#include "contiki-conf.h"
-#include "sys/process.h"
-#include "sys/clock.h"
-#include "sys/cc.h"
-#include "sys/etimer.h"
-#include "net/netstack.h"
-#include "net/linkaddr.h"
-#include "dev/oscillators.h"
-#include "rf-core/rf-core.h"
-#include "rf-core/rf-ble.h"
-#include "rf-core/api/ble_cmd.h"
-#include "rf-core/api/common_cmd.h"
-#include "ti-lib.h"
+#include "rf-core.h"
+#include "rf-ble.h"
+#include "api/ble_cmd.h"
+#include "api/common_cmd.h"
+#include "driverlib/chipinfo.h"
+#include "driverlib/interrupt.h"
+#include "oscillators.h"
 /*---------------------------------------------------------------------------*/
 #include <stdint.h>
 #include <stdbool.h>
@@ -184,7 +178,7 @@ rf_ble_beacond_start()
     return RF_CORE_CMD_ERROR;
   }
 
-  if(ti_lib_chipinfo_supports_ble() == false) {
+  if(ChipInfo_SupportsBLE() == false) {
     return RF_CORE_CMD_ERROR;
   }
 
@@ -281,10 +275,10 @@ PROCESS_THREAD(rf_ble_beacon_process, ev, data)
        * Under ContikiMAC, some IEEE-related operations will be called from an
        * interrupt context. We need those to see that we are in BLE mode.
        */
-      interrupts_disabled = ti_lib_int_master_disable();
+      interrupts_disabled = IntMasterDisable();
       ble_mode_on = RF_BLE_ACTIVE;
       if(!interrupts_disabled) {
-        ti_lib_int_master_enable();
+        IntMasterEnable();
       }
 
       /*
@@ -364,12 +358,12 @@ PROCESS_THREAD(rf_ble_beacon_process, ev, data)
       }
       etimer_set(&ble_adv_et, BLE_ADV_DUTY_CYCLE);
 
-      interrupts_disabled = ti_lib_int_master_disable();
+      interrupts_disabled = IntMasterDisable();
 
       ble_mode_on = RF_BLE_IDLE;
 
       if(!interrupts_disabled) {
-        ti_lib_int_master_enable();
+        IntMasterEnable();
       }
 
       /* Wait unless this is the last burst */
@@ -378,12 +372,12 @@ PROCESS_THREAD(rf_ble_beacon_process, ev, data)
       }
     }
 
-    interrupts_disabled = ti_lib_int_master_disable();
+    interrupts_disabled = IntMasterDisable();
 
     ble_mode_on = RF_BLE_IDLE;
 
     if(!interrupts_disabled) {
-      ti_lib_int_master_enable();
+      IntMasterEnable();
     }
   }
   PROCESS_END();

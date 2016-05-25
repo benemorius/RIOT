@@ -52,7 +52,7 @@
  * \brief Initialises the UART controller, configures I/O control
  * and interrupts
  */
-void cc26xx_uart_init();
+void cc26xx_uart_init(void);
 
 /**
  * \brief Sends a single character down the UART

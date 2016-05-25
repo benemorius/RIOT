@@ -51,11 +51,15 @@
 #ifndef RF_CORE_H_
 #define RF_CORE_H_
 /*---------------------------------------------------------------------------*/
-#include "contiki-conf.h"
-#include "rf-core/api/common_cmd.h"
+#include "common_cmd.h"
+
+#include "thread.h"
 
 #include <stdint.h>
 #include <stdbool.h>
+
+#define CC_ALIGN()
+
 /*---------------------------------------------------------------------------*/
 /* The channel to use in IEEE or prop mode. */
 #ifdef RF_CORE_CONF_CHANNEL
@@ -228,8 +232,15 @@ typedef struct rf_core_primary_mode_s {
 #define RF_CORE_COMMAND_PROTOCOL_IEEE                    0x2000
 #define RF_CORE_COMMAND_PROTOCOL_PROP                    0x3000
 /*---------------------------------------------------------------------------*/
+
+#define RADIO_TX_OK 0
+#define RADIO_TX_ERR 1
+
 /* Make the main driver process visible to mode drivers */
 PROCESS_NAME(rf_core_process);
+void *rf_core_thread(void *arg);
+char rf_core_thread_stack [THREAD_STACKSIZE_MAIN + 512];
+#define RF_CORE_THREAD_NAME "CC13xx / CC26xx RF driver"
 /*---------------------------------------------------------------------------*/
 /**
  * \brief Check whether the RF core is accessible
