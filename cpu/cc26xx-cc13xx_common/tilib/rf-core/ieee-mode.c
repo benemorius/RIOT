@@ -115,7 +115,7 @@ static uint8_t rf_stats[16] = { 0 };
  * This macro can be used to e.g. return the status of a previously
  * initiated background operation, or of an immediate command
  */
-#define RF_RADIO_OP_GET_STATUS(a) (((rfc_radioOp_t *)a)->status)
+#define RF_RADIO_OP_GET_STATUS(a) (radio_op->status)
 /*---------------------------------------------------------------------------*/
 /* Special value returned by CMD_IEEE_CCA_REQ when an RSSI is not available */
 #define RF_CMD_CCA_REQ_RSSI_UNKNOWN     -128
@@ -189,6 +189,7 @@ const output_config_t *tx_power_current = &output_power[0];
  * Do not use this buffer for any commands other than CMD_IEEE_RX
  */
 static uint8_t cmd_ieee_rx_buf[RF_CMD_BUFFER_SIZE] CC_ALIGN(4);
+static rfc_radioOp_t *radio_op = (rfc_radioOp_t*)cmd_ieee_rx_buf;
 /*---------------------------------------------------------------------------*/
 #define DATA_ENTRY_LENSZ_NONE 0
 #define DATA_ENTRY_LENSZ_BYTE 1
@@ -648,6 +649,7 @@ rx_off(void)
 }
 /*---------------------------------------------------------------------------*/
 static uint8_t
+__attribute__((used))
 request(void)
 {
   /*
@@ -701,6 +703,7 @@ static const rf_core_primary_mode_t mode_ieee = {
 };
 /*---------------------------------------------------------------------------*/
 static int
+__attribute__((used))
 init(void)
 {
   rf_core_set_modesel();
@@ -729,7 +732,7 @@ init(void)
 
   rf_core_primary_mode_register(&mode_ieee);
 
-  process_start(&rf_core_process, NULL);
+//   process_start(&rf_core_process, NULL);
   return 1;
 }
 /*---------------------------------------------------------------------------*/
@@ -838,6 +841,7 @@ transmit(unsigned short transmit_len)
 }
 /*---------------------------------------------------------------------------*/
 static int
+__attribute__((used))
 send(const void *payload, unsigned short payload_len)
 {
   prepare(payload, payload_len);
@@ -857,6 +861,7 @@ release_data_entry(void)
   rx_read_entry = entry->pNextEntry;
 }/*---------------------------------------------------------------------------*/
 static int
+__attribute__((used))
 read_frame(void *buf, unsigned short buf_len)
 {
   int8_t rssi;
@@ -888,6 +893,7 @@ read_frame(void *buf, unsigned short buf_len)
 
   rssi = (int8_t)rx_read_entry[9 + len + 2];
 
+  rssi = rssi;
 //   packetbuf_set_attr(PACKETBUF_ATTR_RSSI, rssi);
 
   release_data_entry();
@@ -896,6 +902,7 @@ read_frame(void *buf, unsigned short buf_len)
 }
 /*---------------------------------------------------------------------------*/
 static int
+__attribute__((used))
 channel_clear(void)
 {
   uint8_t was_off = 0;
@@ -953,6 +960,7 @@ channel_clear(void)
 }
 /*---------------------------------------------------------------------------*/
 static int
+__attribute__((used))
 receiving_packet(void)
 {
   int ret = 0;
@@ -998,6 +1006,7 @@ receiving_packet(void)
 }
 /*---------------------------------------------------------------------------*/
 static int
+__attribute__((used))
 pending_packet(void)
 {
   volatile rfc_dataEntry_t *entry = (rfc_dataEntry_t *)rx_data_queue.pCurrEntry;
@@ -1087,21 +1096,28 @@ off(void)
   oscillators_switch_to_hf_rc();
 
   /* We pulled the plug, so we need to restore the status manually */
-  ((rfc_CMD_IEEE_RX_t *)cmd_ieee_rx_buf)->status = RF_CORE_RADIO_OP_STATUS_IDLE;
+  rfc_CMD_IEEE_RX_t *cmd = (rfc_CMD_IEEE_RX_t *)cmd_ieee_rx_buf;
+  cmd->status = RF_CORE_RADIO_OP_STATUS_IDLE;
 
   /*
    * Just in case there was an ongoing RX (which started after we begun the
    * shutdown sequence), we don't want to leave the buffer in state == ongoing
    */
-  ((rfc_dataEntry_t *)rx_buf_0)->status = DATA_ENTRY_STATUS_PENDING;
-  ((rfc_dataEntry_t *)rx_buf_1)->status = DATA_ENTRY_STATUS_PENDING;
-  ((rfc_dataEntry_t *)rx_buf_2)->status = DATA_ENTRY_STATUS_PENDING;
-  ((rfc_dataEntry_t *)rx_buf_3)->status = DATA_ENTRY_STATUS_PENDING;
+  rfc_dataEntry_t *data;
+  data = (rfc_dataEntry_t*)rx_buf_0;
+  data->status = DATA_ENTRY_STATUS_PENDING;
+  data = (rfc_dataEntry_t*)rx_buf_1;
+  data->status = DATA_ENTRY_STATUS_PENDING;
+  data = (rfc_dataEntry_t*)rx_buf_2;
+  data->status = DATA_ENTRY_STATUS_PENDING;
+  data = (rfc_dataEntry_t*)rx_buf_3;
+  data->status = DATA_ENTRY_STATUS_PENDING;
 
   return RF_CORE_CMD_OK;
 }
 /*---------------------------------------------------------------------------*/
 static radio_result_t
+__attribute__((used))
 get_value(radio_param_t param, radio_value_t *value)
 {
   rfc_CMD_IEEE_RX_t *cmd = (rfc_CMD_IEEE_RX_t *)cmd_ieee_rx_buf;
@@ -1166,6 +1182,7 @@ get_value(radio_param_t param, radio_value_t *value)
 }
 /*---------------------------------------------------------------------------*/
 static radio_result_t
+__attribute__((used))
 set_value(radio_param_t param, radio_value_t value)
 {
   uint8_t was_off = 0;
@@ -1267,6 +1284,7 @@ set_value(radio_param_t param, radio_value_t value)
 }
 /*---------------------------------------------------------------------------*/
 static radio_result_t
+__attribute__((used))
 get_object(radio_param_t param, void *dest, size_t size)
 {
   uint8_t *target;
@@ -1292,6 +1310,7 @@ get_object(radio_param_t param, void *dest, size_t size)
 }
 /*---------------------------------------------------------------------------*/
 static radio_result_t
+__attribute__((used))
 set_object(radio_param_t param, const void *src, size_t size)
 {
   uint8_t was_off = 0;

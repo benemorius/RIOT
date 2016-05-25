@@ -256,6 +256,8 @@ typedef struct rf_core_primary_mode_s {
 #define RADIO_RX_MODE_AUTOACK 13
 #define RADIO_PARAM_64BIT_ADDR 14
 
+#define RADIO_TX_COLLISION 15
+
 #define RADIO_POWER_MODE_ON 1
 #define RADIO_POWER_MODE_OFF 0
 
