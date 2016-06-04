@@ -94,53 +94,99 @@ AsyncLabs 01/10/2011 Clean up
 
 static uint8_t _at45_DF_SPI_RW(at45_t *dev, uint8_t byte);
 static uint16_t _at45_Read_DF_status(at45_t *dev);
+static void _at45_set_page_size(at45_t *dev, bool is_256);
 
-int at45_init(at45_t *dev, spi_t spi, gpio_t cs, gpio_t rst, gpio_t wp, gpio_t pwr)
+BOOT_FUNC int at45_init(at45_t *dev, spi_t spi, gpio_t cs, gpio_t rst, gpio_t wp)
 {
     dev->cs = cs;
     dev->rst = rst;
     dev->wp = wp;
-    dev->pwr = pwr;
     dev->spi = spi;
     int ret;
 
     gpio_set(dev->cs);
     gpio_set(dev->wp);
-    gpio_clear(dev->pwr); //on
     gpio_clear(dev->rst);
 
-    gpio_init(dev->pwr, GPIO_OUT);
     gpio_init(dev->rst, GPIO_OUT);
     gpio_init(dev->wp, GPIO_OUT);
     gpio_init(dev->cs, GPIO_OUT);
 
-    xtimer_usleep(100*1000);
+//     xtimer_usleep(100*1000);
 
     gpio_set(dev->rst);
 
-    xtimer_usleep(100*1000);
+//     xtimer_usleep(100*1000);
 
 
     if ((ret = spi_init_master(dev->spi, SPI_CONF_FIRST_RISING, SPI_SPEED_100KHZ)))
         return ret;
 
-    uint16_t status = _at45_Read_DF_status(dev);
-    printf("flash status: 0x%04x\n", status);
+//     uint16_t status = _at45_Read_DF_status(dev);
+//     printf("flash status: 0x%04x\n", status);
 
-    uint8_t id[4];
-    at45_Read_DF_ID(dev, id);
+//     _at45_set_page_size(dev, true);
+//
+//     uint8_t id[4];
+//     at45_Read_DF_ID(dev, id);
 
     return 0;
 }
 
-static uint8_t _at45_DF_SPI_RW(at45_t *dev, uint8_t byte)
+BOOT_FUNC void at45_read(at45_t *dev, uint32_t address, uint8_t *buffer, uint32_t bytes)
+{
+    gpio_clear(dev->cs);
+    _at45_DF_SPI_RW(dev, READ_LOW_POWER);
+    _at45_DF_SPI_RW(dev, address >> 16 & 0xff);
+    _at45_DF_SPI_RW(dev, address >> 8 & 0xff);
+    _at45_DF_SPI_RW(dev, address & 0xff);
+    for (uint32_t i = 0; i < bytes; i++) {
+        *buffer++ = _at45_DF_SPI_RW(dev, 0x00);
+    }
+    gpio_set(dev->cs);
+}
+
+void BOOT_FUNC at45_write(at45_t *dev, uint32_t address, uint8_t *buffer, uint32_t bytes)
+{
+    uint32_t i;
+    for (i = 0; i < bytes; i++) {
+        at45_Buffer_Write_Byte(dev, 1, i % 256, buffer[i]);
+        if ((i+1) % 256 == 0) {
+            at45_Buffer_To_Page(dev, 1, i / 256);
+            while ((_at45_Read_DF_status(dev) & 0x80) == 0);
+        }
+    }
+    if (i % 256 != 0) {
+        while (i % 256 != 0) {
+            at45_Buffer_Write_Byte(dev, 1 , i % 256, 0xff);
+            i++;
+        }
+        at45_Buffer_To_Page(dev, 1, (i-1) / 256);
+        while ((_at45_Read_DF_status(dev) & 0x80) == 0);
+    }
+}
+
+BOOT_FUNC static void _at45_set_page_size(at45_t *dev, bool is_256) {
+    gpio_clear(dev->cs);
+    _at45_DF_SPI_RW(dev, PAGE_SIZE_0);
+    _at45_DF_SPI_RW(dev, PAGE_SIZE_1);
+    _at45_DF_SPI_RW(dev, PAGE_SIZE_2);
+    if (is_256) {
+        _at45_DF_SPI_RW(dev, PAGE_256);
+    } else {
+        _at45_DF_SPI_RW(dev, PAGE_264);
+    }
+    gpio_set(dev->cs);
+}
+
+BOOT_FUNC static uint8_t _at45_DF_SPI_RW(at45_t *dev, uint8_t byte)
 {
     char receive;
     spi_transfer_byte(dev->spi, byte, &receive);
     return (uint8_t)receive;
 }
 
-uint16_t _at45_Read_DF_status(at45_t *dev)
+BOOT_FUNC uint16_t _at45_Read_DF_status(at45_t *dev)
 {
     uint16_t result;
 
@@ -153,7 +199,7 @@ uint16_t _at45_Read_DF_status(at45_t *dev)
     return result;
 }
 
-void at45_Read_DF_ID(at45_t *dev, uint8_t *id)
+BOOT_FUNC void at45_Read_DF_ID(at45_t *dev, uint8_t *id)
 {
     gpio_clear(dev->cs);
     _at45_DF_SPI_RW(dev, ReadMfgID);
@@ -178,22 +224,22 @@ void at45_Read_DF_ID(at45_t *dev, uint8_t *id)
  *
  *
  ******************************************************************************/
-void at45_Page_To_Buffer(at45_t *dev, unsigned int PageAdr, unsigned char BufferNo)
+BOOT_FUNC void at45_Page_To_Buffer(at45_t *dev, uint16_t PageAdr, uint8_t BufferNo)
 {
     gpio_clear(dev->cs);
     if (1 == BufferNo)                                              //transfer flash page to buffer 1
     {
         _at45_DF_SPI_RW(dev, FlashToBuf1Transfer);
-        _at45_DF_SPI_RW(dev, (unsigned char)(PageAdr >> (16 - PAGE_BITS)));    //upper part of page address
-        _at45_DF_SPI_RW(dev, (unsigned char)(PageAdr << (PAGE_BITS - 8)));     //lower part of page address
+        _at45_DF_SPI_RW(dev, (uint8_t)(PageAdr >> (16 - PAGE_BITS)));    //upper part of page address
+        _at45_DF_SPI_RW(dev, (uint8_t)(PageAdr << (PAGE_BITS - 8)));     //lower part of page address
         _at45_DF_SPI_RW(dev, 0x00);                                            //don't cares
     }
 #ifdef USE_BUFFER2
     else if (2 == BufferNo)                                         //transfer flash page to buffer 2
     {
         _at45_DF_SPI_RW(dev, FlashToBuf2Transfer);
-        _at45_DF_SPI_RW(dev, (unsigned char)(PageAdr >> (16 - PAGE_BITS)));    //upper part of page address
-        _at45_DF_SPI_RW(dev, (unsigned char)(PageAdr << (PAGE_BITS - 8)));     //lower part of page address
+        _at45_DF_SPI_RW(dev, (uint8_t)(PageAdr >> (16 - PAGE_BITS)));    //upper part of page address
+        _at45_DF_SPI_RW(dev, (uint8_t)(PageAdr << (PAGE_BITS - 8)));     //lower part of page address
         _at45_DF_SPI_RW(dev, 0x00);                                            //don't cares
     }
 #endif
@@ -217,17 +263,17 @@ void at45_Page_To_Buffer(at45_t *dev, unsigned int PageAdr, unsigned char Buffer
  *                  internal SRAM buffers
  *
  ******************************************************************************/
-unsigned char at45_Buffer_Read_Byte(at45_t *dev, unsigned char BufferNo, unsigned int IntPageAdr)
+BOOT_FUNC uint8_t at45_Buffer_Read_Byte(at45_t *dev, uint8_t BufferNo, uint16_t IntPageAdr)
 {
-    unsigned char data = 0;
+    uint8_t data = 0;
 
     gpio_clear(dev->cs);
     if (1 == BufferNo)      //read byte from buffer 1
     {
         _at45_DF_SPI_RW(dev, Buf1Read);            //buffer 1 read op-code
         _at45_DF_SPI_RW(dev, 0x00);                //don't cares
-        _at45_DF_SPI_RW(dev, (unsigned char)(IntPageAdr>>8));  //upper part of internal buffer address
-        _at45_DF_SPI_RW(dev, (unsigned char)(IntPageAdr));     //lower part of internal buffer address
+        _at45_DF_SPI_RW(dev, (uint8_t)(IntPageAdr>>8));  //upper part of internal buffer address
+        _at45_DF_SPI_RW(dev, (uint8_t)(IntPageAdr));     //lower part of internal buffer address
         _at45_DF_SPI_RW(dev, 0x00);                //don't cares
         data = _at45_DF_SPI_RW(dev, 0x00);         //read byte
     }
@@ -236,8 +282,8 @@ unsigned char at45_Buffer_Read_Byte(at45_t *dev, unsigned char BufferNo, unsigne
     {
         _at45_DF_SPI_RW(dev, Buf2Read);            //buffer 2 read op-code
         _at45_DF_SPI_RW(dev, 0x00);                //don't cares
-        _at45_DF_SPI_RW(dev, (unsigned char)(IntPageAdr>>8));  //upper part of internal buffer address
-        _at45_DF_SPI_RW(dev, (unsigned char)(IntPageAdr));     //lower part of internal buffer address
+        _at45_DF_SPI_RW(dev, (uint8_t)(IntPageAdr>>8));  //upper part of internal buffer address
+        _at45_DF_SPI_RW(dev, (uint8_t)(IntPageAdr));     //lower part of internal buffer address
         _at45_DF_SPI_RW(dev, 0x00);                //don't cares
         data = _at45_DF_SPI_RW(dev, 0x00);         //read byte
     }
@@ -264,15 +310,15 @@ unsigned char at45_Buffer_Read_Byte(at45_t *dev, unsigned char BufferNo, unsigne
  *                  internal SRAM buffers
  *
  ******************************************************************************/
-void at45_Buffer_Write_Byte(at45_t *dev, unsigned char BufferNo, unsigned int IntPageAdr, unsigned char Data)
+BOOT_FUNC void at45_Buffer_Write_Byte(at45_t *dev, uint8_t BufferNo, uint16_t IntPageAdr, uint8_t Data)
 {
     gpio_clear(dev->cs);
     if (1 == BufferNo)              //write byte to buffer 1
     {
         _at45_DF_SPI_RW(dev, Buf1Write);       //buffer 1 write op-code
         _at45_DF_SPI_RW(dev, 0x00);            //don't cares
-        _at45_DF_SPI_RW(dev, (unsigned char)(IntPageAdr>>8));  //upper part of internal buffer address
-        _at45_DF_SPI_RW(dev, (unsigned char)(IntPageAdr));     //lower part of internal buffer address
+        _at45_DF_SPI_RW(dev, (uint8_t)(IntPageAdr>>8));  //upper part of internal buffer address
+        _at45_DF_SPI_RW(dev, (uint8_t)(IntPageAdr));     //lower part of internal buffer address
         _at45_DF_SPI_RW(dev, Data);            //write data byte
     }
 #ifdef USE_BUFFER2
@@ -280,8 +326,8 @@ void at45_Buffer_Write_Byte(at45_t *dev, unsigned char BufferNo, unsigned int In
     {
         _at45_DF_SPI_RW(dev, Buf2Write);       //buffer 2 write op-code
         _at45_DF_SPI_RW(dev, 0x00);            //don't cares
-        _at45_DF_SPI_RW(dev, (unsigned char)(IntPageAdr>>8));  //upper part of internal buffer address
-        _at45_DF_SPI_RW(dev, (unsigned char)(IntPageAdr));     //lower part of internal buffer address
+        _at45_DF_SPI_RW(dev, (uint8_t)(IntPageAdr>>8));  //upper part of internal buffer address
+        _at45_DF_SPI_RW(dev, (uint8_t)(IntPageAdr));     //lower part of internal buffer address
         _at45_DF_SPI_RW(dev, Data);            //write data byte
     }
 #endif
@@ -303,22 +349,22 @@ void at45_Buffer_Write_Byte(at45_t *dev, unsigned char BufferNo, unsigned int In
  *
  *
  ******************************************************************************/
-void at45_Buffer_To_Page(at45_t *dev, unsigned char BufferNo, unsigned int PageAdr)
+BOOT_FUNC void at45_Buffer_To_Page(at45_t *dev, uint8_t BufferNo, uint16_t PageAdr)
 {
     gpio_clear(dev->cs);
     if (1 == BufferNo)
     {
         _at45_DF_SPI_RW(dev, Buf1ToFlashWE);           //buffer 1 to flash with erase op-code
-        _at45_DF_SPI_RW(dev, (unsigned char)(PageAdr >> (16 - PAGE_BITS))); //upper part of page address
-        _at45_DF_SPI_RW(dev, (unsigned char)(PageAdr << (PAGE_BITS - 8)));  //lower part of page address
+        _at45_DF_SPI_RW(dev, (uint8_t)(PageAdr >> (16 - PAGE_BITS))); //upper part of page address
+        _at45_DF_SPI_RW(dev, (uint8_t)(PageAdr << (PAGE_BITS - 8)));  //lower part of page address
         _at45_DF_SPI_RW(dev, 0x00);                    //don't cares
     }
 #ifdef USE_BUFFER2
     else if (2 == BufferNo)
     {
         _at45_DF_SPI_RW(dev, Buf2ToFlashWE);           //buffer 2 to flash with erase op-code
-        _at45_DF_SPI_RW(dev, (unsigned char)(PageAdr >> (16 - PAGE_BITS)));    //upper part of page address
-        _at45_DF_SPI_RW(dev, (unsigned char)(PageAdr << (PAGE_BITS - 8)));     //lower part of page address
+        _at45_DF_SPI_RW(dev, (uint8_t)(PageAdr >> (16 - PAGE_BITS)));    //upper part of page address
+        _at45_DF_SPI_RW(dev, (uint8_t)(PageAdr << (PAGE_BITS - 8)));     //lower part of page address
         _at45_DF_SPI_RW(dev, 0x00);                    //don't cares
     }
 #endif

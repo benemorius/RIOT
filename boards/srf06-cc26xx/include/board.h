@@ -61,6 +61,11 @@ extern "C" {
 // #define AT86RF231_RESET     GPIO_8
 // #define AT86RF231_SLEEP     GPIO_6
 
+#define GPIO_MEM_PWR GPIO_PIN(22)
+#define GPIO_MEM_RST GPIO_PIN(21)
+#define GPIO_MEM_CS GPIO_PIN(20)
+#define GPIO_MEM_WP GPIO_PIN(19)
+
 /**
  * Define the type for the radio packet length for the transceiver
  */
