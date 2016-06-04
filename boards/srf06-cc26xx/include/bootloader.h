@@ -27,9 +27,9 @@
 extern "C" {
 #endif
 
-#define bootloader() bootloader_arch()
+#define bootloader() bootloader_board()
 
-void bootloader_arch(void);
+void bootloader_board(void);
 
 #ifdef __cplusplus
 }

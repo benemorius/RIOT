@@ -91,7 +91,7 @@ static inline spi_t _dev(spi_t spi)
 
 int spi_init_master(spi_t spi, spi_conf_t conf, spi_speed_t speed)
 {
-    printf("spi %i init start\n", spi);
+//     printf("spi %i init start\n", spi);
 
     const ssi_conf_t *config = &spi_config[spi];
     int proto = 0;

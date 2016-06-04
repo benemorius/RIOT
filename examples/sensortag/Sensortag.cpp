@@ -43,10 +43,6 @@
 #define GIT_VERSION "undefined"
 #endif
 
-#define GPIO_MEM_PWR GPIO_PIN(22)
-#define GPIO_MEM_RST GPIO_PIN(21)
-#define GPIO_MEM_CS GPIO_PIN(20)
-#define GPIO_MEM_WP GPIO_PIN(19)
 #define GPIO_LED GPIO_PIN(18)
 
 Sensortag* sensortagS;
@@ -104,7 +100,7 @@ main_pid(thread_getpid())
 
 
     at45_t flash;
-    at45_init(&flash, SPI_DEV(0), GPIO_MEM_CS, GPIO_MEM_RST, GPIO_MEM_WP, GPIO_MEM_PWR);
+    at45_init(&flash, SPI_DEV(0), GPIO_MEM_CS, GPIO_MEM_RST, GPIO_MEM_WP);
 
     uint8_t id[4];
     id[0] = 0x55;
@@ -116,14 +112,15 @@ main_pid(thread_getpid())
 
 
 
-//     uint8_t buf[128];
-//     at45_read(&flash, 0, buf, 128);
-//
-//     for(int i = 0; i < 128; i++) {
-//         printf("%02x ", buf[i]);
-//         if ((i+1) % 16 == 0)
-//             printf("\n");
-//     }
+    uint8_t buf[128];
+    printf("after:\n");
+    at45_read(&flash, 0, buf, 128);
+    for(int i = 0; i < 128; i++) {
+        printf("%02x ", buf[i]);
+        if ((i+1) % 16 == 0)
+            printf("\n");
+    }
+
 //     at45_power(&flash, false);
 
 
