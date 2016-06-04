@@ -32,7 +32,7 @@
 #include "thread.h"
 #include "xtimer.h"
 #include "periph/spi.h"
-#include "s25fl.h"
+#include "at45.h"
 #include "si70xx.h"
 
 #include <stdio.h>
@@ -103,18 +103,30 @@ main_pid(thread_getpid())
 //     gpio_init_int(BTN_2, GPIO_PULLDOWN, GPIO_RISING, button_handler, NULL);
 
 
-//     s25fl_t flash;
-//     s25fl_init(&flash, SPI_DEV(0), GPIO_MEM_CS, GPIO_MEM_RST, GPIO_MEM_WP, GPIO_MEM_PWR);
-//
+    at45_t flash;
+    at45_init(&flash, SPI_DEV(0), GPIO_MEM_CS, GPIO_MEM_RST, GPIO_MEM_WP, GPIO_MEM_PWR);
+
+    uint8_t id[4];
+    id[0] = 0x55;
+    id[1] = 0x55;
+    id[2] = 0x55;
+    id[3] = 0x55;
+    at45_Read_DF_ID(&flash, id);
+    printf("flash id: %02x %02x %02x %02x\n", id[0], id[1], id[2], id[3]);
+
+
+
 //     uint8_t buf[128];
-//     s25fl_read(&flash, 0, buf, 128);
+//     at45_read(&flash, 0, buf, 128);
 //
 //     for(int i = 0; i < 128; i++) {
 //         printf("%02x ", buf[i]);
 //         if ((i+1) % 16 == 0)
 //             printf("\n");
 //     }
-//     s25fl_power(&flash, false);
+//     at45_power(&flash, false);
+
+
 
 }
 

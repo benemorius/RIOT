@@ -55,7 +55,7 @@ USEMODULE += shell_commands
 USEMODULE += ps
 USEMODULE += xtimer
 
-USEMODULE += s25fl
+USEMODULE += at45
 USEMODULE += si70xx
 
 # USEMODULE += sixlowpan
