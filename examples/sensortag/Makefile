@@ -58,6 +58,8 @@ USEMODULE += xtimer
 USEMODULE += at45
 USEMODULE += si70xx
 
+USEMODULE += hashes
+
 # USEMODULE += sixlowpan
 # USEMODULE += aodvv2
 

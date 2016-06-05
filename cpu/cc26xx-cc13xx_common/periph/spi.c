@@ -129,7 +129,7 @@ int spi_init_master(spi_t spi, spi_conf_t conf, spi_speed_t speed)
                         spi_config[spi].ioid_clk
                        );
 
-    SSIConfigSetExpClk(_dev(spi), SysCtrlClockGet(), proto, SSI_MODE_MASTER, 100000, config->bits);
+    SSIConfigSetExpClk(_dev(spi), SysCtrlClockGet(), proto, SSI_MODE_MASTER, 1000000, config->bits);
 
     SSIEnable(_dev(spi));
 

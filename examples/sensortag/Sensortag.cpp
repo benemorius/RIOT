@@ -34,6 +34,8 @@
 #include "periph/spi.h"
 #include "at45.h"
 #include "si70xx.h"
+#include "hashes/md5.h"
+#include "bootloader.h"
 
 #include <stdio.h>
 
@@ -99,6 +101,8 @@ main_pid(thread_getpid())
 //     gpio_init_int(BTN_2, GPIO_PULLDOWN, GPIO_RISING, button_handler, NULL);
 
 
+    gpio_init(GPIO_MEM_PWR, GPIO_OUT);
+    gpio_clear(GPIO_MEM_PWR); //on
     at45_t flash;
     at45_init(&flash, SPI_DEV(0), GPIO_MEM_CS, GPIO_MEM_RST, GPIO_MEM_WP);
 
@@ -112,18 +116,35 @@ main_pid(thread_getpid())
 
 
 
-    uint8_t buf[128];
-    printf("after:\n");
-    at45_read(&flash, 0, buf, 128);
-    for(int i = 0; i < 128; i++) {
-        printf("%02x ", buf[i]);
-        if ((i+1) % 16 == 0)
-            printf("\n");
-    }
+//     uint32_t size = 512;
+//     uint8_t buf[size];
+//     printf("before:\n");
+//     at45_read(&flash, 0, buf, size);
+//     for(uint32_t i = 0; i < size; i++) {
+//         printf("%02x ", buf[i]);
+//         if ((i+1) % 32 == 0)
+//             printf("\n");
+//     }
 
-//     at45_power(&flash, false);
+
+    bootloader_board();
 
 
+//     printf("after:\n");
+//     at45_read(&flash, 0, buf, size);
+//     for(uint32_t i = 0; i < size; i++) {
+//         printf("%02x ", buf[i]);
+//         if ((i+1) % 32 == 0)
+//             printf("\n");
+//     }
+
+//     printf("internal:\n");
+//     uint8_t *p = (uint8_t*)0x1000;
+//     for(uint32_t i = 0; i < size; i++) {
+//         printf("%02x ", p[i]);
+//         if ((i+1) % 32 == 0)
+//             printf("\n");
+//     }
 
 }
 
