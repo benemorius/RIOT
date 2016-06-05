@@ -41,5 +41,5 @@
 void board_init(void)
 {
     cpu_init();
-    bootloader();
+//     bootloader();
 }

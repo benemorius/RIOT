@@ -6,7 +6,7 @@ MEMORY
     boot (RX) : ORIGIN = 0x00000000, LENGTH = 0x1000
 
     /* Flash Size 128 KB minus bootloader sector (4 KB) and CCA area below (88 bytes) */
-    rom (RX) : ORIGIN = 0x00001000, LENGTH = 0x1F7A8  /* (was LENGTH = 0x1FFA8 without bootloader) */
+    rom (RX) : ORIGIN = 0x00001000, LENGTH = 0x1efa8  /* (was LENGTH = 0x1FFA8 without bootloader) */
 
     /*
      * Customer Configuration Area and Bootloader Backdoor configuration

@@ -122,11 +122,15 @@ BOOT_FUNC int at45_init(at45_t *dev, spi_t spi, gpio_t cs, gpio_t rst, gpio_t wp
     if ((ret = spi_init_master(dev->spi, SPI_CONF_FIRST_RISING, SPI_SPEED_100KHZ)))
         return ret;
 
-//     uint16_t status = _at45_Read_DF_status(dev);
-//     printf("flash status: 0x%04x\n", status);
+
+    while ((_at45_Read_DF_status(dev) & 0x80) == 0);
+
+
+    uint16_t status = _at45_Read_DF_status(dev);
+    printf("flash status: 0x%04x\n", status);
 
 //     _at45_set_page_size(dev, true);
-//
+
 //     uint8_t id[4];
 //     at45_Read_DF_ID(dev, id);
 
@@ -149,24 +153,46 @@ BOOT_FUNC void at45_read(at45_t *dev, uint32_t address, uint8_t *buffer, uint32_
 void BOOT_FUNC at45_write(at45_t *dev, uint32_t address, uint8_t *buffer, uint32_t bytes)
 {
     uint32_t i;
+    uint16_t status;
+    uint16_t page;
     for (i = 0; i < bytes; i++) {
         at45_Buffer_Write_Byte(dev, 1, i % 256, buffer[i]);
-        if ((i+1) % 256 == 0) {
-            at45_Buffer_To_Page(dev, 1, i / 256);
-            while ((_at45_Read_DF_status(dev) & 0x80) == 0);
+        if((i+1) % 256 == 0) {
+            page = (address + i) / 256;
+//             printf("writing to address 0x%lx page %u\n", i + address, page);
+            at45_Buffer_To_Page(dev, 1, page);
+            do {
+                status = _at45_Read_DF_status(dev);
+                if(status & 0x2000) {
+                    printf("error\n");
+                    break;
+                }
+            } while((status & 0x80) == 0);
         }
     }
-    if (i % 256 != 0) {
-        while (i % 256 != 0) {
-            at45_Buffer_Write_Byte(dev, 1 , i % 256, 0xff);
+    if(i % 256 != 0) {
+        printf("padding last page\n");
+        while(i % 256 != 0) {
+            at45_Buffer_Write_Byte(dev, 1 , i % 256, 0x55);
             i++;
         }
-        at45_Buffer_To_Page(dev, 1, (i-1) / 256);
-        while ((_at45_Read_DF_status(dev) & 0x80) == 0);
+        i--;
+        page = (address + i) / 256;
+//         printf("writing to address 0x%lx page %u\n", i + address, page);
+        at45_Buffer_To_Page(dev, 1, page);
+//         at45_Buffer_To_Page(dev, 1, 1);
+        do {
+            status = _at45_Read_DF_status(dev);
+            if(status & 0x2000) {
+                printf("error\n");
+                break;
+            }
+        } while((status & 0x80) == 0);
     }
 }
 
 BOOT_FUNC static void _at45_set_page_size(at45_t *dev, bool is_256) {
+    //FIXME this causes a nonvolatile write; should skip the write if redundant
     gpio_clear(dev->cs);
     _at45_DF_SPI_RW(dev, PAGE_SIZE_0);
     _at45_DF_SPI_RW(dev, PAGE_SIZE_1);
@@ -355,16 +381,16 @@ BOOT_FUNC void at45_Buffer_To_Page(at45_t *dev, uint8_t BufferNo, uint16_t PageA
     if (1 == BufferNo)
     {
         _at45_DF_SPI_RW(dev, Buf1ToFlashWE);           //buffer 1 to flash with erase op-code
-        _at45_DF_SPI_RW(dev, (uint8_t)(PageAdr >> (16 - PAGE_BITS))); //upper part of page address
-        _at45_DF_SPI_RW(dev, (uint8_t)(PageAdr << (PAGE_BITS - 8)));  //lower part of page address
+        _at45_DF_SPI_RW(dev, (uint8_t)(PageAdr >> 8)); //upper part of page address
+        _at45_DF_SPI_RW(dev, (uint8_t)(PageAdr & 0xff));  //lower part of page address
         _at45_DF_SPI_RW(dev, 0x00);                    //don't cares
     }
 #ifdef USE_BUFFER2
     else if (2 == BufferNo)
     {
         _at45_DF_SPI_RW(dev, Buf2ToFlashWE);           //buffer 2 to flash with erase op-code
-        _at45_DF_SPI_RW(dev, (uint8_t)(PageAdr >> (16 - PAGE_BITS)));    //upper part of page address
-        _at45_DF_SPI_RW(dev, (uint8_t)(PageAdr << (PAGE_BITS - 8)));     //lower part of page address
+        _at45_DF_SPI_RW(dev, (uint8_t)(PageAdr >> 8));    //upper part of page address
+        _at45_DF_SPI_RW(dev, (uint8_t)(PageAdr & 0xff));     //lower part of page address
         _at45_DF_SPI_RW(dev, 0x00);                    //don't cares
     }
 #endif
