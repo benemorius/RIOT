@@ -29,10 +29,9 @@
 extern "C" {
 #endif
 
-#define BOOT_FUNC __attribute__((used,section(".boot")))
-
 int flash_read(uint32_t read_address, uint8_t *buffer, uint32_t length);
 int flash_write(uint32_t write_address, uint8_t *buffer, uint32_t length);
+int flash_erase(uint32_t start_address, uint32_t end_address);
 int flash_copy_sectors(uint32_t read_address, uint32_t write_address, uint32_t bytes);
 int flash_copy_test(void);
 

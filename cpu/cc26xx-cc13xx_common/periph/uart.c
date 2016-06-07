@@ -181,7 +181,7 @@ static inline void irq_handler(uart_t uart)
     lpm_awake();
 
     uint8_t c = UARTCharGet(_dev(uart));
-    UARTCharPut(_dev(uart), c);
+//     UARTCharPut(_dev(uart), c);
     uart_ctx[uart].rx_cb(uart_ctx[uart].arg, c);
 
     if (sched_context_switch_request) {

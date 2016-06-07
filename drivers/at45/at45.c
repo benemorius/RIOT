@@ -126,8 +126,8 @@ BOOT_FUNC int at45_init(at45_t *dev, spi_t spi, gpio_t cs, gpio_t rst, gpio_t wp
     while ((_at45_Read_DF_status(dev) & 0x80) == 0);
 
 
-    uint16_t status = _at45_Read_DF_status(dev);
-    printf("flash status: 0x%04x\n", status);
+//     uint16_t status = _at45_Read_DF_status(dev);
+//     printf("flash status: 0x%04x\n", status);
 
 //     _at45_set_page_size(dev, true);
 
@@ -150,7 +150,7 @@ BOOT_FUNC void at45_read(at45_t *dev, uint32_t address, uint8_t *buffer, uint32_
     gpio_set(dev->cs);
 }
 
-void BOOT_FUNC at45_write(at45_t *dev, uint32_t address, uint8_t *buffer, uint32_t bytes)
+BOOT_FUNC void at45_write(at45_t *dev, uint32_t address, uint8_t *buffer, uint32_t bytes)
 {
     uint32_t i;
     uint16_t status;
@@ -171,7 +171,7 @@ void BOOT_FUNC at45_write(at45_t *dev, uint32_t address, uint8_t *buffer, uint32
         }
     }
     if(i % 256 != 0) {
-        printf("padding last page\n");
+//         printf("padding last page\n");
         while(i % 256 != 0) {
             at45_Buffer_Write_Byte(dev, 1 , i % 256, 0x55);
             i++;

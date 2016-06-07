@@ -29,6 +29,8 @@
 #include "driverlib/flash.h"
 #include "cpu.h"
 
+static const uint32_t sector_size = 4096;
+
 BOOT_FUNC void _memcpy(void *dest, const void *src, size_t size) {
     uint word_size = 4;
     for (int i = 0; i < size; ) {
@@ -45,13 +47,47 @@ BOOT_FUNC int flash_read(uint32_t read_address, uint8_t *buffer, uint32_t length
 }
 
 BOOT_FUNC int flash_write(uint32_t write_address, uint8_t *buffer, uint32_t length) {
-    return 0;
+    return FlashProgram(buffer, write_address, length);
 }
+
+BOOT_FUNC int flash_erase(uint32_t start_address, uint32_t end_address) {
+    uint32_t ret = 0;
+    uint32_t first_sector = start_address - start_address % sector_size;
+    uint32_t last_sector = end_address - end_address % sector_size;
+
+//     __disable_irq();
+
+    for(uint32_t erase_address = first_sector; erase_address <= last_sector; erase_address += sector_size) {
+        /* check whether it's ok to erase this sector */
+        if (erase_address + sector_size == 0x20000) {
+            /* never erase the last flash sector, as the default ccfg values
+             * subsequently applied by ti-lib apparently disallow jtag access */
+            ret = -1;
+            goto out;
+        } else if (erase_address < 0x1000) {
+            /* never erase the bootloader sector */
+            ret = -1;
+            goto out;
+        }
+
+//         printf("erasing sector 0x%lx\n", erase_address);
+
+        /* erase sector */
+        ret = FlashSectorErase(erase_address);
+        if (ret) {
+            goto out;
+        }
+    }
+
+    out:
+//     __enable_irq();
+    return ret;
+}
+
 BOOT_FUNC int flash_copy_sectors(uint32_t read_address, uint32_t write_address, uint32_t bytes)
 {
     /* write n chunks of size sizeof(buf), erasing sectors as necessary */
     uint8_t buf[128];
-    uint32_t sector_size = 4096;
     uint32_t ret = 0;
     uint32_t last_erased_address = 0xffffffff;
 

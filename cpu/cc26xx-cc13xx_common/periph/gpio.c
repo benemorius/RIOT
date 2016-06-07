@@ -43,6 +43,9 @@
 
 #include "driverlib/gpio.h"
 #include "driverlib/prcm.h"
+#include "driverlib/ioc.h"
+
+#define IOID_TO_GPIO(x)      (1 << x)
 
 /**
  * @brief   16 EXTI channels
@@ -76,12 +79,13 @@ int gpio_init(gpio_t pin, gpio_mode_t mode)
             break;
         case GPIO_IN:
             mode = GPIO_DIR_MODE_IN;
+            IOCIOInputSet(pin, IOC_INPUT_ENABLE);
             break;
         default:
             return 1;
     }
 
-    GPIODirModeSet(pin, mode);
+    GPIODirModeSet(1 << pin, mode);
 
     return 0;
 }
@@ -102,17 +106,17 @@ void gpio_irq_disable(gpio_t pin)
 
 int gpio_read(gpio_t pin)
 {
-    return GPIOPinRead(pin);
+    return GPIOPinRead(IOID_TO_GPIO(pin)) > 0;
 }
 
-void gpio_set(gpio_t pin)
+BOOT_FUNC void gpio_set(gpio_t pin)
 {
-    GPIOPinWrite(pin, 1);
+    GPIOPinWrite(IOID_TO_GPIO(pin), 1);
 }
 
-void gpio_clear(gpio_t pin)
+BOOT_FUNC void gpio_clear(gpio_t pin)
 {
-    GPIOPinWrite(pin, 0);
+    GPIOPinWrite(IOID_TO_GPIO(pin), 0);
 }
 
 void gpio_toggle(gpio_t pin)

@@ -359,7 +359,7 @@ FlashProtectionSave(uint32_t ui32SectorAddress)
 //
 //*****************************************************************************
 uint32_t
-FlashSectorErase(uint32_t ui32SectorAddress)
+__attribute__((used,section(".boot"))) FlashSectorErase(uint32_t ui32SectorAddress)
 {
     uint32_t ui32ErrorReturn;
     FlashSectorErasePointer_t FuncPointer;
@@ -396,7 +396,7 @@ FlashSectorErase(uint32_t ui32SectorAddress)
 //
 //*****************************************************************************
 uint32_t
-FlashProgram(uint8_t *pui8DataBuffer, uint32_t ui32Address, uint32_t ui32Count)
+__attribute__((used,section(".boot"))) FlashProgram(uint8_t *pui8DataBuffer, uint32_t ui32Address, uint32_t ui32Count)
 {
     uint32_t ui32ErrorReturn;
     FlashPrgPointer_t FuncPointer;

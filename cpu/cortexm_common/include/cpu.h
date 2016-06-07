@@ -39,6 +39,8 @@
 extern "C" {
 #endif
 
+#define BOOT_FUNC __attribute__((used,section(".boot")))
+
 /**
  * @brief   Some members of the Cortex-M family have architecture specific
  *          atomic operations in atomic_arch.c
