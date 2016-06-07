@@ -74,7 +74,8 @@ typedef uint32_t gpio_t;
     * @brief   Define a CPU specific GPIO pin generator macro
     */
 
-#define GPIO_PIN(x)      (1 << x)
+// #define GPIO_PIN(x)      (1 << x)
+#define GPIO_PIN(x)      (x)
 
 /**
  * @brief   ADC configuration

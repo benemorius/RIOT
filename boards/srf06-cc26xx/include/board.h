@@ -66,6 +66,8 @@ extern "C" {
 #define GPIO_MEM_CS GPIO_PIN(20)
 #define GPIO_MEM_WP GPIO_PIN(19)
 
+#define GPIO_BTN_B GPIO_PIN(24)
+
 /**
  * Define the type for the radio packet length for the transceiver
  */

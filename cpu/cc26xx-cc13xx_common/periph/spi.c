@@ -129,14 +129,14 @@ int spi_init_master(spi_t spi, spi_conf_t conf, spi_speed_t speed)
                         spi_config[spi].ioid_clk
                        );
 
-    SSIConfigSetExpClk(_dev(spi), SysCtrlClockGet(), proto, SSI_MODE_MASTER, 1000000, config->bits);
+    SSIConfigSetExpClk(_dev(spi), SysCtrlClockGet(), proto, SSI_MODE_MASTER, 10000000, config->bits);
 
     SSIEnable(_dev(spi));
 
     return 0;
 }
 
-int spi_transfer_byte(spi_t spi, char out, char *in)
+BOOT_FUNC int spi_transfer_byte(spi_t spi, char out, char *in)
 {
     SSIDataPut(_dev(spi), out);
     while((SSIStatus(_dev(spi)) & SSI_RX_NOT_EMPTY) == 0);
