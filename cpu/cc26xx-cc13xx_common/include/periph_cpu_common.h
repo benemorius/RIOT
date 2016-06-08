@@ -47,6 +47,7 @@ extern "C" {
     * @brief   Length of the CPU_ID in octets
     */
 #define CPUID_LEN           (8U)
+#define IEEE_ADDR_LOCATION_PRIMARY   0x500012F0 /**< Primary IEEE address location */
 
 /**
     * @brief   Use the shared SPI functions
