@@ -46,6 +46,11 @@
 #include "rf-core.h"
 
 #include <stdint.h>
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /*---------------------------------------------------------------------------*/
 #ifdef RF_BLE_CONF_ENABLED
 #define RF_BLE_ENABLED RF_BLE_CONF_ENABLED
@@ -56,6 +61,12 @@
 #define RF_BLE_IDLE   0
 #define RF_BLE_ACTIVE 1
 /*---------------------------------------------------------------------------*/
+
+extern kernel_pid_t ble_thread_pid;
+extern char ble_beacon_thread_stack[THREAD_STACKSIZE_MAIN + 512];
+void *ble_beacon_thread(void *arg);
+extern uint16_t ble_mac_address[3];
+
 /**
  * \brief Set the device name to use with the BLE advertisement/beacon daemon
  * \param interval The interval (ticks) between two consecutive beacon bursts
@@ -88,6 +99,11 @@ void rf_ble_beacond_stop(void);
  * \retval 0 The BLE daemon is not active, or disabled
  */
 uint8_t rf_ble_is_active(void);
+
+#ifdef __cplusplus
+}
+#endif
+
 /*---------------------------------------------------------------------------*/
 #endif /* RF_BLE_H_ */
 /*---------------------------------------------------------------------------*/

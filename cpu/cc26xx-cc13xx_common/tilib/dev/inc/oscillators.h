@@ -48,6 +48,11 @@
 /*---------------------------------------------------------------------------*/
 #ifndef OSCILLATORS_H_
 #define OSCILLATORS_H_
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /*---------------------------------------------------------------------------*/
 /**
  * \brief Set the LF clock source to be the LF XOSC
@@ -92,6 +97,11 @@ void oscillators_switch_to_hf_xosc(void);
  * \brief Switches MF and HF clock source to be the HF RC OSC
  */
 void oscillators_switch_to_hf_rc(void);
+
+#ifdef __cplusplus
+}
+#endif
+
 /*---------------------------------------------------------------------------*/
 #endif /* OSCILLATORS_H_ */
 /*---------------------------------------------------------------------------*/

@@ -58,7 +58,11 @@
 #include <stdint.h>
 #include <stdbool.h>
 
-#define CC_ALIGN(x)
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+#define CC_ALIGN(x) __attribute__((__aligned__(x)))
 
 /*---------------------------------------------------------------------------*/
 /* The channel to use in IEEE or prop mode. */
@@ -269,9 +273,9 @@ typedef uint8_t radio_result_t;
 #define CLOCK_SECOND (1000000u)
 
 /* Make the main driver process visible to mode drivers */
-kernel_pid_t rf_core_pid;
+extern kernel_pid_t rf_core_pid;
+extern char rf_core_thread_stack[THREAD_STACKSIZE_MAIN + 512];
 void *rf_core_thread(void *arg);
-char rf_core_thread_stack [THREAD_STACKSIZE_MAIN + 512];
 #define RF_CORE_THREAD_NAME "CC13xx / CC26xx RF driver"
 /*---------------------------------------------------------------------------*/
 /**
@@ -453,6 +457,11 @@ void rf_core_primary_mode_abort(void);
  * \brief Abort the currently running primary radio op
  */
 uint8_t rf_core_primary_mode_restore(void);
+
+#ifdef __cplusplus
+}
+#endif
+
 /*---------------------------------------------------------------------------*/
 #endif /* RF_CORE_H_ */
 /*---------------------------------------------------------------------------*/

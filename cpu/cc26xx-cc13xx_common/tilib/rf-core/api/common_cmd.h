@@ -56,47 +56,51 @@
 #include <stdint.h>
 #include "mailbox.h"
 
-typedef struct __RFC_STRUCT rfc_command_s rfc_command_t;
-typedef struct __RFC_STRUCT rfc_radioOp_s rfc_radioOp_t;
-typedef struct __RFC_STRUCT rfc_CMD_NOP_s rfc_CMD_NOP_t;
-typedef struct __RFC_STRUCT rfc_CMD_RADIO_SETUP_s rfc_CMD_RADIO_SETUP_t;
-typedef struct __RFC_STRUCT rfc_CMD_FS_s rfc_CMD_FS_t;
-typedef struct __RFC_STRUCT rfc_CMD_FS_OFF_s rfc_CMD_FS_OFF_t;
-typedef struct __RFC_STRUCT rfc_CMD_RX_s rfc_CMD_RX_t;
-typedef struct __RFC_STRUCT rfc_CMD_TX_s rfc_CMD_TX_t;
-typedef struct __RFC_STRUCT rfc_CMD_RX_TEST_s rfc_CMD_RX_TEST_t;
-typedef struct __RFC_STRUCT rfc_CMD_TX_TEST_s rfc_CMD_TX_TEST_t;
-typedef struct __RFC_STRUCT rfc_CMD_SYNC_STOP_RAT_s rfc_CMD_SYNC_STOP_RAT_t;
-typedef struct __RFC_STRUCT rfc_CMD_SYNC_START_RAT_s rfc_CMD_SYNC_START_RAT_t;
-typedef struct __RFC_STRUCT rfc_CMD_COUNT_s rfc_CMD_COUNT_t;
-typedef struct __RFC_STRUCT rfc_CMD_FS_POWERUP_s rfc_CMD_FS_POWERUP_t;
-typedef struct __RFC_STRUCT rfc_CMD_FS_POWERDOWN_s rfc_CMD_FS_POWERDOWN_t;
-typedef struct __RFC_STRUCT rfc_CMD_SCH_IMM_s rfc_CMD_SCH_IMM_t;
-typedef struct __RFC_STRUCT rfc_CMD_COUNT_BRANCH_s rfc_CMD_COUNT_BRANCH_t;
-typedef struct __RFC_STRUCT rfc_CMD_PATTERN_CHECK_s rfc_CMD_PATTERN_CHECK_t;
-typedef struct __RFC_STRUCT rfc_CMD_TX_POWER_BOOST_s rfc_CMD_TX_POWER_BOOST_t;
-typedef struct __RFC_STRUCT rfc_CMD_ABORT_s rfc_CMD_ABORT_t;
-typedef struct __RFC_STRUCT rfc_CMD_STOP_s rfc_CMD_STOP_t;
-typedef struct __RFC_STRUCT rfc_CMD_GET_RSSI_s rfc_CMD_GET_RSSI_t;
-typedef struct __RFC_STRUCT rfc_CMD_UPDATE_RADIO_SETUP_s rfc_CMD_UPDATE_RADIO_SETUP_t;
-typedef struct __RFC_STRUCT rfc_CMD_TRIGGER_s rfc_CMD_TRIGGER_t;
-typedef struct __RFC_STRUCT rfc_CMD_GET_FW_INFO_s rfc_CMD_GET_FW_INFO_t;
-typedef struct __RFC_STRUCT rfc_CMD_START_RAT_s rfc_CMD_START_RAT_t;
-typedef struct __RFC_STRUCT rfc_CMD_PING_s rfc_CMD_PING_t;
-typedef struct __RFC_STRUCT rfc_CMD_ADD_DATA_ENTRY_s rfc_CMD_ADD_DATA_ENTRY_t;
-typedef struct __RFC_STRUCT rfc_CMD_REMOVE_DATA_ENTRY_s rfc_CMD_REMOVE_DATA_ENTRY_t;
-typedef struct __RFC_STRUCT rfc_CMD_FLUSH_QUEUE_s rfc_CMD_FLUSH_QUEUE_t;
-typedef struct __RFC_STRUCT rfc_CMD_CLEAR_RX_s rfc_CMD_CLEAR_RX_t;
-typedef struct __RFC_STRUCT rfc_CMD_REMOVE_PENDING_ENTRIES_s rfc_CMD_REMOVE_PENDING_ENTRIES_t;
-typedef struct __RFC_STRUCT rfc_CMD_SET_RAT_CMP_s rfc_CMD_SET_RAT_CMP_t;
-typedef struct __RFC_STRUCT rfc_CMD_SET_RAT_CPT_s rfc_CMD_SET_RAT_CPT_t;
-typedef struct __RFC_STRUCT rfc_CMD_DISABLE_RAT_CH_s rfc_CMD_DISABLE_RAT_CH_t;
-typedef struct __RFC_STRUCT rfc_CMD_SET_RAT_OUTPUT_s rfc_CMD_SET_RAT_OUTPUT_t;
-typedef struct __RFC_STRUCT rfc_CMD_ARM_RAT_CH_s rfc_CMD_ARM_RAT_CH_t;
-typedef struct __RFC_STRUCT rfc_CMD_DISARM_RAT_CH_s rfc_CMD_DISARM_RAT_CH_t;
-typedef struct __RFC_STRUCT rfc_CMD_SET_TX_POWER_s rfc_CMD_SET_TX_POWER_t;
-typedef struct __RFC_STRUCT rfc_CMD_UPDATE_FS_s rfc_CMD_UPDATE_FS_t;
-typedef struct __RFC_STRUCT rfc_CMD_BUS_REQUEST_s rfc_CMD_BUS_REQUEST_t;
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+typedef struct rfc_command_s rfc_command_t;
+typedef struct rfc_radioOp_s rfc_radioOp_t;
+typedef struct rfc_CMD_NOP_s rfc_CMD_NOP_t;
+typedef struct rfc_CMD_RADIO_SETUP_s rfc_CMD_RADIO_SETUP_t;
+typedef struct rfc_CMD_FS_s rfc_CMD_FS_t;
+typedef struct rfc_CMD_FS_OFF_s rfc_CMD_FS_OFF_t;
+typedef struct rfc_CMD_RX_s rfc_CMD_RX_t;
+typedef struct rfc_CMD_TX_s rfc_CMD_TX_t;
+typedef struct rfc_CMD_RX_TEST_s rfc_CMD_RX_TEST_t;
+typedef struct rfc_CMD_TX_TEST_s rfc_CMD_TX_TEST_t;
+typedef struct rfc_CMD_SYNC_STOP_RAT_s rfc_CMD_SYNC_STOP_RAT_t;
+typedef struct rfc_CMD_SYNC_START_RAT_s rfc_CMD_SYNC_START_RAT_t;
+typedef struct rfc_CMD_COUNT_s rfc_CMD_COUNT_t;
+typedef struct rfc_CMD_FS_POWERUP_s rfc_CMD_FS_POWERUP_t;
+typedef struct rfc_CMD_FS_POWERDOWN_s rfc_CMD_FS_POWERDOWN_t;
+typedef struct rfc_CMD_SCH_IMM_s rfc_CMD_SCH_IMM_t;
+typedef struct rfc_CMD_COUNT_BRANCH_s rfc_CMD_COUNT_BRANCH_t;
+typedef struct rfc_CMD_PATTERN_CHECK_s rfc_CMD_PATTERN_CHECK_t;
+typedef struct rfc_CMD_TX_POWER_BOOST_s rfc_CMD_TX_POWER_BOOST_t;
+typedef struct rfc_CMD_ABORT_s rfc_CMD_ABORT_t;
+typedef struct rfc_CMD_STOP_s rfc_CMD_STOP_t;
+typedef struct rfc_CMD_GET_RSSI_s rfc_CMD_GET_RSSI_t;
+typedef struct rfc_CMD_UPDATE_RADIO_SETUP_s rfc_CMD_UPDATE_RADIO_SETUP_t;
+typedef struct rfc_CMD_TRIGGER_s rfc_CMD_TRIGGER_t;
+typedef struct rfc_CMD_GET_FW_INFO_s rfc_CMD_GET_FW_INFO_t;
+typedef struct rfc_CMD_START_RAT_s rfc_CMD_START_RAT_t;
+typedef struct rfc_CMD_PING_s rfc_CMD_PING_t;
+typedef struct rfc_CMD_ADD_DATA_ENTRY_s rfc_CMD_ADD_DATA_ENTRY_t;
+typedef struct rfc_CMD_REMOVE_DATA_ENTRY_s rfc_CMD_REMOVE_DATA_ENTRY_t;
+typedef struct rfc_CMD_FLUSH_QUEUE_s rfc_CMD_FLUSH_QUEUE_t;
+typedef struct rfc_CMD_CLEAR_RX_s rfc_CMD_CLEAR_RX_t;
+typedef struct rfc_CMD_REMOVE_PENDING_ENTRIES_s rfc_CMD_REMOVE_PENDING_ENTRIES_t;
+typedef struct rfc_CMD_SET_RAT_CMP_s rfc_CMD_SET_RAT_CMP_t;
+typedef struct rfc_CMD_SET_RAT_CPT_s rfc_CMD_SET_RAT_CPT_t;
+typedef struct rfc_CMD_DISABLE_RAT_CH_s rfc_CMD_DISABLE_RAT_CH_t;
+typedef struct rfc_CMD_SET_RAT_OUTPUT_s rfc_CMD_SET_RAT_OUTPUT_t;
+typedef struct rfc_CMD_ARM_RAT_CH_s rfc_CMD_ARM_RAT_CH_t;
+typedef struct rfc_CMD_DISARM_RAT_CH_s rfc_CMD_DISARM_RAT_CH_t;
+typedef struct rfc_CMD_SET_TX_POWER_s rfc_CMD_SET_TX_POWER_t;
+typedef struct rfc_CMD_UPDATE_FS_s rfc_CMD_UPDATE_FS_t;
+typedef struct rfc_CMD_BUS_REQUEST_s rfc_CMD_BUS_REQUEST_t;
 
 //! \addtogroup command
 //! @{
@@ -1025,6 +1029,10 @@ struct __RFC_STRUCT rfc_CMD_BUS_REQUEST_s {
 };
 
 //! @}
+
+#ifdef __cplusplus
+}
+#endif
 
 //! @}
 //! @}
