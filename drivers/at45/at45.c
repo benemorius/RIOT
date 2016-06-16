@@ -191,6 +191,27 @@ BOOT_FUNC void at45_write(at45_t *dev, uint32_t address, uint8_t *buffer, uint32
     }
 }
 
+BOOT_FUNC void at45_read_otp(at45_t *dev, uint32_t offset, uint8_t *buffer, uint32_t bytes)
+{
+    gpio_clear(dev->cs);
+    _at45_DF_SPI_RW(dev, READ_SECURITY);
+    _at45_DF_SPI_RW(dev, 0);
+    _at45_DF_SPI_RW(dev, 0);
+    _at45_DF_SPI_RW(dev, 0);
+    for(uint32_t skip = 0; skip < offset; skip++) {
+        _at45_DF_SPI_RW(dev, 0x00);
+    }
+    for(uint32_t i = 0; i < bytes; i++) {
+        *buffer++ = _at45_DF_SPI_RW(dev, 0x00);
+    }
+    gpio_set(dev->cs);
+}
+
+BOOT_FUNC void at45_read_uid(at45_t *dev, uint8_t *buffer, uint32_t bytes)
+{
+    at45_read_otp(dev, 64, buffer, bytes);
+}
+
 BOOT_FUNC static void _at45_set_page_size(at45_t *dev, bool is_256) {
     //FIXME this causes a nonvolatile write; should skip the write if redundant
     gpio_clear(dev->cs);

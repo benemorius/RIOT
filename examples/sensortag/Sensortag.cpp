@@ -53,6 +53,8 @@
 #define GPIO_LED GPIO_PIN(18)
 
 Sensortag* sensortagS;
+uint8_t radio_id;
+
 
 void debug_printf(const char *format, ...) {
 //     tm time;
@@ -95,8 +97,7 @@ main_pid(thread_getpid())
 	DEBUG("cpuid: %02x %02x %02x %02x %02x %02x %02x %02x\n",
 		   cpuid[0], cpuid[1], cpuid[2], cpuid[3], cpuid[4], cpuid[5], cpuid[6], cpuid[7]
 	);
-	cpuid[0] ^= cpuid[4]; // first byte is not sufficiently unique
-	uint8_t radio_id = cpuid[0];
+	radio_id = cpuid[0];
     DEBUG("radio_id: %02x\n", radio_id);
 
 // 	setup_network(cpuid[0], false, 1111, &handle_packet, &handle_transmit);
@@ -119,6 +120,12 @@ main_pid(thread_getpid())
     at45_Read_DF_ID(&flash, id);
     printf("flash id: %02x %02x %02x %02x\n", id[0], id[1], id[2], id[3]);
 
+    at45_read_uid(&flash, cpuid, 8);
+    DEBUG("cpuid: %02x %02x %02x %02x %02x %02x %02x %02x\n",
+          cpuid[0], cpuid[1], cpuid[2], cpuid[3], cpuid[4], cpuid[5], cpuid[6], cpuid[7]
+    );
+    radio_id = cpuid[4];
+    DEBUG("radio_id: %02x\n", radio_id);
 
 
 //     uint32_t size = 512;

@@ -87,6 +87,7 @@ extern "C" {
 #define Buf2Write               0x87    // Buffer 2 write
 #define ReadMfgID               0x9F    // Read Manufacturer and Device ID
 #define READ_LOW_POWER          0x01    // Continuous array read (low power)
+#define READ_SECURITY           0x77    // Read security register
 
 #define PAGE_SIZE_0             0x3d
 #define PAGE_SIZE_1             0x2a
@@ -110,6 +111,8 @@ typedef struct {
 int at45_init(at45_t *dev, spi_t spi, gpio_t cs, gpio_t rst, gpio_t wp);
 void at45_read(at45_t *dev, uint32_t address, uint8_t *buffer, uint32_t bytes);
 void at45_write(at45_t *dev, uint32_t address, uint8_t *buffer, uint32_t bytes);
+void at45_read_otp(at45_t *dev, uint32_t offset, uint8_t *buffer, uint32_t bytes);
+void at45_read_uid(at45_t *dev, uint8_t *buffer, uint32_t bytes);
 
 
 void at45_Read_DF_ID(at45_t *dev, uint8_t *id);
