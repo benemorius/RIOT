@@ -53,7 +53,7 @@ export INCLUDES += -I$(RIOTBASE)/sys/include
 
 # export the peripheral drivers to be linked into the final binary
 # export USEMODULE += periph drivers emlib
-export USEMODULE += tilib periph drivers
+export USEMODULE += tilib periph drivers tilib-rf-core tilib-dev
 
 
 

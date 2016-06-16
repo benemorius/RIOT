@@ -103,7 +103,10 @@ static uint32_t ble_overrides[] = {
   0xFFFFFFFF, /* End of override list */
 };
 /*---------------------------------------------------------------------------*/
-// PROCESS(rf_ble_beacon_process, "CC13xx / CC26xx RF BLE Beacon Process");
+kernel_pid_t ble_thread_pid;
+char ble_beacon_thread_stack[THREAD_STACKSIZE_MAIN + 512];
+
+uint16_t ble_mac_address[3];
 /*---------------------------------------------------------------------------*/
 static int
 send_ble_adv_nc(int channel, uint8_t *adv_payload, int adv_payload_len)
@@ -128,6 +131,7 @@ send_ble_adv_nc(int channel, uint8_t *adv_payload, int adv_payload_len)
 
   /* Set up BLE Advertisement parameters */
 //   params->pDeviceAddress = (uint16_t *)&linkaddr_node_addr.u8[LINKADDR_SIZE - 2];
+  params->pDeviceAddress = ble_mac_address;
   params->endTrigger.triggerType = TRIG_NEVER;
   params->endTime = TRIG_NEVER;
 
@@ -190,8 +194,9 @@ rf_ble_beacond_start(void)
 
   ble_mode_on = RF_BLE_IDLE;
 
-//   process_start(&rf_ble_beacon_process, NULL);
-
+  ble_thread_pid = thread_create(ble_beacon_thread_stack, sizeof(ble_beacon_thread_stack), 13,
+                                 THREAD_CREATE_STACKTEST | THREAD_CREATE_WOUT_YIELD, ble_beacon_thread,
+                                 NULL, "ble_beacon");
   return RF_CORE_CMD_OK;
 }
 /*---------------------------------------------------------------------------*/
@@ -204,7 +209,9 @@ rf_ble_is_active(void)
 void
 rf_ble_beacond_stop(void)
 {
-//   process_exit(&rf_ble_beacon_process);
+    msg_t msg;
+    msg.type = 0;
+    msg_send(&msg, ble_thread_pid);
 }
 /*---------------------------------------------------------------------------*/
 static uint8_t
@@ -246,9 +253,15 @@ void* ble_beacon_thread(void* arg)
   int j;
   uint32_t cmd_status;
   bool interrupts_disabled;
+  xtimer_t timer;
+
+  xtimer_set_wakeup(&timer, 1000*1000, thread_getpid());
 
   while(1) {
-    xtimer_set(&ble_adv_et, beacond_config.interval);
+    thread_sleep();
+    xtimer_set_wakeup(&timer, beacond_config.interval, thread_getpid());
+
+    printf("send beacon\n");
 
 //     PROCESS_WAIT_EVENT_UNTIL(etimer_expired(&ble_adv_et) || ev == PROCESS_EVENT_EXIT);
 

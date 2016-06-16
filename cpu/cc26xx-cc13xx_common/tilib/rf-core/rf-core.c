@@ -99,6 +99,10 @@ static const rf_core_primary_mode_t *primary_mode = NULL;
 #define RF_CORE_CLOCKS_MASK (RFC_PWR_PWMCLKEN_RFC_M | RFC_PWR_PWMCLKEN_CPE_M \
                              | RFC_PWR_PWMCLKEN_CPERAM_M)
 /*---------------------------------------------------------------------------*/
+
+kernel_pid_t rf_core_pid;
+char rf_core_thread_stack [THREAD_STACKSIZE_MAIN + 512];
+
 uint8_t
 rf_core_is_accessible(void)
 {
@@ -340,6 +344,8 @@ rf_core_start_rat(void)
 uint8_t
 rf_core_boot(void)
 {
+  rf_core_set_modesel();
+
   if(rf_core_power_up() != RF_CORE_CMD_OK) {
     PRINTF("rf_core_boot: rf_core_power_up() failed\n");
 

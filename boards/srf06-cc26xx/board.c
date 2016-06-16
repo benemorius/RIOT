@@ -37,9 +37,11 @@
 
 #include "board.h"
 #include "bootloader.h"
+#include "wdt.h"
 
 void board_init(void)
 {
     cpu_init();
+    wdt_enable();
 //     bootloader();
 }

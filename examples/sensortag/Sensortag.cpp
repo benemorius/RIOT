@@ -36,10 +36,15 @@
 #include "si70xx.h"
 #include "hashes/md5.h"
 #include "bootloader.h"
+#include <algorithm>
 
 #include <stdio.h>
 
 #include "flash.h"
+#include "wdt.h"
+
+#include "rf-core.h"
+#include "rf-ble.h"
 
 #ifndef GIT_VERSION
 #define GIT_VERSION "undefined"
@@ -127,7 +132,7 @@ main_pid(thread_getpid())
 //     }
 
 
-    bootloader_board();
+//     bootloader_board();
 
 
 //     printf("after:\n");
@@ -160,21 +165,72 @@ void Sensortag::mainloop()
     int ret = si70xx_test(&si);
     printf("si70xx_test returned %i\n", ret);
 
+    uint32_t ble_interval = 6*1000*1000;
+    ble_mac_address[2] = 0xaabb;
+    ble_mac_address[1] = 0xccdd;
+    ble_mac_address[0] = 0xeeff;
+    char ble_name[32];
+    snprintf(ble_name, sizeof(ble_name), "riot-cc2650");
+
+    // dev       0d 06 12 07 0b 27 1f 23
+    // fridge    0d 06 12 06 2c 0e 1f 23
+
+    if(radio_id == 0x2c) {
+        snprintf(ble_name, sizeof(ble_name), "fridge");
+        ble_mac_address[0] = 0xee01;
+    }
+
+//     ble_mac_address[0] = 0xee00;
+//     ble_mac_address[0] &= (radio_id << 8);
+//     ble_mac_address[0] = radio_id;
+
+    rf_ble_beacond_config(ble_interval, ble_name);
+    rf_ble_beacond_start();
+
     xtimer_t t;
     int i =0;
     int16_t temperature;
     uint16_t humidity;
 
+    xtimer_set_wakeup(&t, 100*1000, thread_getpid());
     while(1) {
-        si70xx_get_both(&si, &humidity, &temperature);
-
-        printf("%i %lu %u ", i++, xtimer_now() / 1000, timer_read(TIMER_DEV(0)));
-        printf("%i.%02uC %u.%02u%%\n",
-               temperature / 100, temperature % 100,
-               humidity / 100, humidity % 100);
-
-        xtimer_set_wakeup(&t, 2000*1000, thread_getpid());
         thread_sleep();
+        xtimer_set_wakeup(&t, 3000*1000, thread_getpid());
+
+        static uint32_t wdt_last;
+        uint32_t wdt_current = wdt_read();
+        printf("wdt %lu %lu\n", wdt_current, wdt_last - wdt_current);
+        wdt_last = wdt_current;
+        wdt_periodic();
+
+        si70xx_get_both(&si, &humidity, &temperature);
+        char temperature_sign = temperature >= 0 ? ' ' : '-';
+        temperature = abs(temperature);
+
+        uint32_t now = xtimer_now();
+        uint32_t nowt = timer_read(TIMER_DEV(0));
+        printf("0x%08"PRIx32" 0x%08"PRIx32"\n",
+            now,
+            nowt
+        );
+        printf("%i %"PRIu32" %"PRIu32" ",
+               i++,
+               now / 1000,
+               nowt
+        );
+        printf("%c%i.%02iC %u.%02u%%\n",
+               temperature_sign,
+               temperature / 100, temperature % 100,
+               humidity / 100, humidity % 100
+        );
+
+        char name[32];
+        snprintf(name, sizeof(name), "%s %c%i.%02iC %i%%",
+                 ble_name,
+                 temperature_sign,
+                 temperature / 100, temperature % 100,
+                 humidity / 100);
+        rf_ble_beacond_config(ble_interval, name);
 
         flash_led(GPIO_PIN(18), 2);
     }
