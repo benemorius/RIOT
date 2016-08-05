@@ -289,6 +289,7 @@ struct __RFC_STRUCT rfc_CMD_BLE_ADV_DIR_s {
 //! \addtogroup CMD_BLE_ADV_NC
 //! @{
 #define CMD_BLE_ADV_NC                                          0x1805
+// #define CMD_BLE_ADV_NC                                          0x0518
 struct __RFC_STRUCT rfc_CMD_BLE_ADV_NC_s {
    uint16_t commandNo;                  //!<        The command ID number 0x1805
    uint16_t status;                     //!< \brief An integer telling the status of the command. This value is

@@ -55,8 +55,9 @@ enum lpm_mode lpm_arch_set(enum lpm_mode target)
 {
 	enum lpm_mode last_mode = current_mode;
 
-    if(target == LPM_IDLE)
-        target = LPM_SLEEP;
+//     if(target == LPM_IDLE)
+//         target = LPM_SLEEP;
+//     target = LPM_ON;
 
     switch (target) {
 		case LPM_ON:

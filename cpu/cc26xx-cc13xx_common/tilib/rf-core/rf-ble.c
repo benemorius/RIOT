@@ -50,7 +50,7 @@
 #include <stdbool.h>
 #include <stdio.h>
 /*---------------------------------------------------------------------------*/
-#define DEBUG 0
+#define DEBUG 1
 #if DEBUG
 #define PRINTF(...) printf(__VA_ARGS__)
 #else
@@ -60,7 +60,7 @@
 /* BLE Intervals: Send a burst of advertisements every BLE_ADV_INTERVAL secs */
 #define BLE_ADV_INTERVAL      (CLOCK_SECOND * 5)
 #define BLE_ADV_DUTY_CYCLE    (CLOCK_SECOND / 10)
-#define BLE_ADV_MESSAGES      10
+#define BLE_ADV_MESSAGES      3
 
 /* BLE Advertisement-related macros */
 #define BLE_ADV_TYPE_DEVINFO      0x01
@@ -141,14 +141,14 @@ send_ble_adv_nc(int channel, uint8_t *adv_payload, int adv_payload_len)
   params->pAdvData = adv_payload;
 
   if(rf_core_send_cmd((uint32_t)&cmd, &cmd_status) == RF_CORE_CMD_ERROR) {
-    PRINTF("send_ble_adv_nc: Chan=%d CMDSTA=0x%08lx, status=0x%04x\n",
+    printf("send_ble_adv_nc: error Chan=%d CMDSTA=0x%08lx, status=0x%04x\n",
            channel, cmd_status, cmd.status);
     return RF_CORE_CMD_ERROR;
   }
 
   /* Wait until the command is done */
   if(rf_core_wait_cmd_done(&cmd) != RF_CORE_CMD_OK) {
-    PRINTF("send_ble_adv_nc: Chan=%d CMDSTA=0x%08lx, status=0x%04x\n",
+    printf("send_ble_adv_nc: Chan=%d CMDSTA=0x%08lx, status=0x%04x\n",
            channel, cmd_status, cmd.status);
     return RF_CORE_CMD_ERROR;
   }
@@ -232,14 +232,14 @@ rf_radio_setup(void)
 
   /* Send Radio setup to RF Core */
   if(rf_core_send_cmd((uint32_t)&cmd, &cmd_status) != RF_CORE_CMD_OK) {
-    PRINTF("rf_radio_setup: CMDSTA=0x%08lx, status=0x%04x\n",
+    printf("rf_radio_setup: CMDSTA=0x%08lx, status=0x%04x\n",
            cmd_status, cmd.status);
     return RF_CORE_CMD_ERROR;
   }
 
   /* Wait until radio setup is done */
   if(rf_core_wait_cmd_done(&cmd) != RF_CORE_CMD_OK) {
-    PRINTF("rf_radio_setup: wait, CMDSTA=0x%08lx, status=0x%04x\n",
+    printf("rf_radio_setup: wait, CMDSTA=0x%08lx, status=0x%04x\n",
            cmd_status, cmd.status);
     return RF_CORE_CMD_ERROR;
   }
@@ -314,7 +314,7 @@ void* ble_beacon_thread(void* arg)
          * can switch to BLE mode
          */
 //         if(NETSTACK_RADIO.receiving_packet()) {
-//           PRINTF("rf_ble_beacon_process: We were receiving\n");
+//           printf("rf_ble_beacon_process: We were receiving\n");
 //
 //           /* Abort this pass */
 //           break;
@@ -327,7 +327,7 @@ void* ble_beacon_thread(void* arg)
 
         /* We were off: Boot the CPE */
         if(rf_core_boot() != RF_CORE_CMD_OK) {
-          PRINTF("rf_ble_beacon_process: rf_core_boot() failed\n");
+          printf("rf_ble_beacon_process: rf_core_boot() failed\n");
 
           /* Abort this pass */
           break;
@@ -339,13 +339,13 @@ void* ble_beacon_thread(void* arg)
 
       /* Enter BLE mode */
       if(rf_radio_setup() != RF_CORE_CMD_OK) {
-        PRINTF("cc26xx_rf_ble_beacon_process: Error entering BLE mode\n");
+        printf("cc26xx_rf_ble_beacon_process: Error entering BLE mode\n");
         /* Continue so we can at least try to restore our previous state */
       } else {
         /* Send advertising packets on all 3 advertising channels */
         for(j = 37; j <= 39; j++) {
           if(send_ble_adv_nc(j, payload, p) != RF_CORE_CMD_OK) {
-            PRINTF("cc26xx_rf_ble_beacon_process: Channel=%d, "
+            printf("cc26xx_rf_ble_beacon_process: Channel=%d, "
                    "Error advertising\n", j);
             /* Break the loop, but don't return just yet */
             break;
@@ -355,7 +355,7 @@ void* ble_beacon_thread(void* arg)
 
       /* Send a CMD_STOP command to RF Core */
       if(rf_core_send_cmd(CMDR_DIR_CMD(CMD_STOP), &cmd_status) != RF_CORE_CMD_OK) {
-        PRINTF("cc26xx_rf_ble_beacon_process: status=0x%08lx\n", cmd_status);
+        printf("cc26xx_rf_ble_beacon_process: status=0x%08lx\n", cmd_status);
         /* Continue... */
       }
 

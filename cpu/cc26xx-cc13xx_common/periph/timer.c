@@ -114,6 +114,7 @@ int timer_set(tim_t dev, int channel, unsigned int timeout)
 
 int timer_set_absolute(tim_t dev, int channel, unsigned int value)
 {
+//     value -= 0xff00000;
     DEBUG("timer_set_absolute(): timer %d channel %d value %u\n", dev, channel, value);
     AONRTCCompareValueSet(AON_RTC_CH0, value);
     AONRTCChannelEnable(AON_RTC_CH0);
@@ -128,6 +129,7 @@ int timer_clear(tim_t dev, int channel)
 
 unsigned int timer_read(tim_t dev)
 {
+//     return AONRTCCurrentCompareValueGet() + 0xff00000;
     return AONRTCCurrentCompareValueGet();
 }
 

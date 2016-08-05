@@ -24,24 +24,32 @@
  */
 
 /**
- * @ingroup     board_srf06-cc26xx
+ * @ingroup     cpu_cc26xx-cc13xx
  * @{
  *
  * @file
- * @brief       Board specific implementations for Sensortag CC2650
+ * @brief       Low-level watchdog timer implementation
  *
  * @author      Thomas Stilwell <stilwellt@openlabs.co>
  *
  * @}
  */
 
-#include "board.h"
-#include "bootloader.h"
-#include "wdt.h"
+#include "cpu.h"
 
-void board_init(void)
+#ifdef __cplusplus
+extern "C"
 {
-    cpu_init();
-//     wdt_enable();
-//     bootloader();
+#endif
+
+void wdt_enable(void);
+
+void wdt_disable(void);
+
+void wdt_periodic(void);
+
+uint32_t wdt_read(void);
+
+#ifdef __cplusplus
 }
+#endif

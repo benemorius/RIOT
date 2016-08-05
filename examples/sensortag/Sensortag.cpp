@@ -107,25 +107,25 @@ main_pid(thread_getpid())
 //     gpio_init_int(BTN_2, GPIO_PULLDOWN, GPIO_RISING, button_handler, NULL);
 
 
-    gpio_init(GPIO_MEM_PWR, GPIO_OUT);
-    gpio_clear(GPIO_MEM_PWR); //on
-    at45_t flash;
-    at45_init(&flash, SPI_DEV(0), GPIO_MEM_CS, GPIO_MEM_RST, GPIO_MEM_WP);
+//     gpio_init(GPIO_MEM_PWR, GPIO_OUT);
+//     gpio_clear(GPIO_MEM_PWR); //on
+//     at45_t flash;
+//     at45_init(&flash, SPI_DEV(0), GPIO_MEM_CS, GPIO_MEM_RST, GPIO_MEM_WP);
 
-    uint8_t id[4];
-    id[0] = 0x55;
-    id[1] = 0x55;
-    id[2] = 0x55;
-    id[3] = 0x55;
-    at45_Read_DF_ID(&flash, id);
-    printf("flash id: %02x %02x %02x %02x\n", id[0], id[1], id[2], id[3]);
-
-    at45_read_uid(&flash, cpuid, 8);
-    DEBUG("cpuid: %02x %02x %02x %02x %02x %02x %02x %02x\n",
-          cpuid[0], cpuid[1], cpuid[2], cpuid[3], cpuid[4], cpuid[5], cpuid[6], cpuid[7]
-    );
-    radio_id = cpuid[4];
-    DEBUG("radio_id: %02x\n", radio_id);
+//     uint8_t id[4];
+//     id[0] = 0x55;
+//     id[1] = 0x55;
+//     id[2] = 0x55;
+//     id[3] = 0x55;
+//     at45_Read_DF_ID(&flash, id);
+//     printf("flash id: %02x %02x %02x %02x\n", id[0], id[1], id[2], id[3]);
+//
+//     at45_read_uid(&flash, cpuid, 8);
+//     DEBUG("cpuid: %02x %02x %02x %02x %02x %02x %02x %02x\n",
+//           cpuid[0], cpuid[1], cpuid[2], cpuid[3], cpuid[4], cpuid[5], cpuid[6], cpuid[7]
+//     );
+//     radio_id = cpuid[4];
+//     DEBUG("radio_id: %02x\n", radio_id);
 
 
 //     uint32_t size = 512;
@@ -162,7 +162,8 @@ main_pid(thread_getpid())
 
 void Sensortag::mainloop()
 {
-	thread_yield();
+//     thread_yield();
+//     thread_sleep();
 
 	DEBUG("starting mainloop...\r\n");
 
@@ -181,10 +182,16 @@ void Sensortag::mainloop()
 
     // dev       0d 06 12 07 0b 27 1f 23
     // fridge    0d 06 12 06 2c 0e 1f 23
+    // red       04 46 0d 46 04 d9 16 23
 
     if(radio_id == 0x2c) {
         snprintf(ble_name, sizeof(ble_name), "fridge");
         ble_mac_address[0] = 0xee01;
+    }
+
+    if(radio_id == 0x04) {
+        snprintf(ble_name, sizeof(ble_name), "red");
+        ble_mac_address[0] = 0xee04;
     }
 
 //     ble_mac_address[0] = 0xee00;
@@ -199,10 +206,11 @@ void Sensortag::mainloop()
     int16_t temperature;
     uint16_t humidity;
 
+    uint8_t interval = 3;
     xtimer_set_wakeup(&t, 100*1000, thread_getpid());
     while(1) {
         thread_sleep();
-        xtimer_set_wakeup(&t, 3000*1000, thread_getpid());
+        xtimer_set_wakeup(&t, interval * 1000*1000, thread_getpid());
 
         static uint32_t wdt_last;
         uint32_t wdt_current = wdt_read();
@@ -232,14 +240,21 @@ void Sensortag::mainloop()
         );
 
         char name[32];
-        snprintf(name, sizeof(name), "%s %c%i.%02iC %i%%",
+        snprintf(name, sizeof(name), "%s %c%i.%02iC %i%% %u",
                  ble_name,
                  temperature_sign,
                  temperature / 100, temperature % 100,
-                 humidity / 100);
+                 humidity / 100,
+                 i / 60 * interval
+        );
         rf_ble_beacond_config(ble_interval, name);
 
         flash_led(GPIO_PIN(18), 2);
+
+        // reset before xtimer bug (wdt not working right yet)
+        if(i >= 1000) {
+            NVIC_SystemReset();
+        }
     }
 }
 
@@ -299,11 +314,11 @@ void Sensortag::mainloop()
 
 #define SET_CCFG_MODE_CONF_VDDR_TRIM_SLEEP_DELTA        0xF        // Signed delta value to apply to the VDDR_TRIM_SLEEP target, minus one
 
-#define SET_CCFG_MODE_CONF_DCDC_RECHARGE                0x0        // Use the DC/DC during recharge in powerdown
-// #define SET_CCFG_MODE_CONF_DCDC_RECHARGE             0x1        // Do not use the DC/DC during recharge in powerdown
+// #define SET_CCFG_MODE_CONF_DCDC_RECHARGE                0x0        // Use the DC/DC during recharge in powerdown
+#define SET_CCFG_MODE_CONF_DCDC_RECHARGE             0x1        // Do not use the DC/DC during recharge in powerdown
 
-#define SET_CCFG_MODE_CONF_DCDC_ACTIVE                  0x0        // Use the DC/DC during active mode
-// #define SET_CCFG_MODE_CONF_DCDC_ACTIVE               0x1        // Do not use the DC/DC during active mode
+// #define SET_CCFG_MODE_CONF_DCDC_ACTIVE                  0x0        // Use the DC/DC during active mode
+#define SET_CCFG_MODE_CONF_DCDC_ACTIVE               0x1        // Do not use the DC/DC during active mode
 
 // #define SET_CCFG_MODE_CONF_VDDS_BOD_LEVEL            0x0        // VDDS BOD level is 2.0V
 #define SET_CCFG_MODE_CONF_VDDS_BOD_LEVEL               0x1        // VDDS BOD level is 1.8V (or 1.65V for external regulator mode)
@@ -544,28 +559,28 @@ void Sensortag::mainloop()
 #define DEFAULT_CCFG_CCFG_PROT_95_64     SET_CCFG_CCFG_PROT_95_64
 #define DEFAULT_CCFG_CCFG_PROT_127_96    SET_CCFG_CCFG_PROT_127_96
 
-const ccfg_t __ccfg __attribute__((used,section(".ccfg"))) =
-{                                     // Mapped to address
-    DEFAULT_CCFG_O_EXT_LF_CLK       , // 0x50003FA8 (0x50003xxx maps to last
-    DEFAULT_CCFG_MODE_CONF_1        , // 0x50003FAC  sector in FLASH.
-    DEFAULT_CCFG_SIZE_AND_DIS_FLAGS , // 0x50003FB0  Independent of FLASH size)
-    DEFAULT_CCFG_MODE_CONF          , // 0x50003FB4
-    DEFAULT_CCFG_VOLT_LOAD_0        , // 0x50003FB8
-    DEFAULT_CCFG_VOLT_LOAD_1        , // 0x50003FBC
-    DEFAULT_CCFG_RTC_OFFSET         , // 0x50003FC0
-    DEFAULT_CCFG_FREQ_OFFSET        , // 0x50003FC4
-    DEFAULT_CCFG_IEEE_MAC_0         , // 0x50003FC8
-    DEFAULT_CCFG_IEEE_MAC_1         , // 0x50003FCC
-    DEFAULT_CCFG_IEEE_BLE_0         , // 0x50003FD0
-    DEFAULT_CCFG_IEEE_BLE_1         , // 0x50003FD4
-    DEFAULT_CCFG_BL_CONFIG          , // 0x50003FD8
-    DEFAULT_CCFG_ERASE_CONF         , // 0x50003FDC
-    DEFAULT_CCFG_CCFG_TI_OPTIONS    , // 0x50003FE0
-    DEFAULT_CCFG_CCFG_TAP_DAP_0     , // 0x50003FE4
-    DEFAULT_CCFG_CCFG_TAP_DAP_1     , // 0x50003FE8
-    DEFAULT_CCFG_IMAGE_VALID_CONF   , // 0x50003FEC
-    DEFAULT_CCFG_CCFG_PROT_31_0     , // 0x50003FF0
-    DEFAULT_CCFG_CCFG_PROT_63_32    , // 0x50003FF4
-    DEFAULT_CCFG_CCFG_PROT_95_64    , // 0x50003FF8
-    DEFAULT_CCFG_CCFG_PROT_127_96   , // 0x50003FFC
-};
+// const ccfg_t __ccfg __attribute__((used,section(".ccfg"))) =
+// {                                     // Mapped to address
+//     DEFAULT_CCFG_O_EXT_LF_CLK       , // 0x50003FA8 (0x50003xxx maps to last
+//     DEFAULT_CCFG_MODE_CONF_1        , // 0x50003FAC  sector in FLASH.
+//     DEFAULT_CCFG_SIZE_AND_DIS_FLAGS , // 0x50003FB0  Independent of FLASH size)
+//     DEFAULT_CCFG_MODE_CONF          , // 0x50003FB4
+//     DEFAULT_CCFG_VOLT_LOAD_0        , // 0x50003FB8
+//     DEFAULT_CCFG_VOLT_LOAD_1        , // 0x50003FBC
+//     DEFAULT_CCFG_RTC_OFFSET         , // 0x50003FC0
+//     DEFAULT_CCFG_FREQ_OFFSET        , // 0x50003FC4
+//     DEFAULT_CCFG_IEEE_MAC_0         , // 0x50003FC8
+//     DEFAULT_CCFG_IEEE_MAC_1         , // 0x50003FCC
+//     DEFAULT_CCFG_IEEE_BLE_0         , // 0x50003FD0
+//     DEFAULT_CCFG_IEEE_BLE_1         , // 0x50003FD4
+//     DEFAULT_CCFG_BL_CONFIG          , // 0x50003FD8
+//     DEFAULT_CCFG_ERASE_CONF         , // 0x50003FDC
+//     DEFAULT_CCFG_CCFG_TI_OPTIONS    , // 0x50003FE0
+//     DEFAULT_CCFG_CCFG_TAP_DAP_0     , // 0x50003FE4
+//     DEFAULT_CCFG_CCFG_TAP_DAP_1     , // 0x50003FE8
+//     DEFAULT_CCFG_IMAGE_VALID_CONF   , // 0x50003FEC
+//     DEFAULT_CCFG_CCFG_PROT_31_0     , // 0x50003FF0
+//     DEFAULT_CCFG_CCFG_PROT_63_32    , // 0x50003FF4
+//     DEFAULT_CCFG_CCFG_PROT_95_64    , // 0x50003FF8
+//     DEFAULT_CCFG_CCFG_PROT_127_96   , // 0x50003FFC
+// };

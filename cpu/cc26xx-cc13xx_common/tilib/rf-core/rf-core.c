@@ -62,7 +62,7 @@
 #include <stdio.h>
 #include <string.h>
 /*---------------------------------------------------------------------------*/
-#define DEBUG 0
+#define DEBUG 1
 #if DEBUG
 #define PRINTF(...) printf(__VA_ARGS__)
 #else
@@ -118,6 +118,19 @@ rf_core_send_cmd(uint32_t cmd, uint32_t *status)
   uint32_t timeout_count = 0;
   bool interrupts_disabled;
   bool is_radio_op = false;
+
+//   printf("rf_core_send_cmd: sending command 0x%08lx\n", cmd);
+//
+//   rfc_command_t *rfc_command = (rfc_command_t*)cmd;
+//   if(cmd & 0x20000000) { // cmd is in ram (rather than radio rom)
+//       printf("rf_core_send_cmd: commandNo 0x%04x\n", rfc_command->commandNo);
+//       if(rfc_command->commandNo == 0x1805) {
+//         rfc_CMD_BLE_ADV_NC_t *c = (rfc_CMD_BLE_ADV_NC_t*)cmd;
+//         printf("rf_core_send_cmd: channel %u\n", c->channel);
+//         printf("rf_core_send_cmd: pParams 0x%08lx\n", (uint32_t)c->pParams);
+//         printf("rf_core_send_cmd: pAdvData 0x%08lx\n", (uint32_t)c->pParams->pAdvData);
+//       }
+//   }
 
   /*
    * If cmd is 4-byte aligned, then it's either a radio OP or an immediate
