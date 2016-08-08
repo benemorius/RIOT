@@ -96,6 +96,10 @@ void uart_write(uart_t uart, const uint8_t *data, size_t len)
 {
     for (size_t i = 0; i < len; i++) {
         while (UART->FR & UART_FR_TXFF) {}
+        if (data[i] == '\n') {
+            UART->DR = '\r';
+            while (UART->FR & UART_FR_TXFF) {}
+        }
         UART->DR = data[i];
     }
 }

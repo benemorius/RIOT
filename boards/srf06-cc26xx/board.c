@@ -36,12 +36,14 @@
  */
 
 #include "board.h"
-#include "bootloader.h"
-#include "wdt.h"
+#include "periph/gpio.h"
+// #include "wdt.h"
 
 void board_init(void)
 {
     cpu_init();
+    gpio_init(GPIO_PIN(18), GPIO_OUT);
+
 //     wdt_enable();
 //     bootloader();
 }

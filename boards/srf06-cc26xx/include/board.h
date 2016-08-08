@@ -16,9 +16,11 @@ extern "C" {
 #define F_CPU               (48000000UL)
 
 /**
- * @name Assign the peripheral timer to be used as hardware timer
+ * @brief   Xtimer configuration
+ * @{
  */
-#define HW_TIMER            TIMER_0
+#define XTIMER_WIDTH                (16)
+/** @} */
 
 /**
  * @name Assign the UART interface to be used for stdio

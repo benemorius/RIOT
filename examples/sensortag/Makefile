@@ -53,7 +53,7 @@ USEMODULE += shell
 USEMODULE += shell_commands
 # USEMODULE += uart0
 USEMODULE += ps
-USEMODULE += xtimer
+# USEMODULE += xtimer
 
 USEMODULE += at45
 USEMODULE += si70xx

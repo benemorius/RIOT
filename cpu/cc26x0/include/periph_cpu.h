@@ -30,6 +30,8 @@ extern "C" {
  */
 #define CPUID_LEN           (16U)
 
+#define GPIO_PIN(x)      (x)
+
 #ifndef DOXYGEN
 /**
  * @brief   Override GPIO mode values

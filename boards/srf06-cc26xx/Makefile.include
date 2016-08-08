@@ -1,5 +1,5 @@
-export CPU = cc26xx
-export CPU_MODEL = cc2650
+export CPU       = cc26x0
+export CPU_MODEL = cc26x0f128
 
 #define the default port depending on the host OS
 PORT ?= -p /dev/ttyUSB0

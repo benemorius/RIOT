@@ -38,11 +38,6 @@
 #define PERIPH_CONF_H_
 
 #include "periph_cpu.h"
-#include "hw_memmap.h"
-#include "driverlib/uart.h"
-#include "driverlib/gpio.h"
-#include "driverlib/ioc.h"
-#include "driverlib/prcm.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -55,44 +50,40 @@ extern "C" {
 #define CLOCK_CORECLOCK     (48000000U)
 
 /**
- * @name Timer configuration
+ * @brief   Timer configuration
  * @{
  */
-#define TIMER_NUMOF         (1U)
-#define TIMER_0_EN          1
-#define XTIMER_SHIFT        (4U)
+static const timer_conf_t timer_config[] = {
+    {
+        .dev  = GPT0,
+        .num  = 0
+    },
+    {
+        .dev  = GPT1,
+        .num  = 1
+    }
+};
 
-/* Timer 0 configuration */
-#define TIMER_0_DEV         AON_RTC_BASE
-#define TIMER_0_CHANNELS    (1U)
-#define TIMER_0_MAX_VALUE   (0xffffffff)
+#define TIMER_0_ISR         isr_timer0_chan0
+#define TIMER_1_ISR         isr_timer1_chan0
+
+#define TIMER_NUMOF         (sizeof(timer_config) / sizeof(timer_config[0]))
+/** @} */
 
 /**
- * @name UART configuration
+ * @brief   UART configuration
+ *
+ * The used CC26x0 CPU only supports a single UART device, so all we need to
+ * configure are the RX and TX pins.
+ *
+ * Optionally we can enable hardware flow control, by setting UART_HW_FLOW_CTRL
+ * to 1 and defining pins for UART_CTS_PIN and UART_RTS_PIN.
  * @{
  */
-#define UART_NUMOF          (1U)
-#define UART_0_EN           1
-#define UART_STDIO_DEV      UART_DEV(0)
-
-#define UART_0_DEV          UART0_BASE
-#define UART_0_CLKEN()      CMU_ClockEnable(cmuClock_USART0, true)
-#define UART_0_RX_IRQ       USART0_RX_IRQn
-#define UART_0_TX_IRQ       USART0_TX_IRQn
-#define UART_0_RX_ISR       USART0_RX_IRQHandler
-#define UART_0_TX_ISR       USART0_TX_IRQHandler
-
-static const uart_conf_t uart_config[] = {
-    {
-        .dev        = UART0_BASE,
-        .prcmp      = PRCM_PERIPH_UART0,
-        .irqn       = INT_UART0,
-        .gpio_rx    = GPIO_PIN_2,
-        .gpio_tx    = GPIO_PIN_3,
-        .ioid_rx    = IOID_2,
-        .ioid_tx    = IOID_3,
-    },
-};
+#define UART_NUMOF          (1)
+#define UART_RX_PIN         (2)
+#define UART_TX_PIN         (3)
+/** @} */
 
 /**
  * @name ADC configuration
@@ -125,22 +116,22 @@ static const uart_conf_t uart_config[] = {
  */
 #define SPI_NUMOF           (1U)
 #define SPI_0_EN            1
-static const ssi_conf_t spi_config[] = {
-    {
-        .dev        = SSI0_BASE,
-        .prcmp      = PRCM_PERIPH_SSI0,
-        .bits       = 8,
-        .irqn       = INT_SSI0,
-        .gpio_mosi  = GPIO_PIN_9,
-        .gpio_miso  = GPIO_PIN_8,
-        .gpio_clk   = GPIO_PIN_10,
-        .gpio_cs    = GPIO_PIN_11,
-        .ioid_mosi  = IOID_9,
-        .ioid_miso  = IOID_8,
-        .ioid_clk   = IOID_10,
-        .ioid_cs    = IOID_11,
-    },
-};
+// static const ssi_conf_t spi_config[] = {
+//     {
+//         .dev        = SSI0_BASE,
+//         .prcmp      = PRCM_PERIPH_SSI0,
+//         .bits       = 8,
+//         .irqn       = INT_SSI0,
+//         .gpio_mosi  = GPIO_PIN_9,
+//         .gpio_miso  = GPIO_PIN_8,
+//         .gpio_clk   = GPIO_PIN_10,
+//         .gpio_cs    = GPIO_PIN_11,
+//         .ioid_mosi  = IOID_9,
+//         .ioid_miso  = IOID_8,
+//         .ioid_clk   = IOID_10,
+//         .ioid_cs    = IOID_11,
+//     },
+// };
 
 /**
  * @name I2C configuration
@@ -148,18 +139,18 @@ static const ssi_conf_t spi_config[] = {
  */
 #define I2C_NUMOF       (1U)
 #define I2C_0_EN        (1)
-static const i2c_conf_t i2c_config[] = {
-    {
-        .dev        = I2C0_BASE,
-        .prcmp      = PRCM_PERIPH_I2C0,
-        .bits       = 8,
-        .irqn       = INT_I2C,
-        .gpio_scl   = GPIO_PIN_26,
-        .gpio_sda   = GPIO_PIN_25,
-        .ioid_scl   = IOID_26,
-        .ioid_sda   = IOID_25,
-    },
-};
+// static const i2c_conf_t i2c_config[] = {
+//     {
+//         .dev        = I2C0_BASE,
+//         .prcmp      = PRCM_PERIPH_I2C0,
+//         .bits       = 8,
+//         .irqn       = INT_I2C,
+//         .gpio_scl   = GPIO_PIN_26,
+//         .gpio_sda   = GPIO_PIN_25,
+//         .ioid_scl   = IOID_26,
+//         .ioid_sda   = IOID_25,
+//     },
+// };
 
 /**
  * @name GPIO configuration
