@@ -139,18 +139,12 @@ static const timer_conf_t timer_config[] = {
  */
 #define I2C_NUMOF       (1U)
 #define I2C_0_EN        (1)
-// static const i2c_conf_t i2c_config[] = {
-//     {
-//         .dev        = I2C0_BASE,
-//         .prcmp      = PRCM_PERIPH_I2C0,
-//         .bits       = 8,
-//         .irqn       = INT_I2C,
-//         .gpio_scl   = GPIO_PIN_26,
-//         .gpio_sda   = GPIO_PIN_25,
-//         .ioid_scl   = IOID_26,
-//         .ioid_sda   = IOID_25,
-//     },
-// };
+static const i2c_conf_t i2c_config[] = {
+    {
+        .scl_pin   = 26,
+        .sda_pin   = 25,
+    },
+};
 
 /**
  * @name GPIO configuration
