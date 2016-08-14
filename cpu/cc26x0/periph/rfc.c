@@ -15,6 +15,18 @@
 
 #define BLE_ADV_STR "this is not a riot\n"
 
+/* BLE Advertisement-related macros */
+#define BLE_ADV_TYPE_DEVINFO      0x01
+#define BLE_ADV_TYPE_NAME         0x09
+#define BLE_ADV_TYPE_MANUFACTURER 0xFF
+#define BLE_ADV_NAME_BUF_LEN        32
+#define BLE_ADV_PAYLOAD_BUF_LEN     64
+#define BLE_UUID_SIZE               16
+
+static rfc_bleAdvPar_t ble_params_buf __attribute__((__aligned__(4)));
+uint16_t ble_mac_address[3] __attribute__((__aligned__(4))) = {0xeeff, 0xccdd, 0xaabb};
+char adv_name[BLE_ADV_NAME_BUF_LEN] = {"riot-test"};
+
 void isr_rfc_cmd_ack(void)
 {
     /*ROP ack = op submitted, DIR or IMM ack = op executed*/
@@ -114,15 +126,70 @@ bool rfc_setup_ble(void)
     return status == R_OP_STATUS_DONE_OK;
 }
 
+int send_ble_adv_nc(int channel, uint8_t *adv_payload, int adv_payload_len)
+{
+    rfc_CMD_BLE_ADV_NC_t cmd;
+    rfc_bleAdvPar_t *params;
+
+    params = (rfc_bleAdvPar_t *)&ble_params_buf;
+
+    /* Clear both buffers */
+    memset(&cmd, 0x00, sizeof(cmd));
+    memset(params, 0x00, sizeof(*params));
+
+    /* Adv NC */
+    cmd.commandNo = 0x1805;
+    cmd.condition.rule = R_OP_CONDITION_RULE_NEVER;
+    cmd.whitening.bOverride = 0;
+    cmd.whitening.init = 0;
+    cmd.pParams = params;
+    cmd.channel = channel;
+
+    /* Set up BLE Advertisement parameters */
+    params->pDeviceAddress = ble_mac_address;
+    params->endTrigger.triggerType = R_OP_STARTTRIG_TYPE_TRIG_NEVER;
+    params->endTime = R_OP_STARTTRIG_TYPE_TRIG_NEVER;
+
+    params->advLen = adv_payload_len;
+    params->pAdvData = adv_payload;
+
+    uint32_t status = rfc_send_cmd((uint32_t*)&cmd);
+
+    if (status != 1) {
+        printf("bad CMDSTA: 0x%lx", status);
+        while(1);
+    }
+
+    radio_op_command_t *rop_cmd = (radio_op_command_t *)&cmd;
+
+    status = rfc_wait_cmd_done(rop_cmd);
+    if (status != 0x1400) {
+        printf("bad CMDSTA: 0x%lx", status);
+        while(1);
+    }
+
+    return 0;
+}
+
 void rfc_ble_beacon(void)
 {
-    ble_rop_cmd_t rop;
-    memset(&rop, 0, sizeof(rop));
+    uint16_t p = 0;
+    static uint8_t payload[BLE_ADV_PAYLOAD_BUF_LEN] __attribute__((__aligned__(4)));
 
-    //rop->op.commandNo = CMDR_CMDID_BLE_ADV_SCAN;
-    rop.ropCmd.commandNo = CMDR_CMDID_PING;
+    /* device info */
+    memset(payload, 0, BLE_ADV_PAYLOAD_BUF_LEN);
+    payload[p++] = 0x02;          /* 2 bytes */
+    payload[p++] = BLE_ADV_TYPE_DEVINFO;
+    payload[p++] = 0x1a;          /* LE general discoverable + BR/EDR */
+    payload[p++] = 1 + strlen(adv_name);
+    payload[p++] = BLE_ADV_TYPE_NAME;
+    memcpy(&payload[p], adv_name,
+           strlen(adv_name));
+    p += strlen(adv_name);
 
-    rfc_send_cmd(&rop.ropCmd);
+    send_ble_adv_nc(37, payload, p);
+    send_ble_adv_nc(38, payload, p);
+    send_ble_adv_nc(39, payload, p);
 }
 
 bool rfc_ping_test(void)
@@ -154,6 +221,7 @@ static bool rfc_start_rat(void)
     ratCommand.commandID = CMDR_CMDID_START_RAT;
     RFC_DBELL->CMDR = (uint32_t) (&ratCommand);
     while (!RFC_DBELL->CMDSTA); /* wait for cmd ack */
+    printf("START_RAT finished with 0x%lx\n", RFC_DBELL->CMDSTA); //FIXME future beacon send fails without this
     return RFC_DBELL->CMDSTA == CMDSTA_RESULT_DONE;
 }
 
