@@ -159,6 +159,11 @@ static bool rfc_start_rat(void)
 
 void rfc_prepare(void)
 {
+    /* rfc mode must be set before powering up radio (undocumented) */
+    uint32_t *rfc_mode_hwopt = (uint32_t*)0x400821D4;
+    printf("modeopt: 0x%lx\n", ((*rfc_mode_hwopt) >> 1) & 0x7);
+    PRCM->RFCMODESEL = 0x5;
+
     /* RFC POWER DOMAIN CLOCK GATE */
     PRCM->RFCCLKG = 1;
 
