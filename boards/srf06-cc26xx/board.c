@@ -42,7 +42,9 @@
 void board_init(void)
 {
     cpu_init();
-    gpio_init(GPIO_PIN(18), GPIO_OUT);
+
+    gpio_init(LED0_PIN, GPIO_OUT);
+    gpio_init(LED1_PIN, GPIO_OUT);
 
 //     wdt_enable();
 //     bootloader();

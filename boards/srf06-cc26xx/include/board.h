@@ -5,6 +5,7 @@
 
 #include "cpu.h"
 #include "periph_conf.h"
+#include "periph/gpio.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -42,15 +43,19 @@ extern "C" {
 /** @} */
 
 /**
- * @name Macros for controlling the on-board LEDs.
+ * @brief   Macros for controlling the on-board LEDs
  * @{
  */
-// #define LED_GREEN_ON        GPIO->P[LED_0_PORT].DOUTSET = 1 << LED_0_PIN;
-// #define LED_GREEN_OFF       GPIO->P[LED_0_PORT].DOUTCLR = 1 << LED_0_PIN;
-// #define LED_GREEN_TOGGLE    GPIO->P[LED_0_PORT].DOUTTGL = 1 << LED_0_PIN;
-// #define LED_RED_ON          GPIO->P[LED_1_PORT].DOUTSET = 1 << LED_1_PIN;
-// #define LED_RED_OFF         GPIO->P[LED_1_PORT].DOUTCLR = 1 << LED_1_PIN;
-// #define LED_RED_TOGGLE      GPIO->P[LED_1_PORT].DOUTTGL = 1 << LED_1_PIN;
+#define LED0_PIN            GPIO_PIN(18)
+#define LED1_PIN            GPIO_PIN(18)
+
+#define LED0_ON             gpio_set(LED0_PIN)
+#define LED0_OFF            gpio_clear(LED0_PIN)
+#define LED0_TOGGLE         gpio_toggle(LED0_PIN)
+
+#define LED1_ON             gpio_set(LED1_PIN)
+#define LED1_OFF            gpio_clear(LED1_PIN)
+#define LED1_TOGGLE         gpio_toggle(LED1_PIN)
 /** @} */
 
 /**
