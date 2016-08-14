@@ -59,15 +59,15 @@ typedef struct {
 
 
 typedef struct {
-    reg32_t CMDR;
-    reg32_t CMDSTA;
-    reg32_t RFHWIFG;
-    reg32_t RFHWIEN;
-    reg32_t RFCPEIFG;
-    reg32_t RFCPEIEN;
-    reg32_t RFCPEISL;
-    reg32_t RFACKIFG;
-    reg32_t SYSGPOCTL;
+    reg32_t CMDR; /** Doorbell Command Register */
+    reg32_t CMDSTA; /** Doorbell Command Status Register */
+    reg32_t RFHWIFG; /** Interrupt Flags From RF Hardware Modules */
+    reg32_t RFHWIEN; /** Interrupt Enable For RF Hardware Modules */
+    reg32_t RFCPEIFG; /** Interrupt Flags For Command and Packet Engine Generated Interrupts */
+    reg32_t RFCPEIEN; /** Interrupt Enable For Command and Packet Engine Generated Interrupts */
+    reg32_t RFCPEISL; /** Interrupt Vector Selection For Command and Packet Engine Generated Interrupts */
+    reg32_t RFACKIFG; /** Doorbell Command Acknowledgement Interrupt Flag */
+    reg32_t SYSGPOCTL; /** RF Core General Purpose Output Control */
 } cc26x0_rfc_dbell_regs_t;
 
 #define RFC_DBELL ((cc26x0_rfc_dbell_regs_t *)(RFC_DBELL_BASE))
