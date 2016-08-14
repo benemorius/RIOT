@@ -313,6 +313,11 @@ typedef struct {
     unsigned int commandType: 2; /*must be 01 for direct command*/
 } direct_command_t;
 
+/// Type definition for a data queue
+typedef struct {
+    uint8_t *pCurrEntry;   ///< Pointer to the data queue entry to be used, NULL for an empty queue
+    uint8_t *pLastEntry;   ///< Pointer to the last entry in the queue, NULL for a circular queue
+} dataQueue_t;
 
 /*
  * R: system CPU can read a result back; the radio CPU does not read the field
@@ -321,6 +326,12 @@ typedef struct {
  */
 
 typedef struct radio_op_command_s radio_op_command_t;
+typedef struct rfc_CMD_BLE_ADV_NC_s rfc_CMD_BLE_ADV_NC_t;
+typedef struct rfc_bleAdvPar_s rfc_bleAdvPar_t;
+typedef struct rfc_bleAdvOutput_s rfc_bleAdvOutput_t;
+typedef struct rfc_bleWhiteListEntry_s rfc_bleWhiteListEntry_t;
+
+
 struct __attribute__ ((packed)) radio_op_command_s {
     uint16_t commandNo; /* W */
     uint16_t status; /* R/W */
@@ -337,6 +348,105 @@ struct __attribute__ ((packed)) radio_op_command_s {
         uint8_t nSkip:4;
     } condition; /* W */
 }; /* rop require 32-bit word alignement, i.e. the 2 LSB of cmd addr are 0 */
+
+struct __attribute__ ((packed)) rfc_CMD_BLE_ADV_NC_s {
+   uint16_t commandNo;                  //!<        The command ID number 0x1805
+   uint16_t status;                     //!< \brief An integer telling the status of the command. This value is
+                                        //!<        updated by the radio CPU during operation and may be read by the
+                                        //!<        system CPU at any time.
+   radio_op_command_t *pNextOp;         //!<        Pointer to the next operation to run after this operation is done
+   uint32_t startTime;                  //!<        Absolute or relative start time (depending on the value of <code>startTrigger</code>)
+   struct {
+      uint8_t triggerType:4;            //!<        The type of trigger
+      uint8_t bEnaCmd:1;                //!< \brief 0: No alternative trigger command<br>
+                                        //!<        1: CMD_TRIGGER can be used as an alternative trigger
+      uint8_t triggerNo:2;              //!<        The trigger number of the CMD_TRIGGER command that triggers this action
+      uint8_t pastTrig:1;               //!< \brief 0: A trigger in the past is never triggered, or for start of commands, give an error<br>
+                                        //!<        1: A trigger in the past is triggered as soon as possible
+   } startTrigger;                      //!<        Identification of the trigger that starts the operation
+   struct {
+      uint8_t rule:4;                   //!<        Condition for running next command: Rule for how to proceed
+      uint8_t nSkip:4;                  //!<        Number of skips if the rule involves skipping
+   } condition;
+   uint8_t channel;                     //!< \brief Channel to use<br>
+                                        //!<        0&ndash;39: BLE advertising/data channel number
+                                        //!<        60&ndash;207: Custom frequency; (2300 + <code>channel</code>) MHz
+                                        //!<        255: Use existing frequency
+                                        //!<        Others: <i>Reserved<i>
+   struct {
+      uint8_t init:7;                   //!< \brief If <code>bOverride</code> = 1 or custom frequency is used:<br>
+                                        //!<        0: Do not use whitening<br>
+                                        //!<        Other value: Initialization for 7-bit LFSR whitener
+      uint8_t bOverride:1;              //!< \brief 0: Use default whitening for BLE advertising/data channels<br>
+                                        //!<        1: Override whitening initialization with value of init
+   } whitening;
+   rfc_bleAdvPar_t *pParams;            //!<        Pointer to command specific parameter structure
+   rfc_bleAdvOutput_t *pOutput;         //!<        Pointer to command specific output structure
+};
+
+struct __attribute__ ((packed)) rfc_bleAdvPar_s {
+   dataQueue_t* pRxQ;                   //!<        Pointer to receive queue
+   struct {
+      uint8_t bAutoFlushIgnored:1;      //!<        If 1, automatically remove ignored packets from Rx queue
+      uint8_t bAutoFlushCrcErr:1;       //!<        If 1, automatically remove packets with CRC error from Rx queue
+      uint8_t bAutoFlushEmpty:1;        //!<        If 1, automatically remove empty packets from Rx queue
+      uint8_t bIncludeLenByte:1;        //!<        If 1, include the received length byte in the stored packet; otherwise discard it
+      uint8_t bIncludeCrc:1;            //!<        If 1, include the received CRC field in the stored packet; otherwise discard it
+      uint8_t bAppendRssi:1;            //!<        If 1, append an RSSI byte to the packet in the Rx queue
+      uint8_t bAppendStatus:1;          //!<        If 1, append a status byte to the packet in the Rx queue
+      uint8_t bAppendTimestamp:1;       //!<        If 1, append a timestamp to the packet in the Rx queue
+   } rxConfig;                          //!<        Configuration bits for the receive queue entries
+   struct {
+      uint8_t advFilterPolicy:2;        //!< \brief The advertiser filter policy, as defined in Volume 2, Part E, Section 7.8.5 of
+                                        //!<        the Bluetooth 4.0 spec
+      uint8_t deviceAddrType:1;         //!<        The type of the device address &ndash; public (0) or random (1)
+      uint8_t peerAddrType:1;           //!<        Directed advertiser: The type of the peer address &ndash; public (0) or random (1)
+      uint8_t bStrictLenFilter:1;       //!<        1: Discard messages with illegal length
+   } advConfig;
+   uint8_t advLen;                      //!<        Size of advertiser data
+   uint8_t scanRspLen;                  //!<        Size of scan response data
+   uint8_t* pAdvData;                   //!<        Pointer to buffer containing ADV*_IND data
+   uint8_t* pScanRspData;               //!<        Pointer to buffer containing SCAN_RSP data
+   uint16_t* pDeviceAddress;            //!<        Pointer to device address used for this device
+   rfc_bleWhiteListEntry_t *pWhiteList; //!<        Pointer to white list or peer address (directed advertiser)
+   uint16_t __dummy0;
+   uint8_t __dummy1;
+   struct {
+      uint8_t triggerType:4;            //!<        The type of trigger
+      uint8_t bEnaCmd:1;                //!< \brief 0: No alternative trigger command<br>
+                                        //!<        1: CMD_TRIGGER can be used as an alternative trigger
+      uint8_t triggerNo:2;              //!<        The trigger number of the CMD_TRIGGER command that triggers this action
+      uint8_t pastTrig:1;               //!< \brief 0: A trigger in the past is never triggered, or for start of commands, give an error<br>
+                                        //!<        1: A trigger in the past is triggered as soon as possible
+   } endTrigger;                        //!<        Trigger that causes the device to end the advertiser event as soon as allowed
+   uint32_t endTime;                     //!< \brief Time used together with <code>endTrigger</code> that causes the device to end the
+                                        //!<        advertiser event as soon as allowed
+};
+
+struct __attribute__ ((packed)) rfc_bleAdvOutput_s {
+   uint16_t nTxAdvInd;                  //!<        Number of ADV*_IND packets completely transmitted
+   uint8_t nTxScanRsp;                  //!<        Number of  SCAN_RSP packets transmitted
+   uint8_t nRxScanReq;                  //!<        Number of SCAN_REQ packets received OK and not ignored
+   uint8_t nRxConnectReq;               //!<        Number of CONNECT_REQ packets received OK and not ignored
+   uint8_t __dummy0;
+   uint16_t nRxNok;                     //!<        Number of packets received with CRC error
+   uint16_t nRxIgnored;                 //!<        Number of packets received with CRC OK, but ignored
+   uint8_t nRxBufFull;                  //!<        Number of packets received that did not fit in Rx queue
+   int8_t lastRssi;                     //!<        The RSSI of the last received packet
+   uint32_t timeStamp;                   //!<        Time stamp of the last received packet
+};
+
+struct __attribute__ ((packed)) rfc_bleWhiteListEntry_s {
+   uint8_t size;                        //!<        Number of while list entries. Used in the first entry of the list only
+   struct {
+      uint8_t bEnable:1;                //!<        1 if the entry is in use, 0 if the entry is not in use
+      uint8_t addrType:1;               //!<        The type address in the entry &ndash; public (0) or random (1)
+      uint8_t bWlIgn:1;                 //!< \brief 1 if the entry is to be ignored by a scanner, 0 otherwise. Used to mask out
+                                        //!<        entries that have already been scanned and reported.
+   } conf;
+   uint16_t address;                    //!<        Least significant 16 bits of the address contained in the entry
+   uint32_t addressHi;                  //!<        Most significant 32 bits of the address contained in the entry
+};
 
 /**
  * @addtogroup cc26x0_rop_status_codes
