@@ -54,6 +54,12 @@
 Sensortag* sensortagS;
 uint8_t radio_id;
 
+extern uint16_t ble_mac_address[];
+extern char adv_name[];
+
+extern "C" void rfc_prepare(void);
+extern "C" bool rfc_setup_ble(void);
+extern "C" void rfc_ble_beacon(void);
 
 void debug_printf(const char *format, ...) {
 //     tm time;
@@ -98,6 +104,9 @@ main_pid(thread_getpid())
 	);
 	radio_id = cpuid[0];
     DEBUG("radio_id: %02x\n", radio_id);
+
+    rfc_prepare();
+    rfc_setup_ble();
 
 // 	setup_network(cpuid[0], false, 1111, &handle_packet, &handle_transmit);
 
@@ -172,10 +181,9 @@ void Sensortag::mainloop()
     int ret = si70xx_test(&si);
     printf("si70xx_test returned %i\n", ret);
 
-//     uint32_t ble_interval = 6*1000*1000;
-//     ble_mac_address[2] = 0xaabb;
-//     ble_mac_address[1] = 0xccdd;
-//     ble_mac_address[0] = 0xeeff;
+    ble_mac_address[2] = 0xaabb;
+    ble_mac_address[1] = 0xccdd;
+    ble_mac_address[0] = 0xeeff;
     char ble_name[32];
     snprintf(ble_name, sizeof(ble_name), "riot-cc2650");
 
@@ -185,20 +193,17 @@ void Sensortag::mainloop()
 
     if(radio_id == 0x2c) {
         snprintf(ble_name, sizeof(ble_name), "fridge");
-//         ble_mac_address[0] = 0xee01;
+        ble_mac_address[0] = 0xee01;
     }
 
     if(radio_id == 0x04) {
         snprintf(ble_name, sizeof(ble_name), "red");
-//         ble_mac_address[0] = 0xee04;
+        ble_mac_address[0] = 0xee04;
     }
 
-//     ble_mac_address[0] = 0xee00;
-//     ble_mac_address[0] &= (radio_id << 8);
-//     ble_mac_address[0] = radio_id;
-
-//     rf_ble_beacond_config(ble_interval, ble_name);
-//     rf_ble_beacond_start();
+    ble_mac_address[0] = 0xee00;
+    ble_mac_address[0] &= (radio_id << 8);
+    ble_mac_address[0] = radio_id;
 
     xtimer_t t;
     int i =0;
@@ -238,15 +243,15 @@ void Sensortag::mainloop()
                humidity / 100, humidity % 100
         );
 
-        char name[32];
-        snprintf(name, sizeof(name), "%s %c%i.%02iC %i%% %u",
+        snprintf(adv_name, 32, "%s %c%i.%02iC %i%% %u",
                  ble_name,
                  temperature_sign,
                  temperature / 100, temperature % 100,
                  humidity / 100,
                  i / 60 * interval
         );
-//         rf_ble_beacond_config(ble_interval, name);
+
+        rfc_ble_beacon();
 
         flash_led(GPIO_PIN(18), 2);
 
