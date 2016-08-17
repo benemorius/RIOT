@@ -20,7 +20,6 @@
 
 #include <stdlib.h>
 #include <stdio.h>
-#include <string.h>
 
 #include "cpu.h"
 #include "sched.h"
@@ -47,17 +46,10 @@ static inline gpt_reg_t *dev(tim_t tim)
 
 int timer_init(tim_t tim, unsigned long freq, timer_cb_t cb, void *arg)
 {
-	printf("\n===> %s <===\n",__FUNCTION__);
     /* make sure given timer is valid */
     if (tim >= TIMER_NUMOF) {
         return -1;
     }
-
-	/* enable the periph power domain */
-	if(PRCM->PDSTAT0PERIPH != 1) {
-		PRCM->PDCTL0 |= PDSTAT0_PERIPH_ON;
-		while(PRCM->PDSTAT0PERIPH != 1);
-	};
 
     /* enable the times clock */
     PRCM->GPTCLKGR |= (1 << timer_config[tim].num);
@@ -65,54 +57,49 @@ int timer_init(tim_t tim, unsigned long freq, timer_cb_t cb, void *arg)
     while (!(PRCM->CLKLOADCTL & CLKLOADCTL_LOADDONE)) {}
 
     /* disable (and reset) timer */
-	memset(dev(tim),0x0,sizeof(dev(tim)));
-    dev(tim)->CTL &= ~(GPT_CTL_TAEN | GPT_CTL_TBEN);
-	dev(tim)->CFG &= 0x00000000;
+    dev(tim)->CTL = 0;
 
     /* save context */
     ctx[tim].cb = cb;
     ctx[tim].arg = arg;
 
-    /* configure timer to 16-bit, periodic, up-counting. snapshot mode enabled (the actual free-running value of Timer A is loaded at the time-out event into the GPT Timer A (TAR) register.)*/
-    dev(tim)->CFG  |= GPT_CFG_16T;
-    dev(tim)->TAMR |= (GPT_TXMR_TXMR_PERIODIC | GPT_TXMR_TXCDIR_DOWN | GPT_TXMR_TXSNAPS);
+    /* configure timer to 16-bit, periodic, up-counting */
+    dev(tim)->CFG  = GPT_CFG_16T;
+    dev(tim)->TAMR = (GPT_TXMR_TXMR_PERIODIC | GPT_TXMR_TXCDIR_UP | GPT_TXMR_TXMIE);
 
-    /* set the prescaler. clock runs at 48MhZ, with 48 prescaler the timer speed = 1 tick per usec */
-    dev(tim)->TAPR = 47;
-
-    /* enable global timer interrupt and set interrupt mask to transmit timeout event for timer A */
+    /* set the timer speed */
+    dev(tim)->TAPR = (RCOSC48M_FREQ / freq) - 1;
+    /* enable global timer interrupt and start the timer */
     timer_irq_enable(tim);
-	dev(tim)->IMR |= GPT_IMR_TATOIM;
+    dev(tim)->CTL = GPT_CTL_TAEN;
+
     return 0;
 }
 
 int timer_set(tim_t tim, int channel, unsigned int timeout)
-{	printf("\n===> %s <===\n",__FUNCTION__);
+{
     return timer_set_absolute(tim, channel, timer_read(tim) + timeout);
 }
 
 int timer_set_absolute(tim_t tim, int channel, unsigned int value)
-{	//printf("\n===> %s <===\n",__FUNCTION__);
-	/* disable timer */
-    dev(tim)->CTL &= ~(GPT_CTL_TAEN | GPT_CTL_TBEN);
-
+{
     if (channel != 0) {
         return -1;
     }
 
-    dev(tim)->TAILR = value;
-	dev(tim)->CTL |= GPT_CTL_TAEN;
+    dev(tim)->TAMATCHR = value;
+    dev(tim)->IMR |= GPT_IMR_TAMIM;
+
     return 0;
 }
 
 int timer_clear(tim_t tim, int channel)
 {
-	printf("\n===> %s <===\n",__FUNCTION__);
     if (channel != 0) {
         return -1;
     }
 
-    dev(tim)->IMR &= ~(GPT_IMR_TATOIM);
+    dev(tim)->IMR &= ~(GPT_IMR_TAMIM);
 
     return 0;
 }
@@ -124,14 +111,12 @@ unsigned int timer_read(tim_t tim)
 
 void timer_stop(tim_t tim)
 {
-	printf("\n===> %s <===\n",__FUNCTION__);
-    dev(tim)->CTL &= ~(GPT_CTL_TAEN | GPT_CTL_TBEN);
+    dev(tim)->CTL = 0;
 }
 
 void timer_start(tim_t tim)
 {
-	printf("\n===> %s <===\n",__FUNCTION__);
-    dev(tim)->CTL |= GPT_CTL_TAEN;
+    dev(tim)->CTL = GPT_CTL_TAEN;
 }
 
 void timer_irq_enable(tim_t tim)
@@ -153,7 +138,9 @@ static inline void isr_handler(tim_t tim)
 {
     uint32_t mis = dev(tim)->MIS;
     dev(tim)->ICLR = mis;
-    if (mis & GPT_IMR_TATOIM) {
+
+    if (mis & GPT_IMR_TAMIM) {
+        dev(tim)->IMR &= ~GPT_IMR_TAMIM;
         ctx[tim].cb(ctx[tim].arg, 0);
     }
 

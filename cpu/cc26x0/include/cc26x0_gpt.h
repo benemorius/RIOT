@@ -86,9 +86,9 @@ typedef struct {
  * @brief   GPT register values
  * @{
  */
-#define GPT_CFG_32T         0x0
-#define GPT_CFG_32RTC       0x1
-#define GPT_CFG_16T         0x4
+#define GPT_CFG_32T         0
+#define GPT_CFG_32RTC       1
+#define GPT_CFG_16T         4
 
 #define GPT_TXMR_TXMR_ONE_SHOT          0x00000001
 #define GPT_TXMR_TXMR_PERIODIC          0x00000002
