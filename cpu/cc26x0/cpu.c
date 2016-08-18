@@ -20,6 +20,8 @@
 #include "cpu.h"
 #include "periph_conf.h"
 #include "trim.h"
+#include "setup.h"
+#include "hw_ddi_0_osc.h"
 
 /* ROM HAPI HFSourceSafeSwitch function */
 #define ROM_HAPI_HFSOURCESAFESWITCH_ADDR_P (0x10000048 + (14*4))
@@ -29,8 +31,8 @@
 /**
  *@brief Configure the MCU system clock
  */
-static void cpu_clock_init(void);
-static void setup(void);
+void cpu_clock_init(void);
+void setup(void);
 
 /**
  * @brief Initialize the CPU, set IRQ priorities
@@ -41,13 +43,14 @@ void cpu_init(void)
     cortexm_init();
 
     /* undocumented setup */
-    setup();
+//     setup();
+    cc26x0_setup();
 
     /* initialize the system clock */
-    cpu_clock_init();
+//     cpu_clock_init();
 }
 
-static void setup(void)
+void setup(void)
 {
     //
     // Clock must always be enabled for the semaphore module (due to ADI/DDI HW workaround)
@@ -80,7 +83,7 @@ static void setup(void)
     *(uint32_t*)(AUX_DDI0_OSC_BASE + DDI_0_OSC_O_AMPCOMPCTL) = trim;
 }
 
-static void cpu_clock_init(void)
+void cpu_clock_init(void)
 {
     AON_WUC->AUXCTL |= AUXCTL_AUX_FORCE_ON; /* power on AUX_PD */
     while(!(AON_WUC->PWRSTAT & PWRSTAT_AUX_PD_ON)); /* wait for AUX_PD to be powered on */
