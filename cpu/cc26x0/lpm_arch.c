@@ -191,7 +191,7 @@ void lpm_arch_awake(void)
         while(!(PRCM->PDSTAT0 & PDSTAT0_PERIPH_ON)) ;
         PRCM->GPIOCLKGR |= 1;
         PRCM->CLKLOADCTL |= CLKLOADCTL_LOAD;
-        while (!(PRCM->CLKLOADCTL & CLKLOADCTL_LOADDONE)) ;
+        while (!(PRCM->CLKLOADCTL & CLKLOADCTL_LOADDONE)) {}
 
         /* init uart */
         PRCM->PDCTL0SERIAL = 1;

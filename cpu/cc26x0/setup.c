@@ -436,13 +436,13 @@ static void HapiTrimDeviceShutDown(uint32_t ui32Fcfg1Revision)
     // set the RECHARGE source based upon CCFG:MODE_CONF:DCDC_RECHARGE
     // Note: Inverse polarity
     //
-    *(reg32_t*)( AON_SYSCTL_BASE + AON_SYSCTL_O_PWRCTL) &= ~(AON_SYSCTL_PWRCTL_DCDC_EN_M) | ((( ccfg_ModeConfReg >> CCFG_MODE_CONF_DCDC_RECHARGE_S ) & 1 ) ^ 1 ) << AON_SYSCTL_PWRCTL_DCDC_EN_S;
+    *(reg32_t*)( AON_SYSCTL_BASE + AON_SYSCTL_O_PWRCTL) = (*(reg32_t*)( AON_SYSCTL_BASE + AON_SYSCTL_O_PWRCTL) & ~(AON_SYSCTL_PWRCTL_DCDC_EN_M)) | ((( ccfg_ModeConfReg >> CCFG_MODE_CONF_DCDC_RECHARGE_S ) & 1 ) ^ 1 ) << AON_SYSCTL_PWRCTL_DCDC_EN_S;
 
     //
     // set the ACTIVE source based upon CCFG:MODE_CONF:DCDC_ACTIVE
     // Note: Inverse polarity
     //
-    *(reg32_t*)(AON_SYSCTL_BASE + AON_SYSCTL_O_PWRCTL) &= ~(AON_SYSCTL_PWRCTL_DCDC_ACTIVE_M) | ((( ccfg_ModeConfReg >> CCFG_MODE_CONF_DCDC_ACTIVE_S ) & 1 ) ^ 1 ) << AON_SYSCTL_PWRCTL_DCDC_ACTIVE_S;
+    *(reg32_t*)(AON_SYSCTL_BASE + AON_SYSCTL_O_PWRCTL) = (*(reg32_t*)(AON_SYSCTL_BASE + AON_SYSCTL_O_PWRCTL) & ~(AON_SYSCTL_PWRCTL_DCDC_ACTIVE_M)) | ((( ccfg_ModeConfReg >> CCFG_MODE_CONF_DCDC_ACTIVE_S ) & 1 ) ^ 1 ) << AON_SYSCTL_PWRCTL_DCDC_ACTIVE_S;
 
     //
     // Following sequence is required for using XOSCHF, if not included
@@ -456,7 +456,7 @@ static void HapiTrimDeviceShutDown(uint32_t ui32Fcfg1Revision)
     // Trim RCOSC_LF. Get and set trim values for the RCOSCLF_RTUNE_TRIM and
     // RCOSCLF_CTUNE_TRIM fields in the XOSCLF_RCOSCLF_CTRL register.
     ui32Trim = GetTrimForRcOscLfRtuneCtuneTrim();
-    DDI_0_OSC->LFOSCCTL &= ~(DDI_0_OSC_LFOSCCTL_RCOSCLF_RTUNE_TRIM_M | DDI_0_OSC_LFOSCCTL_RCOSCLF_CTUNE_TRIM_S) | (ui32Trim << DDI_0_OSC_LFOSCCTL_RCOSCLF_CTUNE_TRIM_S);
+    DDI_0_OSC->LFOSCCTL = (DDI_0_OSC->LFOSCCTL & ~(DDI_0_OSC_LFOSCCTL_RCOSCLF_RTUNE_TRIM_M | DDI_0_OSC_LFOSCCTL_RCOSCLF_CTUNE_TRIM_S)) | (ui32Trim << DDI_0_OSC_LFOSCCTL_RCOSCLF_CTUNE_TRIM_S);
 
     // Trim XOSCHF IBIAS THERM. Get and set trim value for the
     // XOSCHF IBIAS THERM bit field in the ANABYPASS_VALUE2 register. Other
@@ -482,7 +482,7 @@ static void HapiTrimDeviceShutDown(uint32_t ui32Fcfg1Revision)
     if (ui32Trim) {
         ui32Trim = 1;
     }
-    DDI_0_OSC->ADCDOUBLERNANOAMPCTL &= ~(DDI_0_OSC_ADCDOUBLERNANOAMPCTL_ADC_SH_MODE_EN_M) | (ui32Trim << DDI_0_OSC_ADCDOUBLERNANOAMPCTL_ADC_SH_MODE_EN_S);
+    DDI_0_OSC->ADCDOUBLERNANOAMPCTL = (DDI_0_OSC->ADCDOUBLERNANOAMPCTL & ~(DDI_0_OSC_ADCDOUBLERNANOAMPCTL_ADC_SH_MODE_EN_M)) | (ui32Trim << DDI_0_OSC_ADCDOUBLERNANOAMPCTL_ADC_SH_MODE_EN_S);
 
     //
     // Set trim for DDI_0_OSC_ADCDOUBLERNANOAMPCTL_ADC_SH_VBUF_EN in accordance to FCFG1 setting
@@ -493,7 +493,7 @@ static void HapiTrimDeviceShutDown(uint32_t ui32Fcfg1Revision)
     if (ui32Trim) {
         ui32Trim = 1;
     }
-    DDI_0_OSC->ADCDOUBLERNANOAMPCTL &= ~(DDI_0_OSC_ADCDOUBLERNANOAMPCTL_ADC_SH_VBUF_EN_M) | (ui32Trim << DDI_0_OSC_ADCDOUBLERNANOAMPCTL_ADC_SH_VBUF_EN_S);
+    DDI_0_OSC->ADCDOUBLERNANOAMPCTL = (DDI_0_OSC->ADCDOUBLERNANOAMPCTL & ~(DDI_0_OSC_ADCDOUBLERNANOAMPCTL_ADC_SH_VBUF_EN_M)) | (ui32Trim << DDI_0_OSC_ADCDOUBLERNANOAMPCTL_ADC_SH_VBUF_EN_S);
 
     //
     // Set trim for the PEAK_DET_ITRIM, HP_BUF_ITRIM and LP_BUF_ITRIM bit fields
@@ -552,7 +552,7 @@ static void HapiTrimDeviceShutDown(uint32_t ui32Fcfg1Revision)
 
     // Setting DDI_0_OSC_CTL1_XOSC_HF_FAST_START according to value found in FCFG1
     ui32Trim = GetTrimForXoscHfFastStart();
-    DDI_0_OSC->CTL1 &= ~(DDI_0_OSC_CTL1_XOSC_HF_FAST_START_M) + (ui32Trim << DDI_0_OSC_CTL1_XOSC_HF_FAST_START_S);
+    DDI_0_OSC->CTL1 = (DDI_0_OSC->CTL1 & ~(DDI_0_OSC_CTL1_XOSC_HF_FAST_START_M)) | (ui32Trim << DDI_0_OSC_CTL1_XOSC_HF_FAST_START_S);
 
     //
     // setup the LF clock based upon CCFG:MODE_CONF:SCLK_LF_OPTION
@@ -582,10 +582,10 @@ static void HapiTrimDeviceShutDown(uint32_t ui32Fcfg1Revision)
             *(reg32_t*)( AUX_DDI0_OSC_BASE + DDI_O_SET + DDI_0_OSC_O_CTL0 ) = DDI_0_OSC_CTL0_XOSC_LF_DIG_BYPASS;
             // Fall through to set XOSC_LF as SCLK_LF source
         case 2 : // XOSC_LF -> SLCK_LF (32768 Hz)
-            DDI_0_OSC->CTL0 &= ~(DDI_0_OSC_CTL0_SCLK_LF_SRC_SEL_M) | DDI_0_OSC_CTL0_SCLK_LF_SRC_SEL_XOSCLF;
+            DDI_0_OSC->CTL0 = (DDI_0_OSC->CTL0 & ~(DDI_0_OSC_CTL0_SCLK_LF_SRC_SEL_M)) | DDI_0_OSC_CTL0_SCLK_LF_SRC_SEL_XOSCLF;
             break;
         default : // (=3) RCOSC_LF
-            DDI_0_OSC->CTL0 &= ~(DDI_0_OSC_CTL0_SCLK_LF_SRC_SEL_M) | DDI_0_OSC_CTL0_SCLK_LF_SRC_SEL_RCOSCLF;
+            DDI_0_OSC->CTL0 = (DDI_0_OSC->CTL0 & ~(DDI_0_OSC_CTL0_SCLK_LF_SRC_SEL_M)) | DDI_0_OSC_CTL0_SCLK_LF_SRC_SEL_RCOSCLF;
             break;
     }
 
@@ -603,7 +603,7 @@ static void HapiTrimDeviceShutDown(uint32_t ui32Fcfg1Revision)
     // (Note: Using MASK8B requires that the bits to be modified must be within the same
     //        byte boundary which is the case for the ADI_4_AUX_ADC0_SMPL_CYCLE_EXP field)
     //
-    *(reg32_t*)(AUX_ADI4_BASE + ADI_4_AUX_O_ADC0) &= ~(ADI_4_AUX_ADC0_SMPL_CYCLE_EXP_M) | ADI_4_AUX_ADC0_SMPL_CYCLE_EXP_2P7_US;
+    *(reg32_t*)(AUX_ADI4_BASE + ADI_4_AUX_O_ADC0) = (*(reg32_t*)(AUX_ADI4_BASE + ADI_4_AUX_O_ADC0) & ~(ADI_4_AUX_ADC0_SMPL_CYCLE_EXP_M)) | ADI_4_AUX_ADC0_SMPL_CYCLE_EXP_2P7_US;
 
     //
     // Sync with AON
