@@ -21,11 +21,12 @@
 #include <stdlib.h>
 #include <stdio.h>
 
-#include "cpu.h"
+#include "board.h"
 #include "sched.h"
 #include "thread.h"
-#include "periph_conf.h"
 #include "periph/timer.h"
+
+#ifndef CC26X0_LOW_POWER_TIMER
 
 /**
  * @brief   Allocate memory for the interrupt context
@@ -176,3 +177,5 @@ void TIMER_3_ISR(void)
     isr_handler(3);
 }
 #endif
+
+#endif // CC26X0_LOW_POWER_TIMER
