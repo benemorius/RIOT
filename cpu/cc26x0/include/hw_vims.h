@@ -200,5 +200,18 @@
 #define VIMS_CTL_MODE_CACHE                                         0x00000001
 #define VIMS_CTL_MODE_GPRAM                                         0x00000000
 
+//*****************************************************************************
+//
+// Values that can be passed to VIMSModeSet() as the ui32IntFlags parameter,
+// and returned from VIMSModeGet().
+//
+//*****************************************************************************
+#define VIMS_MODE_CHANGING      0x4  // VIMS mode is changing now and VIMS_MODE
+// can not be changed at moment.
+#define VIMS_MODE_DISABLED      0x0  // Disabled mode.
+#define VIMS_MODE_ENABLED       0x1  // Enabled mode, only USERCODE is cached.
+#define VIMS_MODE_SPLIT         0x2  // Split mode, both USERCODE and SYSCODE
+// will be cached.
+#define VIMS_MODE_OFF           0x3  // VIMS Cache RAM is off
 
 #endif // __VIMS__

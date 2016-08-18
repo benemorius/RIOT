@@ -699,5 +699,31 @@
 #define AUX_WUC_MODCLKEN1_SMPH_EN                                   0x00000001
 #define AUX_WUC_MODCLKEN1_SMPH_DIS                                  0x00000000
 
+//*****************************************************************************
+//
+// Defines for the AUX peripherals clock control.
+//
+//*****************************************************************************
+#define AUX_WUC_SMPH_CLOCK      (AUX_WUC_MODCLKEN0_SMPH_EN)
+#define AUX_WUC_AIODIO0_CLOCK   (AUX_WUC_MODCLKEN0_AIODIO0_EN)
+#define AUX_WUC_AIODIO1_CLOCK   (AUX_WUC_MODCLKEN0_AIODIO1_EN)
+#define AUX_WUC_TIMER_CLOCK     (AUX_WUC_MODCLKEN0_TIMER_EN)
+#define AUX_WUC_ANAIF_CLOCK     (AUX_WUC_MODCLKEN0_ANAIF_EN)
+#define AUX_WUC_TDCIF_CLOCK     (AUX_WUC_MODCLKEN0_TDC_EN)
+#define AUX_WUC_OSCCTRL_CLOCK   (AUX_WUC_MODCLKEN0_AUX_DDI0_OSC_EN)
+#define AUX_WUC_ADI_CLOCK       (AUX_WUC_MODCLKEN0_AUX_ADI4_EN)
+#define AUX_WUC_MODCLK_MASK     0x000000FF
+
+#define AUX_WUC_TDC_CLOCK       0x00000100
+#define AUX_WUC_ADC_CLOCK       0x00000200
+#define AUX_WUC_REF_CLOCK       0x00000400
+
+#define AUX_WUC_CLOCK_OFF       0x00000000
+#define AUX_WUC_CLOCK_UNSTABLE  0x00000001
+#define AUX_WUC_CLOCK_READY     0x00000011
+
+#define AUX_WUC_CLOCK_HIFREQ    0x00000000
+#define AUX_WUC_CLOCK_LOFREQ    0x00000001
+
 
 #endif // __AUX_WUC__

@@ -55,12 +55,12 @@ void setup(void)
     //
     // Clock must always be enabled for the semaphore module (due to ADI/DDI HW workaround)
     //
-    *(uint32_t*)(AUX_WUC_BASE + AUX_WUC_O_MODCLKEN1) = AUX_WUC_MODCLKEN1_SMPH;
+    *(reg32_t*)(AUX_WUC_BASE + AUX_WUC_O_MODCLKEN1) = AUX_WUC_MODCLKEN1_SMPH;
 
     //
     // Enable the clocks for AUX_DDI0_OSC and AUX_ADI4
     //
-    *(uint32_t*)(AUX_WUC_BASE + AUX_WUC_O_MODCLKEN0) = AUX_WUC_MODCLKEN0_AUX_DDI0_OSC |
+    *(reg32_t*)(AUX_WUC_BASE + AUX_WUC_O_MODCLKEN0) = AUX_WUC_MODCLKEN0_AUX_DDI0_OSC |
                                                        AUX_WUC_MODCLKEN0_AUX_ADI4;
 
     //
@@ -69,18 +69,18 @@ void setup(void)
     //
 
     // Get layout revision of the factory configuration area
-    uint32_t chip_revision = *(uint32_t*)(FCFG1_BASE + FCFG1_O_FCFG1_REVISION);
+    uint32_t chip_revision = *(reg32_t*)(FCFG1_BASE + FCFG1_O_FCFG1_REVISION);
     if (chip_revision == 0xFFFFFFFF) {
         chip_revision = 0;
     }
     // Trim AMPCOMP settings required before switch to XOSCHF
     uint32_t trim;
     trim = GetTrimForAmpcompTh2();
-    *(uint32_t*)(AUX_DDI0_OSC_BASE + DDI_0_OSC_O_AMPCOMPTH2) = trim;
+    *(reg32_t*)(AUX_DDI0_OSC_BASE + DDI_0_OSC_O_AMPCOMPTH2) = trim;
     trim = GetTrimForAmpcompTh1();
-    *(uint32_t*)(AUX_DDI0_OSC_BASE + DDI_0_OSC_O_AMPCOMPTH1) = trim;
+    *(reg32_t*)(AUX_DDI0_OSC_BASE + DDI_0_OSC_O_AMPCOMPTH1) = trim;
     trim = GetTrimForAmpcompCtrl(chip_revision);
-    *(uint32_t*)(AUX_DDI0_OSC_BASE + DDI_0_OSC_O_AMPCOMPCTL) = trim;
+    *(reg32_t*)(AUX_DDI0_OSC_BASE + DDI_0_OSC_O_AMPCOMPCTL) = trim;
 }
 
 void cpu_clock_init(void)

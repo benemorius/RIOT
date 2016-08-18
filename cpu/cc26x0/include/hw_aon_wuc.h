@@ -654,5 +654,38 @@
 #define AON_WUC_JTAGUSERCODE_USER_CODE_M                            0xFFFFFFFF
 #define AON_WUC_JTAGUSERCODE_USER_CODE_S                                     0
 
+//*****************************************************************************
+//
+// Defines that can be be used to enable/disable the entire SRAM and the
+// retention on the SRAM in both the MCU and the AUX domain.
+//
+//*****************************************************************************
+#define MCU_RAM0_RETENTION      0x00000001
+#define MCU_RAM1_RETENTION      0x00000002
+#define MCU_RAM2_RETENTION      0x00000004
+#define MCU_RAM3_RETENTION      0x00000008
+#define MCU_RAM_BLOCK_RETENTION 0x0000000F
+#define MCU_AUX_RET_ENABLE      0x00000001
+
+//*****************************************************************************
+//
+// Defines for all the different power modes available through
+// AONWUCPowerStatusGet() .
+//
+//*****************************************************************************
+#define AONWUC_OSC_GBIAS_REQ    0x00400000  // OSC is requesting GBias
+#define AONWUC_AUX_GBIAS_REQ    0x00200000  // AUX is requesting GBias
+#define AONWUC_MCU_GBIAS_REQ    0x00100000  // MCU is requesting GBias
+#define AONWUC_OSC_BGAP_REQ     0x00040000  // OSC is requesting BGap
+#define AONWUC_AUX_BGAP_REQ     0x00020000  // AUX is requesting BGap
+#define AONWUC_MCU_BGAP_REQ     0x00010000  // MCU is requesting BGap
+#define AONWUC_GBIAS_ON         0x00002000  // Global Bias is on
+#define AONWUC_BGAP_ON          0x00001000  // Band Gap is on
+#define AONWUC_AUX_POWER_DOWN   0x00000200  // AUX is in powerdown mode
+#define AONWUC_MCU_POWER_DOWN   0x00000100  // MCU is in powerdown mode
+#define AONWUC_JTAG_POWER_ON    0x00000040  // JTAG is powered on
+#define AONWUC_AUX_POWER_ON     0x00000020  // AUX is powered on
+#define AONWUC_MCU_POWER_ON     0x00000010  // MCU is powered on
+#define AONWUC_SPLY_POWER_DOWN  0x00000001  // Power supply is in power down
 
 #endif // __AON_WUC__
