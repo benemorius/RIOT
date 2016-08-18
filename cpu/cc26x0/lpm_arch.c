@@ -53,7 +53,6 @@ enum lpm_mode lpm_arch_set(enum lpm_mode target)
         case LPM_POWERDOWN:
         case LPM_OFF:
             current_mode = LPM_IDLE;
-            printf("idle\n");
             SCB->SCR &= ~(SCB_SCR_SLEEPDEEP_Msk);
 
             //wait for uart tx to complete
@@ -64,8 +63,6 @@ enum lpm_mode lpm_arch_set(enum lpm_mode target)
 
         case LPM_SLEEP:
             current_mode = LPM_SLEEP;
-            printf("sleep\n");
-
             /* wait for uart tx to complete */
             while (UART->FR & UART_FR_BUSY) {}
 
@@ -95,12 +92,12 @@ enum lpm_mode lpm_arch_set(enum lpm_mode target)
             *(reg32_t*)(AON_WUC_BASE + AON_WUC_O_AUXCTL) &= ~AON_WUC_AUXCTL_AUX_FORCE_ON;
 
             /* Configure clock sources for MCU and AUX: No clock */
-            *(reg32_t*)(AON_WUC_BASE + AON_WUC_O_MCUCLK) &= ~AON_WUC_MCUCLK_PWR_DWN_SRC_M | AON_WUC_MCUCLK_PWR_DWN_SRC_NONE;
-            *(reg32_t*)(AON_WUC_BASE + AON_WUC_O_AUXCLK) &= ~AON_WUC_AUXCLK_PWR_DWN_SRC_M | AON_WUC_AUXCLK_PWR_DWN_SRC_NONE;
+            *(reg32_t*)(AON_WUC_BASE + AON_WUC_O_MCUCLK) &= ~AON_WUC_MCUCLK_PWR_DWN_SRC_M;
+            *(reg32_t*)(AON_WUC_BASE + AON_WUC_O_AUXCLK) &= ~AON_WUC_AUXCLK_PWR_DWN_SRC_M;
 
 
             /* Full RAM retention. */
-            *(reg32_t*)(AON_WUC_BASE + AON_WUC_O_MCUCFG) &= ~MCU_RAM_BLOCK_RETENTION | MCU_RAM0_RETENTION | MCU_RAM1_RETENTION | MCU_RAM2_RETENTION | MCU_RAM3_RETENTION;
+            *(reg32_t*)(AON_WUC_BASE + AON_WUC_O_MCUCFG) |= MCU_RAM0_RETENTION | MCU_RAM1_RETENTION | MCU_RAM2_RETENTION | MCU_RAM3_RETENTION;
 
             /* Disable retention of AUX RAM */
             *(reg32_t*)(AON_WUC_BASE + AON_WUC_O_AUXCFG) &= ~(1 << AON_WUC_AUXCFG_RAM_RET_EN_BITN);
@@ -120,9 +117,8 @@ enum lpm_mode lpm_arch_set(enum lpm_mode target)
 //             *(reg32_t*)(AUX_WUC_BASE + AUX_WUC_O_PWROFFREQ) = AUX_WUC_PWROFFREQ_REQ;
 //             *(reg32_t*)(AUX_WUC_BASE + AUX_WUC_O_MCUBUSCTL) = AUX_WUC_MCUBUSCTL_DISCONNECT_REQ;
 
-            // Enable power down mode.
+            // set AUX and MCU domain power down mode
             *(reg32_t*)(AON_WUC_BASE + AON_WUC_O_CTL0) &= ~(1 << AON_WUC_CTL0_PWR_DWN_DIS_BITN);
-
             while(*(reg32_t*)(AON_WUC_BASE + AON_WUC_O_PWRSTAT) & AONWUC_AUX_POWER_ON) {}
 
             /* Configure the recharge controller */
@@ -144,12 +140,11 @@ enum lpm_mode lpm_arch_set(enum lpm_mode target)
              * as possible.
              */
             *(reg32_t*)(PRCM_BASE + PRCM_O_RAMRETEN) &= ~PRCM_RAMRETEN_VIMS_M;
-            *(reg32_t*)(VIMS_BASE + VIMS_O_CTL) &= ~(VIMS_CTL_MODE_M) | (VIMS_MODE_OFF);
+            *(reg32_t*)(VIMS_BASE + VIMS_O_CTL) |= (VIMS_MODE_OFF);
 
             /* Deep Sleep */
             SCB->SCR |= SCB_SCR_SLEEPDEEP_Msk;
             __WFI();
-
             break;
     }
     return last_mode;
@@ -178,7 +173,7 @@ void lpm_arch_awake(void)
         *(reg32_t*)(PRCM_BASE + PRCM_O_VDCTL) &= ~(1 << PRCM_VDCTL_ULDO_BITN);
 
         /* Turn on cache again */
-        *(reg32_t*)(VIMS_BASE + VIMS_O_CTL) &= ~(VIMS_CTL_MODE_M) | (VIMS_MODE_ENABLED);
+        *(reg32_t*)(VIMS_BASE + VIMS_O_CTL) = (*(reg32_t*)(VIMS_BASE + VIMS_O_CTL) & ~(VIMS_CTL_MODE_M)) | (VIMS_MODE_ENABLED);
         *(reg32_t*)(PRCM_BASE + PRCM_O_RAMRETEN) |= PRCM_RAMRETEN_VIMS_M;
 
         /* unfreeze gpio outputs */
@@ -204,8 +199,6 @@ void lpm_arch_awake(void)
         PRCM->UARTCLKGR = 1;
         PRCM->CLKLOADCTL = CLKLOADCTL_LOAD;
         while (!(PRCM->CLKLOADCTL & CLKLOADCTL_LOADDONE)) {}
-
-        printf("wake\n");
     }
     current_mode = LPM_ON;
 }
