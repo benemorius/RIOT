@@ -29,6 +29,8 @@
 #include "shell.h"
 // #include "posix_io.h"
 #include "thread.h"
+#include "xtimer.h"
+#include "hw_aon_rtc.h"
 
 #include <stdio.h>
 
@@ -42,6 +44,27 @@ void SysTick_Handler(void)
 	SysTickCnt++;
 }
 
+uint32_t read(void)
+{
+    uint32_t   ui32CurrentSec    ;
+    uint32_t   ui32CurrentSubSec ;
+    uint32_t   ui32SecondSecRead ;
+
+    //
+    // Reading SEC both before and after SUBSEC in order to detect if SEC incremented while reading SUBSEC
+    // If SEC incremented, we can’t be sure which SEC the SUBSEC belongs to, so repeating the sequence then.
+    //
+    do {
+        ui32CurrentSec    = *(volatile uint32_t*)( AON_RTC_BASE + AON_RTC_O_SEC    );
+        ui32CurrentSubSec = *(volatile uint32_t*)( AON_RTC_BASE + AON_RTC_O_SUBSEC );
+        ui32SecondSecRead = *(volatile uint32_t*)( AON_RTC_BASE + AON_RTC_O_SEC    );
+    } while ( ui32CurrentSec != ui32SecondSecRead );
+
+//     return (( ui32CurrentSec << 16 ) | ( ui32CurrentSubSec >> 16 ));
+    return ui32CurrentSubSec / 4295 + ui32CurrentSec * 1000000;
+//     return ui32CurrentSubSec / 4295;
+}
+
 int main()
 {
 	//enable bus, usage, and memmanage faults
@@ -53,6 +76,36 @@ int main()
     printf("\n");
 
     printf("starting Sensortag\r\n");
+
+//     uint32_t j = 1;
+//     while(1) {
+//         while (read() <= 1000000*j) { }
+//         printf("%lu\n", j++);
+//     }
+
+//     uint32_t x = 0;
+//     while(1) {
+//         printf("%lu\n", x++);
+//         uint32_t spin = 1000*1000;
+//         printf("spin for: %lu now: %lu seconds: %lu\n", spin, read(), *(volatile uint32_t*)( AON_RTC_BASE + AON_RTC_O_SEC    ));
+//         xtimer_spin(spin);
+//     }
+
+    printf("sleeping in 2 seconds...\n");
+    xtimer_spin(1000*1000);
+    printf("sleeping in 1 second...\n");
+    xtimer_spin(1000*1000);
+    xtimer_usleep(1000*1000*3);
+    printf("hi\n");
+
+    uint32_t i = 0;
+    xtimer_t sleep;
+    xtimer_set_wakeup(&sleep, 1000*1000, thread_getpid());
+    while(1) {
+        printf("%lu\n", i++);
+        thread_sleep();
+        xtimer_set_wakeup(&sleep, 1000*1000, thread_getpid());
+    }
 
     Sensortag* sensortag = new Sensortag();
 
