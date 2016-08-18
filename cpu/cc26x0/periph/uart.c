@@ -65,11 +65,13 @@ int uart_init(uart_t uart, uint32_t baudrate, uart_rx_cb_t rx_cb, void *arg)
     ctx[0].arg = arg;
 
     /* configure pins */
+    IOC->CFG[UART_RX_PIN] = (IOCFG_PORTID_UART0_RX | IOC_IOPULL_UP
+                                                   | IOC_INPUT_ENABLE);
     IOC->CFG[UART_TX_PIN] =  IOCFG_PORTID_UART0_TX;
-    IOC->CFG[UART_RX_PIN] = (IOCFG_PORTID_UART0_RX | IOCFG_INPUT_ENABLE);
 #if UART_HW_FLOW_CONTROL
     IOC->CFG[UART_RTS_PIN] =  IOCFG_PORTID_UART0_RTS;
-    IOC->CFG[UART_CTS_PIN] = (IOCFG_PORTID_UART0_CTS | IOCFG_INPUT_ENABLE);
+    IOC->CFG[UART_CTS_PIN] = (IOCFG_PORTID_UART0_CTS | IOC_IOPULL_UP
+                                                     | IOC_INPUT_ENABLE);
 #endif
 
     /* calculate baud-rate */
