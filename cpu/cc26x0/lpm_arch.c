@@ -17,6 +17,9 @@
  */
 
 #include "arch/lpm_arch.h"
+#include "cpu.h"
+
+static enum lpm_mode current_mode = LPM_UNKNOWN;
 
 void lpm_arch_init(void)
 {
@@ -24,12 +27,35 @@ void lpm_arch_init(void)
 
 enum lpm_mode lpm_arch_set(enum lpm_mode target)
 {
-    return 0;
+    enum lpm_mode last_mode = current_mode;
+
+//     target = LPM_ON;
+
+    switch (target) {
+        case LPM_ON:
+        case LPM_UNKNOWN:
+            current_mode = LPM_ON;
+            break;
+
+        case LPM_IDLE:
+        case LPM_SLEEP:
+        case LPM_POWERDOWN:
+        case LPM_OFF:
+            current_mode = LPM_IDLE;
+            SCB->SCR &= ~(SCB_SCR_SLEEPDEEP_Msk);
+
+            //wait for uart tx to complete
+            while (UART->FR & UART_FR_BUSY) {}
+
+            __WFI();
+            break;
+    }
+    return last_mode;
 }
 
 enum lpm_mode lpm_arch_get(void)
 {
-    return 0;
+    return current_mode;
 }
 
 void lpm_arch_awake(void)
