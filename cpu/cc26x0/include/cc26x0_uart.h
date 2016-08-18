@@ -66,7 +66,7 @@ typedef struct {
 #define UART_ECR_OE             0x8
 
 #define UART_FR_CTS             0x1
-#define UART_FR_BUSY            0x4
+#define UART_FR_BUSY            0x8
 #define UART_FR_RXFE            0x10
 #define UART_FR_TXFF            0x20
 #define UART_FR_RXFF            0x40
