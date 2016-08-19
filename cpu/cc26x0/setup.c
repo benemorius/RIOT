@@ -501,7 +501,7 @@ static void HapiTrimDeviceShutDown(uint32_t ui32Fcfg1Revision)
     // Remaining register bit fields are set to their reset values of 0.
     //
     ui32Trim = GetTrimForXoscHfCtl(ui32Fcfg1Revision);
-    *(reg32_t*)(AUX_DDI0_OSC_BASE + DDI_0_OSC_O_XOSCHFCTL) = ui32Trim;
+    DDI_0_OSC->XOSCHFCTL = ui32Trim;
 
     //
     // Set trim for DBLR_LOOP_FILTER_RESET_VOLTAGE in accordance to FCFG1 setting
@@ -511,7 +511,7 @@ static void HapiTrimDeviceShutDown(uint32_t ui32Fcfg1Revision)
     //  that DDI_0_OSC_ADCDOUBLERNANOAMPCTL_DBLR_LOOP_FILTER_RESET_VOLTAGE_M = 0x00060000)
     //
     ui32Trim = GetTrimForDblrLoopFilterResetVoltage( ui32Fcfg1Revision );
-//     HWREGB( AUX_DDI0_OSC_BASE + DDI_O_MASK4B + ( DDI_0_OSC_O_ADCDOUBLERNANOAMPCTL * 2 ) + 4 ) = ( 0x60 | ( ui32Trim << 1 ));
+    DDI_0_OSC->ADCDOUBLERNANOAMPCTL = (DDI_0_OSC->ADCDOUBLERNANOAMPCTL & ~(0x00060000)) | (ui32Trim << 17);
 
     //
     // Update DDI_0_OSC_ATESTCTL_ATESTLF_RCOSCLF_IBIAS_TRIM with data from
@@ -521,7 +521,7 @@ static void HapiTrimDeviceShutDown(uint32_t ui32Fcfg1Revision)
     // Using MASK4 write + 1 => writing to bits[7:4]
     //
     ui32Trim = GetTrimForRcOscLfIBiasTrim( ui32Fcfg1Revision );
-//     HWREGB( AUX_DDI0_OSC_BASE + DDI_O_MASK4B + ( 0x00000020 * 2 ) + 1 ) = ( 0x80 | ( ui32Trim << 3 ));
+    DDI_0_OSC->ATESTCTL = (DDI_0_OSC->ATESTCTL & ~(1 << 7)) | (ui32Trim << 7);
 
     //
     // Update DDI_0_OSC_LFOSCCTL_XOSCLF_REGULATOR_TRIM and
@@ -532,7 +532,7 @@ static void HapiTrimDeviceShutDown(uint32_t ui32Fcfg1Revision)
     // Using MASK8 write + 4 => writing to bits[23:16]
     //
     ui32Trim = GetTrimForXoscLfRegulatorAndCmirrwrRatio( ui32Fcfg1Revision );
-//     HWREGH( AUX_DDI0_OSC_BASE + DDI_O_MASK8B + ( DDI_0_OSC_O_LFOSCCTL * 2 ) + 4 ) = ( 0xFC00 | ( ui32Trim << 2 ));
+    DDI_0_OSC->LFOSCCTL = (DDI_0_OSC->LFOSCCTL & ~(DDI_0_OSC_LFOSCCTL_XOSCLF_REGULATOR_TRIM_M | DDI_0_OSC_LFOSCCTL_XOSCLF_CMIRRWR_RATIO_M)) | (ui32Trim << DDI_0_OSC_LFOSCCTL_XOSCLF_CMIRRWR_RATIO_S);
 
     //
     // Set trim the HPM_IBIAS_WAIT_CNT, LPM_IBIAS_WAIT_CNT and IDAC_STEP bit
@@ -540,7 +540,7 @@ static void HapiTrimDeviceShutDown(uint32_t ui32Fcfg1Revision)
     // Remaining register bit fields are set to their reset values of 0.
     //
     ui32Trim = GetTrimForRadcExtCfg(ui32Fcfg1Revision);
-    *(reg32_t*)(AUX_DDI0_OSC_BASE + DDI_0_OSC_O_RADCEXTCFG) = ui32Trim;
+    DDI_0_OSC->RADCEXTCFG = ui32Trim;
 
     // Setting FORCE_KICKSTART_EN (ref. CC26_V1_BUG00261). Should also be done for PG2
     // (This is bit 22 in DDI_0_OSC_O_CTL0)
