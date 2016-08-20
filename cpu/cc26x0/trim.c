@@ -38,6 +38,8 @@
 
 #include "trim.h"
 
+typedef volatile uint32_t reg32_t;
+
 #define FCFG1_BASE (0x50001000)
 #define FCFG1_O_AMPCOMP_TH2 (0x374)
 #define FCFG1_AMPCOMP_TH2_LPMUPDATE_LTH_M (0xfc000000)
@@ -66,7 +68,7 @@ uint32_t GetTrimForAmpcompTh2(void)
     // Use device specific trim value located in factory configuration
     // area. All defined register bit fields have corresponding trim
     // value in the factory configuration area
-    ui32Fcfg1Value = *(uint32_t*)(FCFG1_BASE + FCFG1_O_AMPCOMP_TH2);
+    ui32Fcfg1Value = *(reg32_t*)(FCFG1_BASE + FCFG1_O_AMPCOMP_TH2);
     ui32TrimValue = ((ui32Fcfg1Value &
     FCFG1_AMPCOMP_TH2_LPMUPDATE_LTH_M)>>
     FCFG1_AMPCOMP_TH2_LPMUPDATE_LTH_S)<<
@@ -114,7 +116,7 @@ uint32_t GetTrimForAmpcompTh1(void)
     // Use device specific trim values located in factory configuration
     // area. All defined register bit fields have a corresponding trim
     // value in the factory configuration area
-    ui32Fcfg1Value = *(uint32_t*)(FCFG1_BASE + FCFG1_O_AMPCOMP_TH1);
+    ui32Fcfg1Value = *(reg32_t*)(FCFG1_BASE + FCFG1_O_AMPCOMP_TH1);
     ui32TrimValue = (((ui32Fcfg1Value &
     FCFG1_AMPCOMP_TH1_HPMRAMP3_LTH_M)>>
     FCFG1_AMPCOMP_TH1_HPMRAMP3_LTH_S)<<
@@ -180,7 +182,7 @@ uint32_t GetTrimForAmpcompCtrl(uint32_t ui32Fcfg1Revision)
     // Use device specific trim values located in factory configuration
     // area. Register bit fields without trim values in the factory
     // configuration area will be set to the value of 0.
-    ui32Fcfg1Value = *(uint32_t*)( FCFG1_BASE + FCFG1_O_AMPCOMP_CTRL1 );
+    ui32Fcfg1Value = *(reg32_t*)( FCFG1_BASE + FCFG1_O_AMPCOMP_CTRL1 );
 
     ibiasOffset    = ( ui32Fcfg1Value &
     FCFG1_AMPCOMP_CTRL1_IBIAS_OFFSET_M ) >>
@@ -189,9 +191,9 @@ uint32_t GetTrimForAmpcompCtrl(uint32_t ui32Fcfg1Revision)
     FCFG1_AMPCOMP_CTRL1_IBIAS_INIT_M ) >>
     FCFG1_AMPCOMP_CTRL1_IBIAS_INIT_S ;
 
-    if (( *(uint32_t*)( CCFG_BASE + CCFG_O_SIZE_AND_DIS_FLAGS ) & CCFG_SIZE_AND_DIS_FLAGS_DIS_XOSC_OVR_M ) == 0 ) {
+    if (( *(reg32_t*)( CCFG_BASE + CCFG_O_SIZE_AND_DIS_FLAGS ) & CCFG_SIZE_AND_DIS_FLAGS_DIS_XOSC_OVR_M ) == 0 ) {
         // Adjust with DELTA_IBIAS_OFFSET and DELTA_IBIAS_INIT from CCFG
-        modeConf1   = *(uint32_t*)( CCFG_BASE + CCFG_O_MODE_CONF_1 );
+        modeConf1   = *(reg32_t*)( CCFG_BASE + CCFG_O_MODE_CONF_1 );
 
         // Both fields are signed 4-bit values. This is an assumption when doing the sign extension.
         deltaAdjust = ((int32_t)modeConf1 << ( 32 - CCFG_MODE_CONF_1_DELTA_IBIAS_OFFSET_S - 4 )) >> 28;

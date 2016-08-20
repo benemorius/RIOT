@@ -112,7 +112,7 @@ void cc26x0_setup(void)
     // Get layout revision of the factory configuration area
     // (Handle undefined revision as revision = 0)
     //
-    ui32Fcfg1Revision = *(uint32_t*)(FCFG1_BASE + FCFG1_O_FCFG1_REVISION);
+    ui32Fcfg1Revision = *(reg32_t*)(FCFG1_BASE + FCFG1_O_FCFG1_REVISION);
     if ( ui32Fcfg1Revision == 0xFFFFFFFF ) {
         ui32Fcfg1Revision = 0;
     }
@@ -126,12 +126,12 @@ void cc26x0_setup(void)
     //
     // Enable standby in flash bank
     //
-    *(uint32_t*)(FLASH_BASE + FLASH_O_CFG) &= ~(1 << FLASH_CFG_DIS_STANDBY_BITN);
+    *(reg32_t*)(FLASH_BASE + FLASH_O_CFG) &= ~(1 << FLASH_CFG_DIS_STANDBY_BITN);
 
     //
     // Clock must always be enabled for the semaphore module (due to ADI/DDI HW workaround)
     //
-    *(uint32_t*)(AUX_WUC_BASE + AUX_WUC_O_MODCLKEN1) = AUX_WUC_MODCLKEN1_SMPH;
+    *(reg32_t*)(AUX_WUC_BASE + AUX_WUC_O_MODCLKEN1) = AUX_WUC_MODCLKEN1_SMPH;
 
     //
     // Warm resets on CC26XX complicates software design as much of our software
@@ -140,7 +140,7 @@ void cc26x0_setup(void)
     // To ensure a full reset of the device is done when customers get e.g. a Watchdog
     // reset, the following is set here:
     //
-    *(uint32_t*)(PRCM_BASE + PRCM_O_WARMRESET) |=  (1 << PRCM_WARMRESET_WR_TO_PINRESET_BITN);
+    *(reg32_t*)(PRCM_BASE + PRCM_O_WARMRESET) |=  (1 << PRCM_WARMRESET_WR_TO_PINRESET_BITN);
 
     //
     // Select correct CACHE mode and set correct CACHE configuration
@@ -156,7 +156,7 @@ void cc26x0_setup(void)
     //
     // NB. If this bit is not cleared before proceeding to powerdown, the IOs
     //     will all default to the reset configuration when restarting.
-    if (!(*(uint32_t*)(AON_IOC_BASE + AON_IOC_O_IOCLATCH) & (1 << AON_IOC_IOCLATCH_EN_BITN)))
+    if (!(*(reg32_t*)(AON_IOC_BASE + AON_IOC_O_IOCLATCH) & (1 << AON_IOC_IOCLATCH_EN_BITN)))
     {
         //
         // NB. This should be calling a ROM implementation of required trim and
@@ -170,7 +170,7 @@ void cc26x0_setup(void)
     // the SLEEPDIS bit in the SLEEP register in the AON_SYSCTRL12 module.
     // It is left for the application to assert this bit when waking back up,
     // but not before the desired IO configuration has been re-established.
-    else if (!(*(uint32_t*)(AON_SYSCTL_BASE + AON_SYSCTL_O_SLEEPCTL) & (1 << AON_SYSCTL_SLEEPCTL_IO_PAD_SLEEP_DIS_BITN)))
+    else if (!(*(reg32_t*)(AON_SYSCTL_BASE + AON_SYSCTL_O_SLEEPCTL) & (1 << AON_SYSCTL_SLEEPCTL_IO_PAD_SLEEP_DIS_BITN)))
     {
         //
         // NB. This should be calling a ROM implementation of required trim and
@@ -200,13 +200,13 @@ void cc26x0_setup(void)
     // Set VIMS power domain control.
     // PDCTL1VIMS = 0 ==> VIMS power domain is only powered when CPU power domain is powered
     //
-    *(uint32_t*)(PRCM_BASE + PRCM_O_PDCTL1VIMS) = 0;
+    *(reg32_t*)(PRCM_BASE + PRCM_O_PDCTL1VIMS) = 0;
 
     //
     // Configure optimal wait time for flash FSM in cases where flash pump
     // wakes up from sleep
     //
-    *(uint32_t*)(FLASH_BASE + FLASH_O_FPAC1) = (*(uint32_t*)(FLASH_BASE + FLASH_O_FPAC1) &
+    *(reg32_t*)(FLASH_BASE + FLASH_O_FPAC1) = (*(reg32_t*)(FLASH_BASE + FLASH_O_FPAC1) &
                                                 ~FLASH_FPAC1_PSLEEPTDIS_M) |
                                                 (0x139<<FLASH_FPAC1_PSLEEPTDIS_S);
 
@@ -215,22 +215,22 @@ void cc26x0_setup(void)
     // SET BOOT_DET bits in AON_SYSCTL to 3 if already found to be 1
     // Note: The BOOT_DET_x_CLR/SET bits must be manually cleared
     //
-    if (((*(uint32_t*)(AON_SYSCTL_BASE + AON_SYSCTL_O_RESETCTL) &
+    if (((*(reg32_t*)(AON_SYSCTL_BASE + AON_SYSCTL_O_RESETCTL) &
         (AON_SYSCTL_RESETCTL_BOOT_DET_1_M | AON_SYSCTL_RESETCTL_BOOT_DET_0_M)) >>
         AON_SYSCTL_RESETCTL_BOOT_DET_0_S) == 1)
     {
-        ui32AonSysResetctl = (*(uint32_t*)(AON_SYSCTL_BASE + AON_SYSCTL_O_RESETCTL) &
+        ui32AonSysResetctl = (*(reg32_t*)(AON_SYSCTL_BASE + AON_SYSCTL_O_RESETCTL) &
         ~(AON_SYSCTL_RESETCTL_BOOT_DET_1_CLR_M | AON_SYSCTL_RESETCTL_BOOT_DET_0_CLR_M |
         AON_SYSCTL_RESETCTL_BOOT_DET_1_SET_M | AON_SYSCTL_RESETCTL_BOOT_DET_0_SET_M));
-        *(uint32_t*)(AON_SYSCTL_BASE + AON_SYSCTL_O_RESETCTL) = ui32AonSysResetctl | AON_SYSCTL_RESETCTL_BOOT_DET_1_SET_M;
-        *(uint32_t*)(AON_SYSCTL_BASE + AON_SYSCTL_O_RESETCTL) = ui32AonSysResetctl;
+        *(reg32_t*)(AON_SYSCTL_BASE + AON_SYSCTL_O_RESETCTL) = ui32AonSysResetctl | AON_SYSCTL_RESETCTL_BOOT_DET_1_SET_M;
+        *(reg32_t*)(AON_SYSCTL_BASE + AON_SYSCTL_O_RESETCTL) = ui32AonSysResetctl;
     }
 
     //
     // Make sure there are no ongoing VIMS mode change when leaving trimDevice()
     // (There should typically be no wait time here, but need to be sure)
     //
-    while ( *(uint32_t*)(VIMS_BASE + VIMS_O_STAT) & (1 << VIMS_STAT_MODE_CHANGING_BITN)) {
+    while ( *(reg32_t*)(VIMS_BASE + VIMS_O_STAT) & (1 << VIMS_STAT_MODE_CHANGING_BITN)) {
         // Do nothing - wait for an eventual ongoing mode change to complete.
     }
 }
@@ -259,7 +259,7 @@ static void SetupCacheModeAccordingToCcfgSetting(void)
     //
     uint32_t vimsCtlMode0 ;
 
-    while (*(uint32_t*)(VIMS_BASE + VIMS_O_STAT) & (1 << VIMS_STAT_MODE_CHANGING_BITN)) {
+    while (*(reg32_t*)(VIMS_BASE + VIMS_O_STAT) & (1 << VIMS_STAT_MODE_CHANGING_BITN)) {
         // Do nothing - wait for an eventual ongoing mode change to complete.
         // (There should typically be no wait time here, but need to be sure)
     }
@@ -267,25 +267,25 @@ static void SetupCacheModeAccordingToCcfgSetting(void)
     //
     // Note that Mode=0 is equal to MODE_GPRAM
     //
-    vimsCtlMode0 = ((*(uint32_t*)(VIMS_BASE + VIMS_O_CTL) & ~VIMS_CTL_MODE_M) | VIMS_CTL_DYN_CG_EN_M | VIMS_CTL_PREF_EN_M);
+    vimsCtlMode0 = ((*(reg32_t*)(VIMS_BASE + VIMS_O_CTL) & ~VIMS_CTL_MODE_M) | VIMS_CTL_DYN_CG_EN_M | VIMS_CTL_PREF_EN_M);
 
 
-    if (*(uint32_t*)(CCFG_BASE + CCFG_O_SIZE_AND_DIS_FLAGS) & CCFG_SIZE_AND_DIS_FLAGS_DIS_GPRAM) {
+    if (*(reg32_t*)(CCFG_BASE + CCFG_O_SIZE_AND_DIS_FLAGS) & CCFG_SIZE_AND_DIS_FLAGS_DIS_GPRAM) {
         // Enable cache (and hence disable GPRAM)
-        *(uint32_t*)(VIMS_BASE + VIMS_O_CTL) = (vimsCtlMode0 | VIMS_CTL_MODE_CACHE);
-    } else if ((*(uint32_t*)(VIMS_BASE + VIMS_O_STAT) & VIMS_STAT_MODE_M) != VIMS_STAT_MODE_GPRAM) {
+        *(reg32_t*)(VIMS_BASE + VIMS_O_CTL) = (vimsCtlMode0 | VIMS_CTL_MODE_CACHE);
+    } else if ((*(reg32_t*)(VIMS_BASE + VIMS_O_STAT) & VIMS_STAT_MODE_M) != VIMS_STAT_MODE_GPRAM) {
         //
         // GPRAM is enabled in CCFG but not selected
         // Note: It is recommended to go via MODE_OFF when switching to MODE_GPRAM
         //
-        *(uint32_t*)(VIMS_BASE + VIMS_O_CTL) = (vimsCtlMode0 | VIMS_CTL_MODE_OFF);
-        while ((*(uint32_t*)(VIMS_BASE + VIMS_O_STAT) & VIMS_STAT_MODE_M) != VIMS_STAT_MODE_OFF) {
+        *(reg32_t*)(VIMS_BASE + VIMS_O_CTL) = (vimsCtlMode0 | VIMS_CTL_MODE_OFF);
+        while ((*(reg32_t*)(VIMS_BASE + VIMS_O_STAT) & VIMS_STAT_MODE_M) != VIMS_STAT_MODE_OFF) {
             // Do nothing - wait for an eventual mode change to complete (This goes fast).
         }
-        *(uint32_t*)(VIMS_BASE + VIMS_O_CTL) = vimsCtlMode0;
+        *(reg32_t*)(VIMS_BASE + VIMS_O_CTL) = vimsCtlMode0;
     } else {
         // Correct mode, but make sure PREF_EN and DYN_CG_EN always are set
-        *(uint32_t*)(VIMS_BASE + VIMS_O_CTL) = vimsCtlMode0;
+        *(reg32_t*)(VIMS_BASE + VIMS_O_CTL) = vimsCtlMode0;
     }
 }
 

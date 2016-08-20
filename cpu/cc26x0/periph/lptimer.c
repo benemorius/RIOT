@@ -80,14 +80,14 @@ int timer_init(tim_t dev, unsigned long freq, timer_cb_t cb, void *arg)
     timer_stop(dev);
 
     /* clear event flag */
-    *(uint32_t*)(AON_RTC_BASE + AON_RTC_O_EVFLAGS) = AON_RTC_EVFLAGS_CH0;
+    *(reg32_t*)(AON_RTC_BASE + AON_RTC_O_EVFLAGS) = AON_RTC_EVFLAGS_CH0;
 
     /* configure wakeup event */
-    *(uint32_t*)(AON_EVENT_BASE + AON_EVENT_O_MCUWUSEL) = AON_EVENT_RTC_CH0 << AON_EVENT_MCUWUSEL_WU0_EV_S;
-    *(uint32_t*)(AON_RTC_BASE + AON_RTC_O_CTL) = AON_RTC_CH0 << AON_RTC_CTL_COMB_EV_MASK_S;
+    *(reg32_t*)(AON_EVENT_BASE + AON_EVENT_O_MCUWUSEL) = AON_EVENT_RTC_CH0 << AON_EVENT_MCUWUSEL_WU0_EV_S;
+    *(reg32_t*)(AON_RTC_BASE + AON_RTC_O_CTL) = AON_RTC_CH0 << AON_RTC_CTL_COMB_EV_MASK_S;
 
     /* set timer value to 0 */
-    *(uint32_t*)(AON_RTC_BASE + AON_RTC_O_SEC) = SOC_RTC_START_TICK_COUNT;
+    *(reg32_t*)(AON_RTC_BASE + AON_RTC_O_SEC) = SOC_RTC_START_TICK_COUNT;
 
     timer_irq_enable(dev);
 
@@ -132,13 +132,13 @@ int timer_set_absolute(tim_t dev, int channel, unsigned int value)
     DEBUG("timer_set_absolute(): timer %d channel %d value %u ll_value %lu now %lu\n", dev, channel, value, ll_value, _timer_read());
 
     /* set compare value */
-    *(uint32_t*)(AON_RTC_BASE + AON_RTC_O_CH0CMP) = ll_value;
+    *(reg32_t*)(AON_RTC_BASE + AON_RTC_O_CH0CMP) = ll_value;
 
     /* enable compare channel */
-    *(uint32_t*)(AON_RTC_BASE + AON_RTC_O_CHCTL) |= (1 << AON_RTC_CHCTL_CH0_EN_BITN);
+    *(reg32_t*)(AON_RTC_BASE + AON_RTC_O_CHCTL) |= (1 << AON_RTC_CHCTL_CH0_EN_BITN);
 
     /* clear compare channel event */
-    *(uint32_t*)(AON_RTC_BASE + AON_RTC_O_EVFLAGS) = AON_RTC_EVFLAGS_CH0;
+    *(reg32_t*)(AON_RTC_BASE + AON_RTC_O_EVFLAGS) = AON_RTC_EVFLAGS_CH0;
 
 //     if (seconds < 5) {
 //         printf("wait\n");
@@ -151,7 +151,7 @@ int timer_set_absolute(tim_t dev, int channel, unsigned int value)
 
 int timer_clear(tim_t dev, int channel)
 {
-    *(uint32_t*)(AON_RTC_BASE + AON_RTC_O_CHCTL) &= ~(1 << AON_RTC_CHCTL_CH0_EN_BITN);
+    *(reg32_t*)(AON_RTC_BASE + AON_RTC_O_CHCTL) &= ~(1 << AON_RTC_CHCTL_CH0_EN_BITN);
     return 0;
 }
 
@@ -179,12 +179,12 @@ unsigned int timer_read(tim_t dev)
 
 void timer_start(tim_t dev)
 {
-    *(uint32_t*)(AON_RTC_BASE + AON_RTC_O_CTL) |= (1 << AON_RTC_CTL_EN_BITN);
+    *(reg32_t*)(AON_RTC_BASE + AON_RTC_O_CTL) |= (1 << AON_RTC_CTL_EN_BITN);
 }
 
 void timer_stop(tim_t dev)
 {
-    *(uint32_t*)(AON_RTC_BASE + AON_RTC_O_CTL) &= ~(1 << AON_RTC_CTL_EN_BITN);
+    *(reg32_t*)(AON_RTC_BASE + AON_RTC_O_CTL) &= ~(1 << AON_RTC_CTL_EN_BITN);
 }
 
 void timer_irq_enable(tim_t dev)
@@ -212,13 +212,13 @@ static inline void irq_handler(tim_t timer)
     DEBUG("timer irq_handler(): timer %d\n", timer);
 
     /* check event flag */
-    if(*(uint32_t*)(AON_RTC_BASE + AON_RTC_O_EVFLAGS) & (1 << AON_RTC_EVFLAGS_CH0_BITN)) {
+    if(*(reg32_t*)(AON_RTC_BASE + AON_RTC_O_EVFLAGS) & (1 << AON_RTC_EVFLAGS_CH0_BITN)) {
 
         /* clear event flag */
-        *(uint32_t*)(AON_RTC_BASE + AON_RTC_O_EVFLAGS) = AON_RTC_EVFLAGS_CH0;
+        *(reg32_t*)(AON_RTC_BASE + AON_RTC_O_EVFLAGS) = AON_RTC_EVFLAGS_CH0;
 
         /* disable compare channel */
-        *(uint32_t*)(AON_RTC_BASE + AON_RTC_O_CHCTL) &= ~(1 << AON_RTC_CHCTL_CH0_EN_BITN);
+        *(reg32_t*)(AON_RTC_BASE + AON_RTC_O_CHCTL) &= ~(1 << AON_RTC_CHCTL_CH0_EN_BITN);
 
         config[timer].cb(config[timer].arg, 0);
     }
