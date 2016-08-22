@@ -126,8 +126,8 @@ int timer_set_absolute(tim_t dev, int channel, unsigned int value)
 {
     uint32_t seconds = value / 1000000;
     uint32_t microseconds = value % 1000000;
-    uint32_t subseconds = microseconds * 65536 / 1000000;
-    uint32_t ll_value = (seconds << 16) + subseconds;
+    uint32_t subseconds = microseconds * 4295;
+    uint32_t ll_value = (seconds << 16) + (subseconds >> 16);
 
     DEBUG("timer_set_absolute(): timer %d channel %d value %u ll_value %lu now %lu\n", dev, channel, value, ll_value, _timer_read());
 
