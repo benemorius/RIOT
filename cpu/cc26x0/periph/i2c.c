@@ -38,9 +38,12 @@
 #include "periph/i2c.h"
 #include "mutex.h"
 #include "xtimer.h"
+#include "lpm.h"
 
 #define ENABLE_DEBUG (0)
 #include "debug.h"
+
+#define CC26X0_I2C_NO_INTERRUPTS
 
 mutex_t i2c_mutex = MUTEX_INIT;
 mutex_t irq_wait = MUTEX_INIT;
@@ -92,6 +95,8 @@ static uint32_t _speed_t_to_scl_period(i2c_speed_t speed)
 static void _transmit_and_yield_until_done(dev_t dev, uint32_t command)
 {
 #ifndef CC26X0_I2C_NO_INTERRUPTS
+    ++lpm_prevent_sleep;
+
     /* clear interrupt flag */
     I2C->MICR = I2C_MICR_IC;
 
@@ -108,6 +113,8 @@ static void _transmit_and_yield_until_done(dev_t dev, uint32_t command)
     mutex_lock(&irq_wait);
     mutex_unlock(&irq_wait);
 
+    --lpm_prevent_sleep;
+
 #else
     /* initiate i2c transaction */
     I2C->MCTRL = command;
@@ -122,6 +129,8 @@ static void _transmit_and_yield_until_done(dev_t dev, uint32_t command)
 
 int i2c_init_master(i2c_t dev, i2c_speed_t speed)
 {
+    DEBUG("i2c_init_master() dev %u speed %u\n", dev, speed);
+
     /* make sure dev is valid */
     if(dev >= I2C_NUMOF){
         return -1;
@@ -166,6 +175,8 @@ int i2c_init_slave(i2c_t dev, uint8_t address)
 
 int i2c_write_bytes(i2c_t dev, uint8_t address, char *data, int length)
 {
+    DEBUG("i2c_write_bytes() dev %u length %i\n", dev, length);
+
     if(length <= 0) {
         return -1;
     }
