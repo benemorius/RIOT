@@ -89,6 +89,11 @@ int timer_init(tim_t dev, unsigned long freq, timer_cb_t cb, void *arg)
     *(reg32_t*)(AON_EVENT_BASE + AON_EVENT_O_MCUWUSEL) = AON_EVENT_RTC_CH0 << AON_EVENT_MCUWUSEL_WU0_EV_S;
     *(reg32_t*)(AON_RTC_BASE + AON_RTC_O_CTL) = AON_RTC_CH0 << AON_RTC_CTL_COMB_EV_MASK_S;
 
+    /* configure prescaler for 62500 Hz because XTIMER_SHIFT == 4 */
+    AUX_WUC->RTCSUBSECINC0 = 0x79C843 & 0xffff;
+    AUX_WUC->RTCSUBSECINC1 = (0x79C843 >> 16) & 0xff;
+    AUX_WUC->RTCSUBSECINCCTL = 1;
+
     /* set timer value to 0 */
     *(reg32_t*)(AON_RTC_BASE + AON_RTC_O_SUBSEC) = 0;
     *(reg32_t*)(AON_RTC_BASE + AON_RTC_O_SEC) = 0;
