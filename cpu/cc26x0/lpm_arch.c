@@ -113,9 +113,13 @@ enum lpm_mode lpm_arch_set(enum lpm_mode target)
             /* otherwise MCU domain can't be turned off */
             *(reg32_t*)(AON_WUC_BASE + AON_WUC_O_JTAGCFG) = 0;
 
+            /* stop aux osc clock before powering down aux */
+            AUX_WUC->MODCLKEN0 &= ~MODCLKEN0_AUX_DDI0_OSC_EN;
+            AON_WUC->AUXCTL &= ~AUXCTL_AUX_FORCE_ON;
+
             /* Turn off AUX */
-//             *(reg32_t*)(AUX_WUC_BASE + AUX_WUC_O_PWROFFREQ) = AUX_WUC_PWROFFREQ_REQ;
-//             *(reg32_t*)(AUX_WUC_BASE + AUX_WUC_O_MCUBUSCTL) = AUX_WUC_MCUBUSCTL_DISCONNECT_REQ;
+            *(reg32_t*)(AUX_WUC_BASE + AUX_WUC_O_PWROFFREQ) = AUX_WUC_PWROFFREQ_REQ;
+            *(reg32_t*)(AUX_WUC_BASE + AUX_WUC_O_MCUBUSCTL) = AUX_WUC_MCUBUSCTL_DISCONNECT_REQ;
 
             // set AUX and MCU domain power down mode
             *(reg32_t*)(AON_WUC_BASE + AON_WUC_O_CTL0) &= ~(1 << AON_WUC_CTL0_PWR_DWN_DIS_BITN);
@@ -127,11 +131,14 @@ enum lpm_mode lpm_arch_set(enum lpm_mode target)
             //
             // Request the uLDO for standby power consumption.
             //
-            *(reg32_t*)(PRCM_BASE + PRCM_O_VDCTL) |= (1 << PRCM_VDCTL_ULDO_BITN);
+//             *(reg32_t*)(PRCM_BASE + PRCM_O_VDCTL) |= (1 << PRCM_VDCTL_ULDO_BITN);
 
 
             /* Sync the AON interface to ensure all writes have gone through. */
             *(reg32_t*)(AON_RTC_BASE + AON_RTC_O_SYNC);
+
+            /* disable flash power */
+            PRCM->PDCTL1 &= ~PRCM_O_PDCTL1VIMS;
 
             /*
              * Explicitly turn off VIMS cache, CRAM and TRAM. Needed because of
@@ -159,6 +166,10 @@ void lpm_arch_awake(void)
 {
     if (current_mode == LPM_SLEEP) {
 
+        AON_WUC->AUXCTL |= AUXCTL_AUX_FORCE_ON; /* power on AUX_PD */
+        while(!(AON_WUC->PWRSTAT & PWRSTAT_AUX_PD_ON)); /* wait for AUX_PD to be powered on */
+        AUX_WUC->MODCLKEN0 |= MODCLKEN0_AUX_DDI0_OSC_EN; /* turn on oscillator interface clock */
+
         /* Sync so that we get the latest values before adjusting recharge settings */
         *(reg32_t*)(AON_RTC_BASE + AON_RTC_O_SYNC);
 
@@ -174,7 +185,7 @@ void lpm_arch_awake(void)
 
         /* Turn on cache again */
         *(reg32_t*)(VIMS_BASE + VIMS_O_CTL) = (*(reg32_t*)(VIMS_BASE + VIMS_O_CTL) & ~(VIMS_CTL_MODE_M)) | (VIMS_MODE_ENABLED);
-        *(reg32_t*)(PRCM_BASE + PRCM_O_RAMRETEN) |= PRCM_RAMRETEN_VIMS_M;
+//         *(reg32_t*)(PRCM_BASE + PRCM_O_RAMRETEN) |= PRCM_RAMRETEN_VIMS_M;
 
         /* unfreeze gpio outputs */
         *(reg32_t*)(AON_IOC_BASE + AON_IOC_O_IOCLATCH) = AON_IOC_IOCLATCH_EN;
