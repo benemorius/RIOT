@@ -60,6 +60,7 @@ extern char adv_name[];
 extern "C" void rfc_prepare(void);
 extern "C" bool rfc_setup_ble(void);
 extern "C" void rfc_ble_beacon(void);
+extern "C" void rfc_powerdown(void);
 
 void debug_printf(const char *format, ...) {
 //     tm time;
@@ -105,8 +106,8 @@ main_pid(thread_getpid())
 	radio_id = cpuid[0];
     DEBUG("radio_id: %02x\n", radio_id);
 
-    rfc_prepare();
-    rfc_setup_ble();
+//     rfc_prepare();
+//     rfc_setup_ble();
 
 // 	setup_network(cpuid[0], false, 1111, &handle_packet, &handle_transmit);
 
@@ -175,9 +176,10 @@ void Sensortag::mainloop()
 
 	DEBUG("starting mainloop...\r\n");
 
-    printf("do si70xx_test\n");
+    printf("do si70xx_init\n");
     si70xx_t si;
     si70xx_init(&si, I2C_DEV(0), 0x40);
+    printf("do si70xx_test\n");
     int ret = si70xx_test(&si);
     printf("si70xx_test returned %i\n", ret);
 
@@ -206,11 +208,11 @@ void Sensortag::mainloop()
     ble_mac_address[0] = radio_id;
 
     xtimer_t t;
-    int i =0;
-    int16_t temperature;
-    uint16_t humidity;
+    uint32_t i =0;
+    int16_t temperature = 7;
+    uint16_t humidity = 8;
 
-    uint8_t interval = 3;
+    uint8_t interval = 5;
     xtimer_set_wakeup(&t, 100*1000, thread_getpid());
     while(1) {
         thread_sleep();
@@ -226,38 +228,46 @@ void Sensortag::mainloop()
         char temperature_sign = temperature >= 0 ? ' ' : '-';
         temperature = abs(temperature);
 
-        uint32_t now = xtimer_now();
-        uint32_t nowt = timer_read(TIMER_DEV(0));
-        printf("0x%08"PRIx32" 0x%08"PRIx32"\n",
-            now,
-            nowt
-        );
-        printf("%i %"PRIu32" %"PRIu32" ",
-               i++,
-               now / 1000,
-               nowt
-        );
+//         uint32_t now = xtimer_now();
+//         uint32_t nowt = timer_read(TIMER_DEV(0));
+//         printf("0x%08"PRIx32" 0x%08"PRIx32"\n",
+//             now,
+//             nowt
+//         );
+//         printf("%i %"PRIu32" %"PRIu32" ",
+//                i++,
+//                now / 1000,
+//                nowt
+//         );
         printf("%c%i.%02iC %u.%02u%%\n",
                temperature_sign,
                temperature / 100, temperature % 100,
                humidity / 100, humidity % 100
         );
 
-        snprintf(adv_name, 32, "%s %c%i.%02iC %i%% %u",
+        snprintf(adv_name, 32, "%s %c%i.%02iC %i%% %lu",
                  ble_name,
                  temperature_sign,
                  temperature / 100, temperature % 100,
                  humidity / 100,
-                 i / 60 * interval
+                 i * interval
         );
 
+        rfc_prepare();
+        rfc_setup_ble();
         rfc_ble_beacon();
+        rfc_powerdown();
+        printf("powerdown done\n");
+
+//         xtimer_usleep(1000*1000);
+//         printf("back\n");
 
         flash_led(GPIO_PIN(18), 2);
 
         // reset before xtimer bug (wdt not working right yet)
-        if(i >= 1000) {
-            NVIC_SystemReset();
-        }
+//         if(i >= 1000) {
+//             NVIC_SystemReset();
+//         }
+        ++i;
     }
 }

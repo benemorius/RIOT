@@ -23,6 +23,8 @@
 #define BLE_ADV_PAYLOAD_BUF_LEN     64
 #define BLE_UUID_SIZE               16
 
+void cpu_clock_init(void);
+
 static rfc_bleAdvPar_t ble_params_buf __attribute__((__aligned__(4)));
 uint16_t ble_mac_address[3] __attribute__((__aligned__(4))) = {0xeeff, 0xccdd, 0xaabb};
 char adv_name[BLE_ADV_NAME_BUF_LEN] = {"riot-test"};
@@ -37,21 +39,21 @@ void isr_rfc_cmd_ack(void)
 void isr_rfc_hw(void)
 {
     uint32_t flags = RFC_DBELL->RFHWIFG;
-    printf("hw 0x%" PRIx32 "\n", flags);
+//     printf("hw 0x%" PRIx32 "\n", flags);
     RFC_DBELL->RFHWIFG = ~flags;
 }
 
 void isr_rfc_cpe0(void)
 {
     uint32_t flags = RFC_DBELL->RFCPEIFG & (~RFC_DBELL->RFCPEISL);
-    printf("cpe0 0x%" PRIx32 "\n", flags);
+//     printf("cpe0 0x%" PRIx32 "\n", flags);
     RFC_DBELL->RFCPEIFG = ~flags;
 }
 
 void isr_rfc_cpe1(void)
 {
     uint32_t flags = RFC_DBELL->RFCPEIFG & RFC_DBELL->RFCPEISL;
-    printf("cpe1 0x%" PRIx32 "\n", flags);
+//     printf("cpe1 0x%" PRIx32 "\n", flags);
     RFC_DBELL->RFCPEIFG = ~flags;
 }
 
@@ -73,6 +75,8 @@ void rfc_irq_disable(void)
 
 uint32_t rfc_send_cmd(void *ropCmd)
 {
+//     printf("rfc_send_cmd()\n");
+
     RFC_DBELL->CMDR = (uint32_t) ropCmd;
 
     /* wait for cmd ack (rop cmd was submitted successfully) */
@@ -84,6 +88,8 @@ uint32_t rfc_send_cmd(void *ropCmd)
 
 uint16_t rfc_wait_cmd_done(radio_op_command_t *command)
 {
+//     printf("rfc_wait_cmd_done()\n");
+
     uint32_t timeout_cnt = 0;
     /* wait for cmd execution. condition on rop status doesn't work by itself (too fast?). */
     do {
@@ -98,6 +104,8 @@ uint16_t rfc_wait_cmd_done(radio_op_command_t *command)
 
 bool rfc_setup_ble(void)
 {
+//     printf("rfc_setup_ble()\n");
+
     radio_setup_cmd_t rs;
     memset(&rs, 0, sizeof(rs));
 
@@ -128,6 +136,8 @@ bool rfc_setup_ble(void)
 
 int send_ble_adv_nc(int channel, uint8_t *adv_payload, int adv_payload_len)
 {
+//     printf("send_ble_adv_nc()\n");
+
     rfc_CMD_BLE_ADV_NC_t cmd;
     rfc_bleAdvPar_t *params;
 
@@ -153,26 +163,29 @@ int send_ble_adv_nc(int channel, uint8_t *adv_payload, int adv_payload_len)
     params->advLen = adv_payload_len;
     params->pAdvData = adv_payload;
 
-    uint32_t status = rfc_send_cmd((uint32_t*)&cmd);
+    for (int repeat = 0; repeat < 5; ++repeat) {
+        uint32_t status = rfc_send_cmd((uint32_t*)&cmd);
 
-    if (status != 1) {
-        printf("bad CMDSTA: 0x%lx", status);
-        while(1);
+        if (status != 1) {
+            printf("bad CMDSTA: 0x%lx", status);
+            while(1);
+        }
+
+        radio_op_command_t *rop_cmd = (radio_op_command_t *)&cmd;
+
+        status = rfc_wait_cmd_done(rop_cmd);
+        if (status != 0x1400) {
+            printf("bad CMDSTA: 0x%lx", status);
+            while(1);
+        }
     }
-
-    radio_op_command_t *rop_cmd = (radio_op_command_t *)&cmd;
-
-    status = rfc_wait_cmd_done(rop_cmd);
-    if (status != 0x1400) {
-        printf("bad CMDSTA: 0x%lx", status);
-        while(1);
-    }
-
     return 0;
 }
 
 void rfc_ble_beacon(void)
 {
+//     printf("rfc_ble_beacon()\n");
+
     uint16_t p = 0;
     static uint8_t payload[BLE_ADV_PAYLOAD_BUF_LEN] __attribute__((__aligned__(4)));
 
@@ -198,7 +211,7 @@ bool rfc_ping_test(void)
     pingCommand.commandID = CMDR_CMDID_PING;
     RFC_DBELL->CMDR = (uint32_t) (&pingCommand);
     while (!RFC_DBELL->CMDSTA); /* wait for cmd execution */
-    printf("rfc_ping fails without a printf reading cmdsta %lu\n", RFC_DBELL->CMDSTA);
+//     printf("rfc_ping fails without a printf reading cmdsta %lu\n", RFC_DBELL->CMDSTA);
     return RFC_DBELL->CMDSTA == CMDSTA_RESULT_DONE;
 }
 
@@ -227,32 +240,99 @@ static bool rfc_start_rat(void)
 
 void rfc_prepare(void)
 {
+    /* switch to xosc */
+    cpu_clock_init();
+
+//     printf("rfc_prepare()\n");
     /* rfc mode must be set before powering up radio (undocumented) */
-    uint32_t *rfc_mode_hwopt = (uint32_t*)0x400821D4;
-    printf("modeopt: 0x%lx\n", ((*rfc_mode_hwopt) >> 1) & 0x7);
+//     uint32_t *rfc_mode_hwopt = (uint32_t*)0x400821D4;
+//     printf("modeopt: 0x%lx\n", ((*rfc_mode_hwopt) >> 1) & 0x7);
     PRCM->RFCMODESEL = 0x5;
 
     /* RFC POWER DOMAIN CLOCK GATE */
     PRCM->RFCCLKG = 1;
-
     PRCM->CLKLOADCTL = CLKLOADCTL_LOAD;
     while (!(PRCM->CLKLOADCTL & CLKLOADCTL_LOADDONE)) ;
 
     /* RFC POWER DOMAIN */
     PRCM->PDCTL0 |= PDCTL0_RFC_ON;
-    PRCM->PDCTL1 |= PDCTL1_RFC_ON;
+//     PRCM->PDCTL1 |= PDCTL1_RFC_ON;
     while (!(PRCM->PDSTAT0 & PDSTAT0_RFC_ON)) ;
-    while (!(PRCM->PDSTAT1 & PDSTAT1_RFC_ON)) ;
+//     while (!(PRCM->PDSTAT1 & PDSTAT1_RFC_ON)) ;
 
     /* RFC CLOCK */
     //RFC_PWR->PWMCLKEN |= RFC_PWR_PWMCLKEN_CPE;
     //RFC_PWR->PWMCLKEN |= RFC_PWR_PWMCLKEN_CPERAM;
     RFC_PWR->PWMCLKEN |= 0x7FF;
-    printf("RFC_PWR->PWMCLKEN %lx\n", RFC_PWR->PWMCLKEN);
+//     printf("RFC_PWR->PWMCLKEN %lx\n", RFC_PWR->PWMCLKEN);
 
     /* RFC IRQ */
     rfc_irq_enable();
 
     /*RFC TIMER */
     rfc_start_rat();
+}
+
+#include "hw_aon_wuc.h"
+#include "hw_aux_wuc.h"
+#include "cpu.h"
+#include "hw_ddi_0_osc.h"
+
+/* ROM HAPI HFSourceSafeSwitch function */
+#define ROM_HAPI_HFSOURCESAFESWITCH_ADDR_P (0x10000048 + (14*4))
+#define ROM_HAPI_HFSOURCESAFESWITCH_ADDR (*(reg32_t*)ROM_HAPI_HFSOURCESAFESWITCH_ADDR_P)
+#define ROM_HAPI_HFSOURCESAFESWITCH() (((void(*)(void))ROM_HAPI_HFSOURCESAFESWITCH_ADDR)())
+
+void rfc_powerdown(void)
+{
+    rfc_irq_disable();
+
+    *(reg32_t*)(0x60041000 + 0x00000010) = 0x0;
+    *(reg32_t*)(0x60041000 + 0x00000014) = 0x0;
+
+    /* need to send FS_POWERDOWN or analog components will use power */
+    rfc_CMD_FS_POWERDOWN_t cmd;
+    memset(&cmd, 0, sizeof(cmd));
+    cmd.commandNo = CMDR_CMDID_FS_POWERDOWN;
+    cmd.condition.rule = R_OP_CONDITION_RULE_NEVER;
+
+    uint32_t status = rfc_send_cmd(&cmd);
+    if (status != 1) {
+        printf("bad CMDSTA: 0x%lx", status);
+        while(1);
+    }
+    radio_op_command_t *rop_cmd = (radio_op_command_t *)&cmd;
+    status = rfc_wait_cmd_done(rop_cmd);
+    if (status != 0x400) {
+        printf("bad status: 0x%lx", status);
+        while(1);
+    }
+
+    /* Shut down the RFCORE clock domain in the MCU VD */
+    PRCM->RFCCLKG = 0;
+    PRCM->CLKLOADCTL = CLKLOADCTL_LOAD;
+    while (!(PRCM->CLKLOADCTL & CLKLOADCTL_LOADDONE)) {}
+
+    /* Turn off RFCORE PD */
+    PRCM->PDCTL0 &= ~PDCTL0_RFC_ON;
+    while (PRCM->PDSTAT0 & PDSTAT0_RFC_ON) {}
+
+
+    /* Enable the Osc interface and remember the state of the SMPH clock */
+    // Force power on AUX to ensure CPU has access
+    *(reg32_t*)(AON_WUC_BASE + AON_WUC_O_AUXCTL) |= AON_WUC_AUXCTL_AUX_FORCE_ON;
+    while(!(*(reg32_t*)(AON_WUC_BASE + AON_WUC_O_PWRSTAT) & AONWUC_AUX_POWER_ON)) { }
+
+    // Enable the AUX domain OSC clock and wait for it to be ready
+    *(reg32_t*)(AUX_WUC_BASE + AUX_WUC_O_MODCLKEN0) |= AUX_WUC_OSCCTRL_CLOCK;
+    while(!(*(reg32_t*)(AUX_WUC_BASE + AUX_WUC_O_MODCLKEN0) & AUX_WUC_MODCLKEN0_AUX_DDI0_OSC)) { }
+
+    /* Set HF and MF clock sources to the HF RC Osc */
+    DDI_0_OSC->CTL0 &= ~(DDI_0_OSC_CTL0_SCLK_HF_SRC_SEL_M | DDI_0_OSC_CTL0_SCLK_MF_SRC_SEL_M);
+
+    /* Check to not enable HF RC oscillator if already enabled */
+    if ((DDI_0_OSC->STAT0 & DDI_0_OSC_STAT0_SCLK_HF_SRC_M) != DDI_0_OSC_STAT0_SCLK_HF_SRC_RCOSC) {
+        /* Switch the HF clock source (cc26xxware executes this from ROM) */
+        ROM_HAPI_HFSOURCESAFESWITCH();
+    }
 }

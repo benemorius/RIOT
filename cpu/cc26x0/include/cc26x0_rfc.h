@@ -330,7 +330,7 @@ typedef struct rfc_CMD_BLE_ADV_NC_s rfc_CMD_BLE_ADV_NC_t;
 typedef struct rfc_bleAdvPar_s rfc_bleAdvPar_t;
 typedef struct rfc_bleAdvOutput_s rfc_bleAdvOutput_t;
 typedef struct rfc_bleWhiteListEntry_s rfc_bleWhiteListEntry_t;
-
+typedef struct rfc_CMD_FS_POWERDOWN_s rfc_CMD_FS_POWERDOWN_t;
 
 struct __attribute__ ((packed)) radio_op_command_s {
     uint16_t commandNo; /* W */
@@ -446,6 +446,27 @@ struct __attribute__ ((packed)) rfc_bleWhiteListEntry_s {
    } conf;
    uint16_t address;                    //!<        Least significant 16 bits of the address contained in the entry
    uint32_t addressHi;                  //!<        Most significant 32 bits of the address contained in the entry
+};
+
+struct __attribute__ ((packed)) rfc_CMD_FS_POWERDOWN_s {
+   uint16_t commandNo;                  //!<        The command ID number 0x080D
+   uint16_t status;                     //!< \brief An integer telling the status of the command. This value is
+                                        //!<        updated by the radio CPU during operation and may be read by the
+                                        //!<        system CPU at any time.
+   radio_op_command_t *pNextOp;              //!<        Pointer to the next operation to run after this operation is done
+   uint32_t startTime;                   //!<        Absolute or relative start time (depending on the value of <code>startTrigger</code>)
+   struct {
+      uint8_t triggerType:4;            //!<        The type of trigger
+      uint8_t bEnaCmd:1;                //!< \brief 0: No alternative trigger command<br>
+                                        //!<        1: CMD_TRIGGER can be used as an alternative trigger
+      uint8_t triggerNo:2;              //!<        The trigger number of the CMD_TRIGGER command that triggers this action
+      uint8_t pastTrig:1;               //!< \brief 0: A trigger in the past is never triggered, or for start of commands, give an error<br>
+                                        //!<        1: A trigger in the past is triggered as soon as possible
+   } startTrigger;                      //!<        Identification of the trigger that starts the operation
+   struct {
+      uint8_t rule:4;                   //!<        Condition for running next command: Rule for how to proceed
+      uint8_t nSkip:4;                  //!<        Number of skips if the rule involves skipping
+   } condition;
 };
 
 /**
