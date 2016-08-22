@@ -49,6 +49,9 @@
 
 #ifdef CC26X0_LOW_POWER_TIMER
 
+static uint32_t sec;
+static uint32_t microsec;
+
 /*---------------------------------------------------------------------------*/
 /*
  * Used to test timer wraparounds.
@@ -87,7 +90,8 @@ int timer_init(tim_t dev, unsigned long freq, timer_cb_t cb, void *arg)
     *(reg32_t*)(AON_RTC_BASE + AON_RTC_O_CTL) = AON_RTC_CH0 << AON_RTC_CTL_COMB_EV_MASK_S;
 
     /* set timer value to 0 */
-    *(reg32_t*)(AON_RTC_BASE + AON_RTC_O_SEC) = SOC_RTC_START_TICK_COUNT;
+    *(reg32_t*)(AON_RTC_BASE + AON_RTC_O_SUBSEC) = 0;
+    *(reg32_t*)(AON_RTC_BASE + AON_RTC_O_SEC) = 0;
 
     timer_irq_enable(dev);
 
@@ -114,9 +118,9 @@ uint32_t _timer_read(void)
     // If SEC incremented, we can't be sure which SEC the SUBSEC belongs to, so repeating the sequence then.
     //
     do {
-        seconds = *(volatile uint32_t*)(AON_RTC_BASE + AON_RTC_O_SEC);
-        subseconds = *(volatile uint32_t*)(AON_RTC_BASE + AON_RTC_O_SUBSEC);
-        seconds_reread = *(volatile uint32_t*)(AON_RTC_BASE + AON_RTC_O_SEC);
+        seconds = *(reg32_t*)(AON_RTC_BASE + AON_RTC_O_SEC);
+        subseconds = *(reg32_t*)(AON_RTC_BASE + AON_RTC_O_SUBSEC);
+        seconds_reread = *(reg32_t*)(AON_RTC_BASE + AON_RTC_O_SEC);
     } while (seconds != seconds_reread);
 
     return ((seconds << 16) | (subseconds >> 16));
@@ -128,8 +132,19 @@ int timer_set_absolute(tim_t dev, int channel, unsigned int value)
     uint32_t microseconds = value % 1000000;
     uint32_t subseconds = microseconds * 4295;
     uint32_t ll_value = (seconds << 16) + (subseconds >> 16);
+    ll_value = value;
+
+    /* if XTIMER_SHIFT is used, make sure the upper XTIMER_SHIFT
+     * compare bits are set to match the timer's current bits */
+    uint32_t now = _timer_read();
+    ll_value |= (now & ~(0xffffffff >> XTIMER_SHIFT));
+
+//     printf("lpset %lu %lu\n", ll_value >> 16, ll_value);
 
     DEBUG("timer_set_absolute(): timer %d channel %d value %u ll_value %lu now %lu\n", dev, channel, value, ll_value, _timer_read());
+    sec = seconds;
+    microsec = microseconds;
+//     printf("lpset %lu %lu %lu\n", sec, microsec, subseconds);
 
     /* set compare value */
     *(reg32_t*)(AON_RTC_BASE + AON_RTC_O_CH0CMP) = ll_value;
@@ -142,7 +157,7 @@ int timer_set_absolute(tim_t dev, int channel, unsigned int value)
 
 //     if (seconds < 5) {
 //         printf("wait\n");
-//         while((*(volatile uint32_t*)(AON_RTC_BASE + AON_RTC_O_EVFLAGS) & AON_RTC_EVFLAGS_CH0) == 0) {}
+//         while((*(reg32_t*)(AON_RTC_BASE + AON_RTC_O_EVFLAGS) & AON_RTC_EVFLAGS_CH0) == 0) {}
 //         printf("done\n");
 //     }
 
@@ -157,6 +172,8 @@ int timer_clear(tim_t dev, int channel)
 
 unsigned int timer_read(tim_t dev)
 {
+    return _timer_read();
+
     uint32_t seconds;
     uint32_t subseconds;
     uint32_t seconds_reread;
@@ -166,14 +183,15 @@ unsigned int timer_read(tim_t dev)
     // If SEC incremented, we can't be sure which SEC the SUBSEC belongs to, so repeating the sequence then.
     //
     do {
-        seconds = *(volatile uint32_t*)(AON_RTC_BASE + AON_RTC_O_SEC);
-        subseconds = *(volatile uint32_t*)(AON_RTC_BASE + AON_RTC_O_SUBSEC);
-        seconds_reread = *(volatile uint32_t*)(AON_RTC_BASE + AON_RTC_O_SEC);
+        seconds = *(reg32_t*)(AON_RTC_BASE + AON_RTC_O_SEC);
+        subseconds = *(reg32_t*)(AON_RTC_BASE + AON_RTC_O_SUBSEC);
+        seconds_reread = *(reg32_t*)(AON_RTC_BASE + AON_RTC_O_SEC);
     } while (seconds != seconds_reread);
 
 //     return (( ui32CurrentSec << 16 ) | ( ui32CurrentSubSec >> 16 ));
 
     /* output in microseconds */
+//     printf("lpread %lu %lu %lu\n", seconds, subseconds / 4295, subseconds >> 16);
     return seconds * 1000000 + subseconds / 4295;
 }
 
@@ -210,6 +228,7 @@ static inline void irq_handler(tim_t timer)
     lpm_awake();
 
     DEBUG("timer irq_handler(): timer %d\n", timer);
+//     printf("lpfire %lu %lu\n", sec, microsec);
 
     /* check event flag */
     if(*(reg32_t*)(AON_RTC_BASE + AON_RTC_O_EVFLAGS) & (1 << AON_RTC_EVFLAGS_CH0_BITN)) {

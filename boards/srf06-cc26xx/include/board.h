@@ -20,7 +20,7 @@ extern "C" {
  * @brief   Xtimer configuration
  * @{
  */
-#define XTIMER_WIDTH                (32)
+#define XTIMER_SHIFT            (4)
 #define CC26X0_LOW_POWER_TIMER
 /** @} */
 
