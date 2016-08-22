@@ -153,7 +153,7 @@ int timer_set_absolute(tim_t dev, int channel, unsigned int value)
     *(reg32_t*)(AON_RTC_BASE + AON_RTC_O_CHCTL) |= (1 << AON_RTC_CHCTL_CH0_EN_BITN);
 
     /* clear compare channel event */
-    *(reg32_t*)(AON_RTC_BASE + AON_RTC_O_EVFLAGS) = AON_RTC_EVFLAGS_CH0;
+//     *(reg32_t*)(AON_RTC_BASE + AON_RTC_O_EVFLAGS) = AON_RTC_EVFLAGS_CH0;
 
 //     if (seconds < 5) {
 //         printf("wait\n");
