@@ -89,6 +89,11 @@ void cpu_clock_init(void)
     while(!(AON_WUC->PWRSTAT & PWRSTAT_AUX_PD_ON)); /* wait for AUX_PD to be powered on */
     AUX_WUC->MODCLKEN0 |= MODCLKEN0_AUX_DDI0_OSC_EN; /* turn on oscillator interface clock */
 
+    /* if sclk_hf is already on hf_xosc, then we needn't switch to it */
+    if (DDI_0_OSC->STAT0 & DDI_0_OSC_STAT0_SCLK_HF_SRC_XOSC) {
+        return;
+    }
+
     /* start hf_xosc and configure xtal frequency */
     DDI_0_OSC->CTL0 = DDI_0_OSC_CTL0_SCLK_HF_SRC_SEL_XOSC
                     | DDI_0_OSC_CTL0_SCLK_MF_SRC_SEL
