@@ -18,6 +18,7 @@
 
 #include "arch/lpm_arch.h"
 #include "cpu.h"
+#include "sys_ctrl.h"
 #include "hw_aon_ioc.h"
 #include "hw_ddi_0_osc.h"
 #include "hw_aon_wuc.h"
@@ -126,7 +127,7 @@ enum lpm_mode lpm_arch_set(enum lpm_mode target)
             while(*(reg32_t*)(AON_WUC_BASE + AON_WUC_O_PWRSTAT) & AONWUC_AUX_POWER_ON) {}
 
             /* Configure the recharge controller */
-//             SysCtrlSetRechargeBeforePowerDown(XOSC_IN_HIGH_POWER_MODE);
+            SysCtrlSetRechargeBeforePowerDown(XOSC_IN_HIGH_POWER_MODE);
 
             //
             // Request the uLDO for standby power consumption.
@@ -174,7 +175,7 @@ void lpm_arch_awake(void)
         *(reg32_t*)(AON_RTC_BASE + AON_RTC_O_SYNC);
 
         /* Adjust recharge settings */
-//         SysCtrlAdjustRechargeAfterPowerDown();
+        SysCtrlAdjustRechargeAfterPowerDown();
 
         /*
          * Release the request to the uLDO
@@ -192,7 +193,7 @@ void lpm_arch_awake(void)
         *(reg32_t*)(AON_RTC_BASE + AON_RTC_O_SYNC);
 
         /* Check operating conditions, optimally choose DCDC versus GLDO */
-//         SysCtrl_DCDC_VoltageConditionalControl();
+        SysCtrl_DCDC_VoltageConditionalControl();
 
         /* After stop mode, the clock system needs to be reconfigured */
         cpu_init();
