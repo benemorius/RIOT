@@ -187,7 +187,7 @@ void Sensortag::mainloop()
     ble_mac_address[1] = 0xccdd;
     ble_mac_address[0] = 0xeeff;
     char ble_name[32];
-    snprintf(ble_name, sizeof(ble_name), "riot-cc2650");
+    snprintf(ble_name, sizeof(ble_name), "riot!!");
 
     // dev       0d 06 12 07 0b 27 1f 23
     // fridge    0d 06 12 06 2c 0e 1f 23
