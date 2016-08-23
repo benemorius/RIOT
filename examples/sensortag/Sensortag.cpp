@@ -256,6 +256,10 @@ void Sensortag::mainloop()
         rfc_prepare();
         rfc_setup_ble();
         rfc_ble_beacon();
+        rfc_ble_beacon();
+        rfc_ble_beacon();
+        rfc_ble_beacon();
+        rfc_ble_beacon();
         rfc_powerdown();
         printf("powerdown done\n");
 

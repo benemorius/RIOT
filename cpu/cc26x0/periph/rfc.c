@@ -163,7 +163,7 @@ int send_ble_adv_nc(int channel, uint8_t *adv_payload, int adv_payload_len)
     params->advLen = adv_payload_len;
     params->pAdvData = adv_payload;
 
-    for (int repeat = 0; repeat < 5; ++repeat) {
+    for (int repeat = 0; repeat < 1; ++repeat) {
         uint32_t status = rfc_send_cmd((uint32_t*)&cmd);
 
         if (status != 1) {
