@@ -212,11 +212,11 @@ void Sensortag::mainloop()
     int16_t temperature = 7;
     uint16_t humidity = 8;
 
-    uint8_t interval = 5;
+    uint8_t interval = 1;
     xtimer_set_wakeup(&t, 100*1000, thread_getpid());
     while(1) {
         thread_sleep();
-        xtimer_set_wakeup(&t, interval * 1000*1000, thread_getpid());
+        xtimer_set_wakeup(&t, interval * 1000 * (1000 - 5 + (i % 10)), thread_getpid());
 
 //         static uint32_t wdt_last;
 //         uint32_t wdt_current = wdt_read();
@@ -239,7 +239,8 @@ void Sensortag::mainloop()
 //                now / 1000,
 //                nowt
 //         );
-        printf("%c%i.%02iC %u.%02u%%\n",
+        printf("%lu %c%i.%02iC %u.%02u%%\n",
+               i * interval,
                temperature_sign,
                temperature / 100, temperature % 100,
                humidity / 100, humidity % 100
