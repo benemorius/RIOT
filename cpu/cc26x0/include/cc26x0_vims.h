@@ -194,7 +194,7 @@ typedef struct {
 #define VIMS_BASE                           0x40034000 /**< base address of VIMS memory */
 /*@}*/
 
-#define VIMS                                ((vims_regs_t *)(VIMS_BASE + 0x4)) /**< VIMS register bank */
+#define VIMS                                ((vims_regs_t *)(VIMS_BASE)) /**< VIMS register bank */
 
 /**
  * @brief   VIMS register values

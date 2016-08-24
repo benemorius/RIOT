@@ -68,16 +68,18 @@ enum lpm_mode lpm_arch_set(enum lpm_mode target)
             while (UART->FR & UART_FR_BUSY) {}
 
             /* freeze gpio output states */
-            *(reg32_t*)(AON_IOC_BASE + AON_IOC_O_IOCLATCH) = 0x0;
+            AON->IOCLATCH = 0x0;
 
             /* Enable the Osc interface and remember the state of the SMPH clock */
             // Force power on AUX to ensure CPU has access
-            *(reg32_t*)(AON_WUC_BASE + AON_WUC_O_AUXCTL) |= AON_WUC_AUXCTL_AUX_FORCE_ON;
-            while(!(*(reg32_t*)(AON_WUC_BASE + AON_WUC_O_PWRSTAT) & AONWUC_AUX_POWER_ON)) { }
+            AON_WUC->AUXCTL |= AON_WUC_AUXCTL_AUX_FORCE_ON;
+            while(!(AON_WUC->PWRSTAT & AONWUC_AUX_POWER_ON)) {}
 
             // Enable the AUX domain OSC clock and wait for it to be ready
-            *(reg32_t*)(AUX_WUC_BASE + AUX_WUC_O_MODCLKEN0) |= AUX_WUC_OSCCTRL_CLOCK;
-            while(!(*(reg32_t*)(AUX_WUC_BASE + AUX_WUC_O_MODCLKEN0) & AUX_WUC_MODCLKEN0_AUX_DDI0_OSC)) { }
+            AUX_WUC->MODCLKEN0 |= MODCLKEN0_AUX_DDI0_OSC_EN;
+            while ((AUX_WUC->MODCLKEN0 & MODCLKEN0_AUX_DDI0_OSC_EN) == 0) {}
+            AUX_WUC->MODCLKEN0 |= MODCLKEN0_SMPH_EN;
+            while ((AUX_WUC->MODCLKEN0 & MODCLKEN0_SMPH_EN) == 0) {}
 
             /* Set HF and MF clock sources to the HF RC Osc */
             DDI_0_OSC->CTL0 &= ~(DDI_0_OSC_CTL0_SCLK_HF_SRC_SEL_M | DDI_0_OSC_CTL0_SCLK_MF_SRC_SEL_M);
@@ -89,42 +91,44 @@ enum lpm_mode lpm_arch_set(enum lpm_mode target)
             }
 
             /* Restore the SMPH clock and disable the OSC interface */
-            *(reg32_t*)(AUX_WUC_BASE + AUX_WUC_O_MODCLKEN0) &= ~(AUX_WUC_OSCCTRL_CLOCK);
-            *(reg32_t*)(AON_WUC_BASE + AON_WUC_O_AUXCTL) &= ~AON_WUC_AUXCTL_AUX_FORCE_ON;
+            AUX_WUC->MODCLKEN0 &= ~AUX_WUC_MODCLKEN0_AUX_DDI0_OSC_EN;
+            AON_WUC->AUXCTL &= ~AON_WUC_AUXCTL_AUX_FORCE_ON;
+            AUX_WUC->MODCLKEN0 &= ~AUX_WUC_MODCLKEN0_SMPH_EN;
 
             /* Configure clock sources for MCU and AUX: No clock */
-            *(reg32_t*)(AON_WUC_BASE + AON_WUC_O_MCUCLK) &= ~AON_WUC_MCUCLK_PWR_DWN_SRC_M;
-            *(reg32_t*)(AON_WUC_BASE + AON_WUC_O_AUXCLK) &= ~AON_WUC_AUXCLK_PWR_DWN_SRC_M;
+            AON_WUC->MCUCLK &= ~AON_WUC_MCUCLK_PWR_DWN_SRC_M;
+            AON_WUC->AUXCLK &= ~AON_WUC_AUXCLK_PWR_DWN_SRC_M;
 
 
             /* Full RAM retention. */
-            *(reg32_t*)(AON_WUC_BASE + AON_WUC_O_MCUCFG) |= MCU_RAM0_RETENTION | MCU_RAM1_RETENTION | MCU_RAM2_RETENTION | MCU_RAM3_RETENTION;
+            AON_WUC->MCUCFG |= MCU_RAM0_RETENTION | MCU_RAM1_RETENTION | MCU_RAM2_RETENTION | MCU_RAM3_RETENTION;
 
             /* Disable retention of AUX RAM */
-            *(reg32_t*)(AON_WUC_BASE + AON_WUC_O_AUXCFG) &= ~(1 << AON_WUC_AUXCFG_RAM_RET_EN_BITN);
+            AON_WUC->AUXCFG &= ~(1 << AON_WUC_AUXCFG_RAM_RET_EN_BITN);
 
             /*
              * Always turn off RFCORE, CPU, and VIMS. RFCORE should be off
              * already
              */
+//             PRCM->PDCTL0 &= ~(PDCTL0_RFC_ON | PDCTL0_PERIPH_ON | PDCTL0_SERIAL_ON);
             PRCM->PDCTL0 &= ~(PDCTL0_RFC_ON | PDCTL0_PERIPH_ON);
             PRCM->PDCTL1 &= ~(PDCTL1_CPU_ON | PDCTL1_VIMS_ON);
 
             /* Request JTAG domain power off */
             /* otherwise MCU domain can't be turned off */
-            *(reg32_t*)(AON_WUC_BASE + AON_WUC_O_JTAGCFG) = 0;
+            AON_WUC->JTAGCFG = 0;
 
 //             /* stop aux osc clock before powering down aux */
 //             AUX_WUC->MODCLKEN0 &= ~MODCLKEN0_AUX_DDI0_OSC_EN;
 //             AON_WUC->AUXCTL &= ~AUXCTL_AUX_FORCE_ON;
 //
 //             /* Turn off AUX */
-//             *(reg32_t*)(AUX_WUC_BASE + AUX_WUC_O_PWROFFREQ) = AUX_WUC_PWROFFREQ_REQ;
-//             *(reg32_t*)(AUX_WUC_BASE + AUX_WUC_O_MCUBUSCTL) = AUX_WUC_MCUBUSCTL_DISCONNECT_REQ;
+//             AUX_WUC->PWROFFREQ = AUX_WUC_PWROFFREQ_REQ;
+//             AUX_WUC->MCUBUSCTL = AUX_WUC_MCUBUSCTL_DISCONNECT_REQ;
 
             // set AUX and MCU domain power down mode
-            *(reg32_t*)(AON_WUC_BASE + AON_WUC_O_CTL0) &= ~(1 << AON_WUC_CTL0_PWR_DWN_DIS_BITN);
-            while(*(reg32_t*)(AON_WUC_BASE + AON_WUC_O_PWRSTAT) & AONWUC_AUX_POWER_ON) {}
+            AON_WUC->CTL0 &= ~(1 << AON_WUC_CTL0_PWR_DWN_DIS_BITN);
+            while(AON_WUC->PWRSTAT & AONWUC_AUX_POWER_ON) {}
 
             /* Configure the recharge controller */
             SysCtrlSetRechargeBeforePowerDown(XOSC_IN_HIGH_POWER_MODE);
@@ -132,8 +136,7 @@ enum lpm_mode lpm_arch_set(enum lpm_mode target)
             //
             // Request the uLDO for standby power consumption.
             //
-//             *(reg32_t*)(PRCM_BASE + PRCM_O_VDCTL) |= (1 << PRCM_VDCTL_ULDO_BITN);
-
+//             PRCM->VDCTL |= (1 << PRCM_VDCTL_ULDO_BITN);
 
             /* Sync the AON interface to ensure all writes have gone through. */
             *(reg32_t*)(AON_RTC_BASE + AON_RTC_O_SYNC);
@@ -147,8 +150,8 @@ enum lpm_mode lpm_arch_set(enum lpm_mode target)
              * until right before deep sleep to be able to use the cache for as long
              * as possible.
              */
-            *(reg32_t*)(PRCM_BASE + PRCM_O_RAMRETEN) &= ~PRCM_RAMRETEN_VIMS_M;
-            *(reg32_t*)(VIMS_BASE + VIMS_O_CTL) |= (VIMS_MODE_OFF);
+            PRCM->RAMRETEN &= ~PRCM_RAMRETEN_VIMS_M;
+            VIMS->CTL |= (VIMS_MODE_OFF);
 
             /* Deep Sleep */
             SCB->SCR |= SCB_SCR_SLEEPDEEP_Msk;
@@ -182,14 +185,14 @@ void lpm_arch_awake(void)
          * This is likely not required, since the switch to GLDO/DCDC is automatic
          * when coming back from deep sleep
          */
-        *(reg32_t*)(PRCM_BASE + PRCM_O_VDCTL) &= ~(1 << PRCM_VDCTL_ULDO_BITN);
+        PRCM->VDCTL &= ~(1 << PRCM_VDCTL_ULDO_BITN);
 
         /* Turn on cache again */
-        *(reg32_t*)(VIMS_BASE + VIMS_O_CTL) = (*(reg32_t*)(VIMS_BASE + VIMS_O_CTL) & ~(VIMS_CTL_MODE_M)) | (VIMS_MODE_ENABLED);
-//         *(reg32_t*)(PRCM_BASE + PRCM_O_RAMRETEN) |= PRCM_RAMRETEN_VIMS_M;
+        VIMS->CTL = (VIMS->CTL & ~(VIMS_CTL_MODE_M)) | (VIMS_MODE_ENABLED);
+//         PRCM->RAMRETEN |= PRCM_RAMRETEN_VIMS_M;
 
         /* unfreeze gpio outputs */
-        *(reg32_t*)(AON_IOC_BASE + AON_IOC_O_IOCLATCH) = AON_IOC_IOCLATCH_EN;
+        AON->IOCLATCH = AON_IOC_IOCLATCH_EN;
         *(reg32_t*)(AON_RTC_BASE + AON_RTC_O_SYNC);
 
         /* Check operating conditions, optimally choose DCDC versus GLDO */
