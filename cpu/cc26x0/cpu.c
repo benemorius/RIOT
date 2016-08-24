@@ -22,6 +22,8 @@
 #include "trim.h"
 #include "setup.h"
 #include "hw_ddi_0_osc.h"
+#include "hw_aux_wuc.h"
+#include "hw_aon_wuc.h"
 
 /* ROM HAPI HFSourceSafeSwitch function */
 #define ROM_HAPI_HFSOURCESAFESWITCH_ADDR_P (0x10000048 + (14*4))
@@ -86,8 +88,13 @@ void setup(void)
 void cpu_clock_init(void)
 {
     AON_WUC->AUXCTL |= AUXCTL_AUX_FORCE_ON; /* power on AUX_PD */
-    while(!(AON_WUC->PWRSTAT & PWRSTAT_AUX_PD_ON)); /* wait for AUX_PD to be powered on */
+    while(!(AON_WUC->PWRSTAT & PWRSTAT_AUX_PD_ON)) {} /* wait for AUX_PD to be powered on */
+
     AUX_WUC->MODCLKEN0 |= MODCLKEN0_AUX_DDI0_OSC_EN; /* turn on oscillator interface clock */
+    while ((AUX_WUC->MODCLKEN0 & MODCLKEN0_AUX_DDI0_OSC_EN) == 0) {}
+
+    AUX_WUC->MODCLKEN0 |= MODCLKEN0_SMPH_EN;
+    while ((AUX_WUC->MODCLKEN0 & MODCLKEN0_SMPH_EN) == 0) {}
 
     /* if sclk_hf is already on hf_xosc, then we needn't switch to it */
     if (DDI_0_OSC->STAT0 & DDI_0_OSC_STAT0_SCLK_HF_SRC_XOSC) {
@@ -95,13 +102,16 @@ void cpu_clock_init(void)
     }
 
     /* start hf_xosc and configure xtal frequency */
-    DDI_0_OSC->CTL0 = DDI_0_OSC_CTL0_SCLK_HF_SRC_SEL_XOSC
-                    | DDI_0_OSC_CTL0_SCLK_MF_SRC_SEL
-                    | DDI_0_OSC_CTL0_XTAL_IS_24M;
+    DDI_0_OSC->CTL0 |= DDI_0_OSC_CTL0_SCLK_HF_SRC_SEL_XOSC
+                    |  DDI_0_OSC_CTL0_SCLK_MF_SRC_SEL;
 
     /* wait for hf_xosc to start */
     while ((DDI_0_OSC->STAT0 & 0x1) == 0) { }
 
     /* switch to hf_xosc */
     ROM_HAPI_HFSOURCESAFESWITCH();
+
+    AUX_WUC->MODCLKEN0 &= ~AUX_WUC_MODCLKEN0_AUX_DDI0_OSC_EN;
+    AON_WUC->AUXCTL &= ~AON_WUC_AUXCTL_AUX_FORCE_ON;
+    AUX_WUC->MODCLKEN0 &= ~AUX_WUC_MODCLKEN0_SMPH_EN;
 }

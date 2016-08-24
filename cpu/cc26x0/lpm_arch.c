@@ -136,7 +136,7 @@ enum lpm_mode lpm_arch_set(enum lpm_mode target)
             //
             // Request the uLDO for standby power consumption.
             //
-//             PRCM->VDCTL |= (1 << PRCM_VDCTL_ULDO_BITN);
+            PRCM->VDCTL |= (1 << PRCM_VDCTL_ULDO_BITN);
 
             /* Sync the AON interface to ensure all writes have gone through. */
             *(reg32_t*)(AON_RTC_BASE + AON_RTC_O_SYNC);
