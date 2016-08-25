@@ -12,6 +12,9 @@
 
 #include "cc26x0_prcm.h"
 #include "cc26x0_rfc.h"
+#include "mutex.h"
+#include "lpm.h"
+#include "thread.h"
 
 #define BLE_ADV_STR "this is not a riot\n"
 
@@ -29,11 +32,20 @@ static rfc_bleAdvPar_t ble_params_buf __attribute__((__aligned__(4)));
 uint16_t ble_mac_address[3] __attribute__((__aligned__(4))) = {0xeeff, 0xccdd, 0xaabb};
 char adv_name[BLE_ADV_NAME_BUF_LEN] = {"riot-test"};
 
+mutex_t cmd_wait = MUTEX_INIT;
+mutex_t done_wait = MUTEX_INIT;
+
 void isr_rfc_cmd_ack(void)
 {
     /*ROP ack = op submitted, DIR or IMM ack = op executed*/
-    printf("Command acknowledged. CMDSTA: 0x%" PRIx32 " \n", RFC_DBELL->CMDSTA);
+//     printf("Command acknowledged. CMDSTA: 0x%" PRIx32 " \n", RFC_DBELL->CMDSTA);
     RFC_DBELL->RFACKIFG = 0;
+    mutex_unlock(&cmd_wait);
+//     printf("ack\n");
+
+    if (sched_context_switch_request) {
+        thread_yield();
+    }
 }
 
 void isr_rfc_hw(void)
@@ -41,6 +53,10 @@ void isr_rfc_hw(void)
     uint32_t flags = RFC_DBELL->RFHWIFG;
 //     printf("hw 0x%" PRIx32 "\n", flags);
     RFC_DBELL->RFHWIFG = ~flags;
+
+    if (sched_context_switch_request) {
+        thread_yield();
+    }
 }
 
 void isr_rfc_cpe0(void)
@@ -48,6 +64,13 @@ void isr_rfc_cpe0(void)
     uint32_t flags = RFC_DBELL->RFCPEIFG & (~RFC_DBELL->RFCPEISL);
 //     printf("cpe0 0x%" PRIx32 "\n", flags);
     RFC_DBELL->RFCPEIFG = ~flags;
+
+    mutex_unlock(&done_wait);
+//     printf("done\n");
+
+    if (sched_context_switch_request) {
+        thread_yield();
+    }
 }
 
 void isr_rfc_cpe1(void)
@@ -55,6 +78,10 @@ void isr_rfc_cpe1(void)
     uint32_t flags = RFC_DBELL->RFCPEIFG & RFC_DBELL->RFCPEISL;
 //     printf("cpe1 0x%" PRIx32 "\n", flags);
     RFC_DBELL->RFCPEIFG = ~flags;
+
+    if (sched_context_switch_request) {
+        thread_yield();
+    }
 }
 
 void rfc_irq_enable(void)
@@ -77,11 +104,19 @@ uint32_t rfc_send_cmd(void *ropCmd)
 {
 //     printf("rfc_send_cmd()\n");
 
+    ++lpm_prevent_sleep;
+
+    mutex_lock(&cmd_wait);
+//     printf("cmd\n");
     RFC_DBELL->CMDR = (uint32_t) ropCmd;
 
     /* wait for cmd ack (rop cmd was submitted successfully) */
-    while (RFC_DBELL->RFACKIFG << 31);
-    while (!RFC_DBELL->CMDSTA);
+    mutex_lock(&cmd_wait);
+    mutex_unlock(&cmd_wait);
+
+//     printf("ret\n");
+
+    --lpm_prevent_sleep;
 
     return RFC_DBELL->CMDSTA;
 }
@@ -100,6 +135,32 @@ uint16_t rfc_wait_cmd_done(radio_op_command_t *command)
     } while (command->status < R_OP_STATUS_SKIPPED);
 
     return command->status;
+}
+
+uint32_t rfc_cmd_and_wait(void *ropCmd, uint16_t *status)
+{
+    radio_op_command_t *cmd = ropCmd;
+
+    ++lpm_prevent_sleep;
+
+    mutex_lock(&done_wait);
+
+//     printf("cmd\n");
+    uint32_t send_status = rfc_send_cmd(ropCmd);
+
+    /* TODO probably need to check if send_status is good and skip waiting
+     * for done_wait if not */
+
+    mutex_lock(&done_wait);
+    mutex_unlock(&done_wait);
+
+//     printf("fin\n");
+
+    *status = cmd->status;
+
+    --lpm_prevent_sleep;
+
+    return send_status;
 }
 
 bool rfc_setup_ble(void)
@@ -128,9 +189,9 @@ bool rfc_setup_ble(void)
     };
     rs.pRegOverride = ble_overrides;
 
-    rfc_send_cmd(&rs);
+    uint16_t status;
+    rfc_cmd_and_wait(&rs, &status);
 
-    uint16_t status = rfc_wait_cmd_done(&rs.ropCmd);
     return status == R_OP_STATUS_DONE_OK;
 }
 
@@ -164,18 +225,16 @@ int send_ble_adv_nc(int channel, uint8_t *adv_payload, int adv_payload_len)
     params->pAdvData = adv_payload;
 
     for (int repeat = 0; repeat < 1; ++repeat) {
-        uint32_t status = rfc_send_cmd((uint32_t*)&cmd);
+        uint16_t status;
+        uint32_t cmd_status = rfc_cmd_and_wait((uint32_t*)&cmd, &status);
 
-        if (status != 1) {
-            printf("bad CMDSTA: 0x%lx", status);
+        if (cmd_status != 1) {
+            printf("bad CMDSTA: 0x%lx", cmd_status);
             while(1);
         }
 
-        radio_op_command_t *rop_cmd = (radio_op_command_t *)&cmd;
-
-        status = rfc_wait_cmd_done(rop_cmd);
         if (status != 0x1400) {
-            printf("bad CMDSTA: 0x%lx", status);
+            printf("bad status: 0x%x", status);
             while(1);
         }
     }
@@ -222,9 +281,9 @@ bool rfc_nop_test(void)
     nopCommand.ropCmd.commandNo = CMDR_CMDID_NOP;
     nopCommand.ropCmd.status = R_OP_STATUS_IDLE;
     nopCommand.ropCmd.condition.rule = 1; /* never run next cmd. need to implement definition */
-    rfc_send_cmd(&nopCommand);
 
-    uint16_t status = rfc_wait_cmd_done(&nopCommand.ropCmd);
+    uint16_t status;
+    rfc_cmd_and_wait(&nopCommand, &status);
     return status == R_OP_STATUS_DONE_OK;
 }
 
@@ -232,10 +291,12 @@ static bool rfc_start_rat(void)
 {
     direct_command_t ratCommand;
     ratCommand.commandID = CMDR_CMDID_START_RAT;
-    RFC_DBELL->CMDR = (uint32_t) (&ratCommand);
-    while (!RFC_DBELL->CMDSTA); /* wait for cmd ack */
-    printf("START_RAT finished with 0x%lx\n", RFC_DBELL->CMDSTA); //FIXME future beacon send fails without this
-    return RFC_DBELL->CMDSTA == CMDSTA_RESULT_DONE;
+    uint32_t status = rfc_send_cmd(&ratCommand);
+    if (status != 1) {
+        printf("bad CMDSTA: 0x%lx", status);
+        while(1);
+    }
+    return status == CMDSTA_RESULT_DONE;
 }
 
 void rfc_prepare(void)
@@ -254,11 +315,9 @@ void rfc_prepare(void)
     PRCM->CLKLOADCTL = CLKLOADCTL_LOAD;
     while (!(PRCM->CLKLOADCTL & CLKLOADCTL_LOADDONE)) ;
 
-    /* RFC POWER DOMAIN */
+    /* enable RFC power domain */
     PRCM->PDCTL0 |= PDCTL0_RFC_ON;
-//     PRCM->PDCTL1 |= PDCTL1_RFC_ON;
-    while (!(PRCM->PDSTAT0 & PDSTAT0_RFC_ON)) ;
-//     while (!(PRCM->PDSTAT1 & PDSTAT1_RFC_ON)) ;
+    while (!(PRCM->PDSTAT0 & PDSTAT0_RFC_ON)) {}
 
     /* RFC CLOCK */
     //RFC_PWR->PWMCLKEN |= RFC_PWR_PWMCLKEN_CPE;
@@ -266,7 +325,8 @@ void rfc_prepare(void)
     RFC_PWR->PWMCLKEN |= 0x7FF;
 //     printf("RFC_PWR->PWMCLKEN %lx\n", RFC_PWR->PWMCLKEN);
 
-    /* RFC IRQ */
+    /* disable all except command done interrupts */
+    RFC_DBELL->RFCPEIEN = 0x3;
     rfc_irq_enable();
 
     /*RFC TIMER */
@@ -285,8 +345,7 @@ void rfc_prepare(void)
 
 void rfc_powerdown(void)
 {
-    rfc_irq_disable();
-
+    /* ??? (not required I think) */
     *(reg32_t*)(0x60041000 + 0x00000010) = 0x0;
     *(reg32_t*)(0x60041000 + 0x00000014) = 0x0;
 
@@ -296,17 +355,19 @@ void rfc_powerdown(void)
     cmd.commandNo = CMDR_CMDID_FS_POWERDOWN;
     cmd.condition.rule = R_OP_CONDITION_RULE_NEVER;
 
-    uint32_t status = rfc_send_cmd(&cmd);
-    if (status != 1) {
-        printf("bad CMDSTA: 0x%lx", status);
+    /* FS_POWERDOWN command doesn't cause RFCPEIFG.COMMAND_DONE interrupt */
+    uint32_t cmd_status = rfc_send_cmd(&cmd);
+    if (cmd_status != 1) {
+        printf("bad CMDSTA: 0x%lx", cmd_status);
         while(1);
     }
-    radio_op_command_t *rop_cmd = (radio_op_command_t *)&cmd;
-    status = rfc_wait_cmd_done(rop_cmd);
+    uint16_t status = rfc_wait_cmd_done((radio_op_command_t*)&cmd);
     if (status != 0x400) {
-        printf("bad status: 0x%lx", status);
+        printf("bad status: 0x%x", status);
         while(1);
     }
+
+    rfc_irq_disable();
 
     /* Shut down the RFCORE clock domain in the MCU VD */
     PRCM->RFCCLKG = 0;
@@ -316,7 +377,6 @@ void rfc_powerdown(void)
     /* Turn off RFCORE PD */
     PRCM->PDCTL0 &= ~PDCTL0_RFC_ON;
     while (PRCM->PDSTAT0 & PDSTAT0_RFC_ON) {}
-
 
     /* Enable the Osc interface and remember the state of the SMPH clock */
     // Force power on AUX to ensure CPU has access
