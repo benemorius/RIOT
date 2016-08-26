@@ -29,10 +29,21 @@
 static uint32_t si70xx_measure(si70xx_t *dev, uint8_t command)
 {
     uint8_t result[2];
+    int32_t ret;
 
     i2c_acquire(dev->i2c_dev);
     i2c_write_byte(dev->i2c_dev, dev->address, command);
-    i2c_read_bytes(dev->i2c_dev, dev->address, (char *) result, 2);
+
+    /* sleep during conversion if not using clock stretching */
+    if (command == SI70XX_MEASURE_RH) {
+        xtimer_usleep(23 * MS_IN_USEC);
+    }
+
+    /* sensor will nack until conversion completes */
+    do {
+        ret = i2c_read_bytes(dev->i2c_dev, dev->address, (char *) result, 2);
+    } while (ret < 0);
+
     i2c_release(dev->i2c_dev);
 
     /* reconstruct raw result */
@@ -87,7 +98,7 @@ uint16_t si70xx_get_relative_humidity(si70xx_t *dev)
     int32_t humidity;
 
     /* perform measurement */
-    raw = si70xx_measure(dev, SI70XX_MEASURE_RH_HOLD);
+    raw = si70xx_measure(dev, SI70XX_MEASURE_RH);
 
     humidity = ((12500 * raw) / 65536) - 600;
 
