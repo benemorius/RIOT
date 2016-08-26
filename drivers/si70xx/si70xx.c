@@ -75,7 +75,7 @@ int si70xx_init(si70xx_t *dev, i2c_t i2c_dev, uint8_t address)
 
     /* setup the i2c bus */
     i2c_acquire(dev->i2c_dev);
-    int result = i2c_init_master(dev->i2c_dev, I2C_SPEED_NORMAL);
+    int result = i2c_init_master(dev->i2c_dev, I2C_SPEED_FAST);
 
     if (result != 0) {
         i2c_release(dev->i2c_dev);
