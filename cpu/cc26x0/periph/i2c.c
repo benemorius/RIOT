@@ -289,14 +289,20 @@ int i2c_read_bytes(i2c_t dev, uint8_t address, char *data, int length)
 
 int i2c_write_regs(i2c_t dev, uint8_t address, uint8_t reg, char* data, int length)
 {
-    /* TODO unimplemented */
-    return -1;
+    int ret = i2c_write_byte(dev, address, reg);
+    if (ret < 0) {
+        return ret;
+    }
+    return i2c_write_bytes(dev, address, data, length);
 }
 
 int i2c_read_regs(i2c_t dev, uint8_t address, uint8_t reg, char* data, int length)
 {
-    /* TODO unimplemented */
-    return -1;
+    int ret = i2c_write_byte(dev, address, reg);
+    if (ret < 0) {
+        return ret;
+    }
+    return i2c_read_bytes(dev, address, data, length);
 }
 
 int i2c_acquire(i2c_t dev)
