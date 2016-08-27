@@ -26,10 +26,11 @@ extern "C" {
 #endif
 
 /**
- * @name BMP180 I2C address
+ * @name BMP180 device ID
  * @{
  */
-#define BMP180_ADDR                   (0x77) /* 7 bit address */
+#define BMP180_DEVICE_ID                   (0x55)
+#define BMP280_DEVICE_ID                   (0x58)
 /** @} */
 
 /**
@@ -42,6 +43,10 @@ extern "C" {
 #define BMP180_TEMPERATURE_COMMAND    (0x2E)
 #define BMP180_PRESSURE_COMMAND       (0x34)
 #define BMP180_CALIBRATION_AC1        (0xAA)
+#define BMP280_CALIBRATION_T1         (0x88)
+#define BMP280_STATUS                 (0xF3)
+#define BMP280_PRESSURE_DATA          (0xF7)
+#define BMP280_TEMPERATURE_DATA       (0xFA)
 /** @} */
 
 /**
@@ -52,6 +57,12 @@ extern "C" {
 #define BMP180_STANDARD_DELAY         (8000UL)
 #define BMP180_HIGHRES_DELAY          (14000UL)
 #define BMP180_ULTRAHIGHRES_DELAY     (26000UL)
+
+#define BMP280_ULTRALOWPOWER_DELAY    (6400UL)
+#define BMP280_LOWPOWER_DELAY         (8700UL)
+#define BMP280_STANDARD_DELAY         (13300UL)
+#define BMP280_HIGHRES_DELAY          (22500UL)
+#define BMP280_ULTRAHIGHRES_DELAY     (43200UL)
 /** @} */
 
 #ifdef __cplusplus

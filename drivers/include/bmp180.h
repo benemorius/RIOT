@@ -29,6 +29,14 @@ extern "C" {
 #endif
 
 /**
+ * @name BMP180 I2C address
+ * @{
+ */
+#define BMP180_ADDR                   (0x77) /* 7 bit address */
+#define BMP280_ADDR                   (0x76) /* 7 bit address */
+/** @} */
+
+/**
  * @name Oversampling modes
  * @{
  */
@@ -56,12 +64,44 @@ typedef struct {
 } bmp180_calibration_t;
 
 /**
+ * @brief Calibration struct for the BMP280 sensor
+ */
+typedef struct {
+    uint16_t dig_T1;        /**< dig_T1 coefficient */
+    int16_t dig_T2;         /**< dig_T2 coefficient */
+    int16_t dig_T3;         /**< dig_T3 coefficient */
+    uint16_t dig_P1;        /**< dig_P1 coefficient */
+    int16_t dig_P2;         /**< dig_P2 coefficient */
+    int16_t dig_P3;         /**< dig_P3 coefficient */
+    int16_t dig_P4;         /**< dig_P4 coefficient */
+    int16_t dig_P5;         /**< dig_P5 coefficient */
+    int16_t dig_P6;         /**< dig_P6 coefficient */
+    int16_t dig_P7;         /**< dig_P7 coefficient */
+    int16_t dig_P8;         /**< dig_P8 coefficient */
+    int16_t dig_P9;         /**< dig_P9 coefficient */
+} bmp280_calibration_t;
+
+typedef struct {
+    union {
+        bmp180_calibration_t bmp180;
+        bmp280_calibration_t bmp280;
+    };
+} _calibration_t;
+
+typedef enum {
+    BMP_180,
+    BMP_280
+} bmp180_t_t;
+
+/**
  * @brief Device descriptor for the BMP180 sensor
  */
 typedef struct {
     i2c_t i2c_dev;                     /**< I2C device which is used */
-    bmp180_calibration_t calibration;  /**< Device calibration */
+    uint8_t address;                   /**< I2C address */
+    _calibration_t calibration;        /**< Device calibration */
     uint8_t oversampling;              /**< Oversampling mode */
+    bmp180_t_t type;                   /**< BMP180 or BMP280 */
 } bmp180_t;
 
 
@@ -71,6 +111,7 @@ typedef struct {
 typedef struct {
     i2c_t i2c_dev;
     uint8_t mode;
+    uint8_t address;
 } bmp180_params_t;
 
 /**
@@ -96,7 +137,7 @@ void bmp180_auto_init(void);
  * @return                  0 on success
  * @return                  -1 if given I2C is not enabled in board config
  */
-int bmp180_init(bmp180_t *dev, i2c_t i2c, uint8_t mode);
+int bmp180_init(bmp180_t* dev, i2c_t i2c, uint8_t mode, uint8_t address);
 
 /**
  * @brief Read temperature value from the given BMP180 device, returned in d°C
@@ -119,6 +160,8 @@ int bmp180_read_temperature(bmp180_t *dev, int32_t *temperature);
  * @return                  -1 if device's I2C is not enabled in board config
  */
 int bmp180_read_pressure(bmp180_t *dev, int32_t *pressure);
+
+int bmp180_read_both(bmp180_t *dev, int32_t *pressure, int32_t *temperature);
 
 /**
  * @brief Compute altitude, returned in m.

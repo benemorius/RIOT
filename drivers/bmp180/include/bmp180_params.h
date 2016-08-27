@@ -40,7 +40,8 @@ extern "C" {
 #endif
 
 #define BMP180_PARAMS_DEFAULT        {.i2c_dev = BMP180_PARAM_I2C_DEV,  \
-                                      .mode    = BMP180_PARAM_MODE }
+                                      .mode    = BMP180_PARAM_MODE,     \
+                                      .address = BMP280_ADDR }
 /**@}*/
 
 /**
