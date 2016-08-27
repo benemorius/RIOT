@@ -62,10 +62,12 @@ void isr_rfc_hw(void)
 void isr_rfc_cpe0(void)
 {
     uint32_t flags = RFC_DBELL->RFCPEIFG & (~RFC_DBELL->RFCPEISL);
-//     printf("cpe0 0x%" PRIx32 "\n", flags);
     RFC_DBELL->RFCPEIFG = ~flags;
+//     printf("cpe0 0x%" PRIx32 "\n", flags);
 
-    mutex_unlock(&done_wait);
+    if (flags & 0x2) {
+        mutex_unlock(&done_wait);
+    }
 //     printf("done\n");
 
     if (sched_context_switch_request) {
@@ -195,38 +197,52 @@ bool rfc_setup_ble(void)
     return status == R_OP_STATUS_DONE_OK;
 }
 
-int send_ble_adv_nc(int channel, uint8_t *adv_payload, int adv_payload_len)
+int send_ble_adv_nc(uint8_t iterations, uint8_t *adv_payload, int adv_payload_len)
 {
 //     printf("send_ble_adv_nc()\n");
 
-    rfc_CMD_BLE_ADV_NC_t cmd;
-    rfc_bleAdvPar_t *params;
-
-    params = (rfc_bleAdvPar_t *)&ble_params_buf;
+    rfc_CMD_BLE_ADV_NC_t cmds[iterations] __attribute__((__aligned__(4)));
+    rfc_CMD_BLE_ADV_NC_t *cmd = cmds;
+    rfc_bleAdvPar_t *params = (rfc_bleAdvPar_t *)&ble_params_buf;
 
     /* Clear both buffers */
-    memset(&cmd, 0x00, sizeof(cmd));
+    memset(cmds, 0x00, sizeof(cmds));
     memset(params, 0x00, sizeof(*params));
-
-    /* Adv NC */
-    cmd.commandNo = 0x1805;
-    cmd.condition.rule = R_OP_CONDITION_RULE_NEVER;
-    cmd.whitening.bOverride = 0;
-    cmd.whitening.init = 0;
-    cmd.pParams = params;
-    cmd.channel = channel;
 
     /* Set up BLE Advertisement parameters */
     params->pDeviceAddress = ble_mac_address;
     params->endTrigger.triggerType = R_OP_STARTTRIG_TYPE_TRIG_NEVER;
     params->endTime = R_OP_STARTTRIG_TYPE_TRIG_NEVER;
-
     params->advLen = adv_payload_len;
     params->pAdvData = adv_payload;
 
+    /* Adv NC */
+    cmd->commandNo = 0x1805;
+    cmd->condition.rule = R_OP_CONDITION_RULE_ALWAYS;
+    cmd->whitening.bOverride = 0;
+    cmd->whitening.init = 0;
+    cmd->pParams = params;
+    cmd->channel = 37;
+//     cmd->startTrigger.triggerType = R_OP_STARTTRIG_TYPE_REL_PREVSTART;
+//     cmd->startTime = 4000*20;
+
+    uint8_t p;
+    for (p = 1; p < iterations; ++p) {
+        memcpy(&cmds[p], cmd, sizeof(*cmd));
+        cmds[p].channel = (p % 3) + 37;
+        cmds[p-1].pNextOp = (radio_op_command_t*)&cmds[p];
+    }
+
+    /* last command has no next command */
+    cmds[p-1].pNextOp = 0;
+    cmds[p-1].condition.rule = R_OP_CONDITION_RULE_NEVER;
+
+    /* first command doesn't have delayed start */
+    cmds[0].startTrigger.triggerType = R_OP_STARTTRIG_TYPE_TRIG_NOW;
+
     for (int repeat = 0; repeat < 1; ++repeat) {
         uint16_t status;
-        uint32_t cmd_status = rfc_cmd_and_wait((uint32_t*)&cmd, &status);
+        uint32_t cmd_status = rfc_cmd_and_wait((uint32_t*)cmd, &status);
 
         if (cmd_status != 1) {
             printf("bad CMDSTA: 0x%lx", cmd_status);
@@ -259,9 +275,7 @@ void rfc_ble_beacon(void)
            strlen(adv_name));
     p += strlen(adv_name);
 
-    send_ble_adv_nc(37, payload, p);
-    send_ble_adv_nc(38, payload, p);
-    send_ble_adv_nc(39, payload, p);
+    send_ble_adv_nc(15, payload, p);
 }
 
 bool rfc_ping_test(void)
@@ -325,8 +339,8 @@ void rfc_prepare(void)
     RFC_PWR->PWMCLKEN |= 0x7FF;
 //     printf("RFC_PWR->PWMCLKEN %lx\n", RFC_PWR->PWMCLKEN);
 
-    /* disable all except command done interrupts */
-    RFC_DBELL->RFCPEIEN = 0x3;
+    /* disable all except last command done interrupt */
+    RFC_DBELL->RFCPEIEN = 0x2;
     rfc_irq_enable();
 
     /*RFC TIMER */
