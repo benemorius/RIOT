@@ -22,7 +22,7 @@
 #define BLE_ADV_TYPE_DEVINFO      0x01
 #define BLE_ADV_TYPE_NAME         0x09
 #define BLE_ADV_TYPE_MANUFACTURER 0xFF
-#define BLE_ADV_NAME_BUF_LEN        32
+#define BLE_ADV_NAME_BUF_LEN        29
 #define BLE_ADV_PAYLOAD_BUF_LEN     64
 #define BLE_UUID_SIZE               16
 
@@ -197,9 +197,14 @@ bool rfc_setup_ble(void)
     return status == R_OP_STATUS_DONE_OK;
 }
 
-int send_ble_adv_nc(uint8_t iterations, uint8_t *adv_payload, int adv_payload_len)
+int send_ble_adv_nc(uint8_t iterations, uint8_t *adv_payload, uint8_t adv_payload_len)
 {
 //     printf("send_ble_adv_nc()\n");
+
+    /* maximum 31 byte payload */
+    if (adv_payload_len > 31) {
+        return -1;
+    }
 
     rfc_CMD_BLE_ADV_NC_t cmds[iterations] __attribute__((__aligned__(4)));
     rfc_CMD_BLE_ADV_NC_t *cmd = cmds;
@@ -261,19 +266,23 @@ void rfc_ble_beacon(void)
 {
 //     printf("rfc_ble_beacon()\n");
 
+    uint8_t adv_name_len = strlen(adv_name);
+    if (adv_name_len > 29) {
+        adv_name_len = 29;
+    }
+
     uint16_t p = 0;
     static uint8_t payload[BLE_ADV_PAYLOAD_BUF_LEN] __attribute__((__aligned__(4)));
+    memset(payload, 0, BLE_ADV_PAYLOAD_BUF_LEN);
 
     /* device info */
-    memset(payload, 0, BLE_ADV_PAYLOAD_BUF_LEN);
-    payload[p++] = 0x02;          /* 2 bytes */
-    payload[p++] = BLE_ADV_TYPE_DEVINFO;
-    payload[p++] = 0x1a;          /* LE general discoverable + BR/EDR */
-    payload[p++] = 1 + strlen(adv_name);
+//     payload[p++] = 0x02;          /* 2 bytes */
+//     payload[p++] = BLE_ADV_TYPE_DEVINFO;
+//     payload[p++] = 0x1a;          /* LE general discoverable + BR/EDR */
+    payload[p++] = 1 + adv_name_len;
     payload[p++] = BLE_ADV_TYPE_NAME;
-    memcpy(&payload[p], adv_name,
-           strlen(adv_name));
-    p += strlen(adv_name);
+    memcpy(&payload[p], adv_name, adv_name_len);
+    p += adv_name_len;
 
     send_ble_adv_nc(15, payload, p);
 }
