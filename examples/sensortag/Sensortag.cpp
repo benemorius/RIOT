@@ -36,6 +36,7 @@
 #include "si70xx.h"
 #include "hashes/md5.h"
 #include <algorithm>
+#include "bmp180.h"
 
 #include <stdio.h>
 
@@ -97,27 +98,48 @@ main_pid(thread_getpid())
     gpio_init(GPIO_LED, GPIO_OUT);
 //     flash_led(GPIO_LED, 3);
 
-	DEBUG("firmware version: %s\r\n", GIT_VERSION);
+    DEBUG("firmware version: %s\r\n", GIT_VERSION);
 
-	cpuid_get(cpuid);
-	DEBUG("cpuid: %02x %02x %02x %02x %02x %02x %02x %02x\n",
-		   cpuid[0], cpuid[1], cpuid[2], cpuid[3], cpuid[4], cpuid[5], cpuid[6], cpuid[7]
-	);
-	radio_id = cpuid[0];
+    cpuid_get(cpuid);
+    DEBUG("cpuid: %02x %02x %02x %02x %02x %02x %02x %02x\n",
+        cpuid[0], cpuid[1], cpuid[2], cpuid[3], cpuid[4], cpuid[5], cpuid[6], cpuid[7]
+    );
+    radio_id = cpuid[1];
     DEBUG("radio_id: %02x\n", radio_id);
 
-//     rfc_prepare();
-//     rfc_setup_ble();
+// dev
+// BLE_0 0x48c8d681
+// BLE_1 0xffffb0b4
+// 154_0 0x07a82681
+// 154_1 0x00124b00
 
-// 	setup_network(cpuid[0], false, 1111, &handle_packet, &handle_transmit);
+// red
+// BLE_0 0xf8adaf83
+// BLE_1 0xffffa0e6
+// 154_0 0x0a4a2383
+// 154_1 0x00124b00
+
+// green
+// BLE_0 0xf8adc180
+// BLE_1 0xffffa0e6
+// 154_0 0x0a4a3480
+// 154_1 0x00124b00
+
+// orange
+// BLE_0 0xf8ad9981
+// BLE_1 0xffffa0e6
+// 154_0 0x0a4a0d81
+// 154_1 0x00124b00
+
+//     setup_network(cpuid[0], false, 1111, &handle_packet, &handle_transmit);
 
 //     gpio_init_int(BUTTON, GPIO_PULLDOWN, GPIO_RISING, button_handler, NULL);
 //     gpio_init_int(BTN_1, GPIO_PULLDOWN, GPIO_RISING, button_handler, NULL);
 //     gpio_init_int(BTN_2, GPIO_PULLDOWN, GPIO_RISING, button_handler, NULL);
 
 
-//     gpio_init(GPIO_MEM_PWR, GPIO_OUT);
-//     gpio_clear(GPIO_MEM_PWR); //on
+    gpio_init(GPIO_MEM_PWR, GPIO_OUT);
+    gpio_set(GPIO_MEM_PWR); //off
 //     at45_t flash;
 //     at45_init(&flash, SPI_DEV(0), GPIO_MEM_CS, GPIO_MEM_RST, GPIO_MEM_WP);
 
@@ -176,16 +198,16 @@ void Sensortag::mainloop()
 
 	DEBUG("starting mainloop...\r\n");
 
-    printf("do si70xx_init\n");
     si70xx_t si;
     si70xx_init(&si, I2C_DEV(0), 0x40);
-    printf("do si70xx_test\n");
-    int ret = si70xx_test(&si);
-    printf("si70xx_test returned %i\n", ret);
+
+    bmp180_t bmp;
+    bmp180_init(&bmp, I2C_DEV(0), BMP180_ULTRALOWPOWER, BMP280_ADDR);
 
     ble_mac_address[2] = 0xaabb;
     ble_mac_address[1] = 0xccdd;
-    ble_mac_address[0] = 0xeeff;
+    ble_mac_address[0] = 0xee00 | radio_id;
+
     char ble_name[32];
     snprintf(ble_name, sizeof(ble_name), "riot!!");
 
@@ -193,26 +215,28 @@ void Sensortag::mainloop()
     // fridge    0d 06 12 06 2c 0e 1f 23
     // red       04 46 0d 46 04 d9 16 23
 
-    if(radio_id == 0x2c) {
-        snprintf(ble_name, sizeof(ble_name), "fridge");
-        ble_mac_address[0] = 0xee01;
+    if(radio_id == 0x0d) {
+        snprintf(ble_name, sizeof(ble_name), "orange");
     }
 
-    if(radio_id == 0x04) {
+    if(radio_id == 0x23) {
         snprintf(ble_name, sizeof(ble_name), "red");
-        ble_mac_address[0] = 0xee04;
     }
 
-    ble_mac_address[0] = 0xee00;
-    ble_mac_address[0] &= (radio_id << 8);
-    ble_mac_address[0] = radio_id;
+    if(radio_id == 0x034) {
+        snprintf(ble_name, sizeof(ble_name), "green");
+    }
+
+//     ble_mac_address[0] = 0xee00;
+//     ble_mac_address[0] &= (radio_id << 8);
+//     ble_mac_address[0] = radio_id;
 
     xtimer_t t;
     uint32_t i =0;
     int16_t temperature = 7;
     uint16_t humidity = 8;
 
-    uint8_t interval = 1;
+    uint8_t interval = 5;
     xtimer_set_wakeup(&t, 100*1000, thread_getpid());
     while(1) {
         thread_sleep();
@@ -223,6 +247,12 @@ void Sensortag::mainloop()
 //         printf("wdt %lu %lu\n", wdt_current, wdt_last - wdt_current);
 //         wdt_last = wdt_current;
 //         wdt_periodic();
+
+        int32_t pressure = 9;
+        int32_t bmp_temp = 5;
+        bmp180_read_both(&bmp, &pressure, &bmp_temp);
+        char bmp_temp_sign = bmp_temp >= 0 ? ' ' : '-';
+        bmp_temp = abs(bmp_temp);
 
         si70xx_get_both(&si, &humidity, &temperature);
         char temperature_sign = temperature >= 0 ? ' ' : '-';
@@ -239,11 +269,13 @@ void Sensortag::mainloop()
 //                now / 1000,
 //                nowt
 //         );
-        printf("%lu %c%i.%02iC %u.%02u%%\n",
+        printf("% 4li %c%i.%02iC %u.%02u%% % 6li.%02li Pa %c%li.%02liC\n",
                i * interval,
-               temperature_sign,
-               temperature / 100, temperature % 100,
-               humidity / 100, humidity % 100
+               temperature_sign, temperature / 100, temperature % 100,
+               humidity / 100, humidity % 100,
+               pressure / 256,
+               ((uint32_t)pressure * 100 / 256) % 100,
+               bmp_temp_sign, bmp_temp / 100, bmp_temp % 100
         );
 
         snprintf(adv_name, 32, "%s %c%i.%02iC %i%% %lu",
@@ -257,15 +289,7 @@ void Sensortag::mainloop()
         rfc_prepare();
         rfc_setup_ble();
         rfc_ble_beacon();
-        rfc_ble_beacon();
-        rfc_ble_beacon();
-        rfc_ble_beacon();
-        rfc_ble_beacon();
         rfc_powerdown();
-        printf("powerdown done\n");
-
-//         xtimer_usleep(1000*1000);
-//         printf("back\n");
 
         flash_led(GPIO_PIN(18), 2);
 

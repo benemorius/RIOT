@@ -91,21 +91,36 @@ int main()
 //         xtimer_spin(spin);
 //     }
 
-    printf("sleeping in 2 seconds...\n");
-    xtimer_spin(1000*1000);
-    printf("sleeping in 1 second...\n");
-    xtimer_spin(1000*1000);
-    xtimer_usleep(1000*1000*3);
-    printf("hi\n");
+//     printf("sleeping in 2 seconds...\n");
+//     xtimer_spin(1000*1000);
+//     printf("sleeping in 1 second...\n");
+//     xtimer_spin(1000*1000);
+//     xtimer_usleep(1000*1000*3);
+//     printf("hi\n");
 
-    uint32_t i = 0;
-    xtimer_t sleep;
-    xtimer_set_wakeup(&sleep, 1000*1000, thread_getpid());
-    while(1) {
-        printf("%lu\n", i++);
-        thread_sleep();
-        xtimer_set_wakeup(&sleep, 1000*1000, thread_getpid());
-    }
+//     uint32_t i = 0;
+//     xtimer_t sleep;
+//     xtimer_set_wakeup(&sleep, 1000*1000, thread_getpid());
+//     while(1) {
+//         printf("%lu\n", i++);
+//         thread_sleep();
+//         xtimer_set_wakeup(&sleep, 1000*1000*10, thread_getpid());
+//     }
+
+//     uint32_t i = 0;
+//     xtimer_t sleep;
+//     while (1) {
+//         for (uint32_t cnt = 0; cnt < 10000000; cnt++) {
+//             asm volatile("nop\n");
+//             __asm__ volatile("nop\n");
+//         }
+//
+//         uint32_t timer = timer_read(0);
+//         printf("%lu %lu %lu\n", i, timer >> 16, timer);
+//         xtimer_set_wakeup(&sleep, 1000*1000, thread_getpid());
+//
+//         ++i;
+//     }
 
     Sensortag* sensortag = new Sensortag();
 

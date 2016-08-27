@@ -57,6 +57,7 @@ USEMODULE += ps
 
 USEMODULE += at45
 USEMODULE += si70xx
+USEMODULE += bmp180
 
 USEMODULE += hashes
 
