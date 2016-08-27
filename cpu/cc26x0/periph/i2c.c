@@ -43,7 +43,7 @@
 #define ENABLE_DEBUG (0)
 #include "debug.h"
 
-#define CC26X0_I2C_NO_INTERRUPTS
+// #define CC26X0_I2C_NO_INTERRUPTS
 
 mutex_t i2c_mutex = MUTEX_INIT;
 mutex_t irq_wait = MUTEX_INIT;
@@ -113,6 +113,9 @@ static void _transmit_and_yield_until_done(dev_t dev, uint32_t command)
     mutex_lock(&irq_wait);
     mutex_unlock(&irq_wait);
 
+    /* make sure transaction is really complete */
+    while(I2C->MSTAT & I2C_MSTAT_BUSY) {}
+
     --lpm_prevent_sleep;
 
 #else
@@ -142,6 +145,8 @@ int i2c_init_master(i2c_t dev, i2c_speed_t speed)
 
     /* enable i2c peripheral clock */
     PRCM->I2CCLKGR = 1;
+    PRCM->I2CCLKGS = 1;
+//     PRCM->I2CCLKGDS = 1;
     PRCM->CLKLOADCTL = CLKLOADCTL_LOAD;
     while(!(PRCM->CLKLOADCTL & CLKLOADCTL_LOADDONE));
 
@@ -175,7 +180,7 @@ int i2c_init_slave(i2c_t dev, uint8_t address)
 
 int i2c_write_bytes(i2c_t dev, uint8_t address, char *data, int length)
 {
-    DEBUG("i2c_write_bytes() dev %u length %i\n", dev, length);
+    DEBUG("i2c_write_bytes() dev %u length %i address 0x%x\n", dev, length, address);
 
     if(length <= 0) {
         return -1;
@@ -217,7 +222,7 @@ int i2c_write_bytes(i2c_t dev, uint8_t address, char *data, int length)
         /* quit on transaction error */
         uint32_t mstat = I2C->MSTAT;
         if(mstat & I2C_MSTAT_ERR) {
-            printf("I2C error; MSTAT: 0x%02lx\n", mstat);
+            DEBUG("I2C write error; MSTAT: 0x%02lx\n", mstat);
 
             /* send stop */
             _transmit_and_yield_until_done(
@@ -233,6 +238,8 @@ int i2c_write_bytes(i2c_t dev, uint8_t address, char *data, int length)
 
 int i2c_read_bytes(i2c_t dev, uint8_t address, char *data, int length)
 {
+    DEBUG("i2c_read_bytes() dev %u length %i address 0x%x\n", dev, length, address);
+
     if(length <= 0) {
         return -1;
     }
@@ -270,7 +277,7 @@ int i2c_read_bytes(i2c_t dev, uint8_t address, char *data, int length)
         /* quit on transaction error */
         uint32_t mstat = I2C->MSTAT;
         if(mstat & I2C_MSTAT_ERR) {
-            DEBUG("I2C error; MSTAT: 0x%02lx\n", mstat);
+            DEBUG("I2C read error; MSTAT: 0x%02lx\n", mstat);
 
             /* send stop */
             _transmit_and_yield_until_done(
@@ -346,6 +353,8 @@ int i2c_write_reg(i2c_t dev, uint8_t address, uint8_t reg, char data)
 #if I2C_0_EN
 void isr_i2c(void)
 {
+    lpm_awake();
+
     /* disable i2c interrupt */
     I2C->MIMR = 0;
 

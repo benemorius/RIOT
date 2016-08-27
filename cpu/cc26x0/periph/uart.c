@@ -61,8 +61,12 @@ int uart_init(uart_t uart, uint32_t baudrate, uart_rx_cb_t rx_cb, void *arg)
     UART->CTL = 0;
 
     /* save context */
-    ctx[0].rx_cb = rx_cb;
-    ctx[0].arg = arg;
+    if (rx_cb) {
+        ctx[0].rx_cb = rx_cb;
+    }
+    if (arg) {
+        ctx[0].arg = arg;
+    }
 
     /* configure pins */
     IOC->CFG[UART_RX_PIN] = (IOCFG_PORTID_UART0_RX | IOC_IOPULL_UP
@@ -109,6 +113,8 @@ void uart_write(uart_t uart, const uint8_t *data, size_t len)
 void uart_poweron(uart_t uart)
 {
     PRCM->UARTCLKGR = 1;
+    PRCM->UARTCLKGS = 1;
+//     PRCM->UARTCLKGDS = 1;
     PRCM->CLKLOADCTL = CLKLOADCTL_LOAD;
     while (!(PRCM->CLKLOADCTL & CLKLOADCTL_LOADDONE)) {}
 
@@ -120,9 +126,10 @@ void uart_poweroff(uart_t uart)
     UART->CTL = 0;
 
     PRCM->UARTCLKGR = 0;
+    PRCM->UARTCLKGS = 0;
+//     PRCM->UARTCLKGDS = 0;
     PRCM->CLKLOADCTL = CLKLOADCTL_LOAD;
     while (!(PRCM->CLKLOADCTL & CLKLOADCTL_LOADDONE)) {}
-
 }
 
 void isr_uart(void)

@@ -27,6 +27,10 @@
 #include "hw_vims.h"
 #include "hw_aux_wuc.h"
 
+#include "periph/i2c.h"
+#include "periph/uart.h"
+#include "uart_stdio.h"
+
 /* ROM HAPI HFSourceSafeSwitch function */
 #define ROM_HAPI_HFSOURCESAFESWITCH_ADDR_P (0x10000048 + (14*4))
 #define ROM_HAPI_HFSOURCESAFESWITCH_ADDR (*(reg32_t*)ROM_HAPI_HFSOURCESAFESWITCH_ADDR_P)
@@ -42,7 +46,14 @@ enum lpm_mode lpm_arch_set(enum lpm_mode target)
 {
     enum lpm_mode last_mode = current_mode;
 
+    if (target == LPM_IDLE) {
+//         target = LPM_ON;
+    }
 //     target = LPM_ON;
+
+//     if (I2C->MSTAT & I2C_MSTAT_BUSY) {
+//         target = LPM_ON;
+//     }
 
     switch (target) {
         case LPM_ON:
@@ -57,7 +68,7 @@ enum lpm_mode lpm_arch_set(enum lpm_mode target)
             SCB->SCR &= ~(SCB_SCR_SLEEPDEEP_Msk);
 
             //wait for uart tx to complete
-            while (UART->FR & UART_FR_BUSY) {}
+//             while (UART->FR & UART_FR_BUSY) {}
 
             __WFI();
             break;
@@ -203,17 +214,22 @@ void lpm_arch_awake(void)
 
         /* init gpio */
         PRCM->PDCTL0 |= PDCTL0_PERIPH_ON;
-        while(!(PRCM->PDSTAT0 & PDSTAT0_PERIPH_ON)) ;
-        PRCM->GPIOCLKGR |= 1;
-        PRCM->CLKLOADCTL |= CLKLOADCTL_LOAD;
+        while(!(PRCM->PDSTAT0 & PDSTAT0_PERIPH_ON)) {}
+        PRCM->GPIOCLKGR = 1;
+        PRCM->CLKLOADCTL = CLKLOADCTL_LOAD;
         while (!(PRCM->CLKLOADCTL & CLKLOADCTL_LOADDONE)) {}
 
         /* init uart */
         PRCM->PDCTL0SERIAL = 1;
-        while (!(PRCM->PDSTAT0 & PDSTAT0_SERIAL_ON)) ;
+        while (!(PRCM->PDSTAT0 & PDSTAT0_SERIAL_ON)) {}
         PRCM->UARTCLKGR = 1;
         PRCM->CLKLOADCTL = CLKLOADCTL_LOAD;
         while (!(PRCM->CLKLOADCTL & CLKLOADCTL_LOADDONE)) {}
+
+        uart_init(UART_STDIO_DEV, UART_STDIO_BAUDRATE, NULL, NULL);
+
+        i2c_init_master(0, I2C_SPEED_FAST);
+
     }
     current_mode = LPM_ON;
 }
