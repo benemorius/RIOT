@@ -209,14 +209,14 @@ void Sensortag::mainloop()
     ble_mac_address[0] = 0xee00 | radio_id;
 
     char ble_name[32];
-    snprintf(ble_name, sizeof(ble_name), "riot!!");
+    snprintf(ble_name, sizeof(ble_name), "riot");
 
     // dev       0d 06 12 07 0b 27 1f 23
     // fridge    0d 06 12 06 2c 0e 1f 23
     // red       04 46 0d 46 04 d9 16 23
 
     if(radio_id == 0x0d) {
-        snprintf(ble_name, sizeof(ble_name), "orange");
+        snprintf(ble_name, sizeof(ble_name), "org");
     }
 
     if(radio_id == 0x23) {
@@ -278,11 +278,12 @@ void Sensortag::mainloop()
                bmp_temp_sign, bmp_temp / 100, bmp_temp % 100
         );
 
-        snprintf(adv_name, 32, "%s %c%i.%02iC %i%% %lu",
+        snprintf(adv_name, 40, "%s %c%i.%02iC %i%% % 6liPa %lu",
                  ble_name,
                  temperature_sign,
                  temperature / 100, temperature % 100,
                  humidity / 100,
+                 pressure / 256,
                  i * interval
         );
 
