@@ -250,12 +250,12 @@ int send_ble_adv_nc(uint8_t iterations, uint8_t *adv_payload, uint8_t adv_payloa
         uint32_t cmd_status = rfc_cmd_and_wait((uint32_t*)cmd, &status);
 
         if (cmd_status != 1) {
-            printf("bad CMDSTA: 0x%lx", cmd_status);
+            printf("bad CMDSTA: 0x%lx\n", cmd_status);
             while(1);
         }
 
         if (status != 0x1400) {
-            printf("bad status: 0x%x", status);
+            printf("bad status: 0x%x\n", status);
             while(1);
         }
     }
@@ -310,15 +310,17 @@ bool rfc_nop_test(void)
     return status == R_OP_STATUS_DONE_OK;
 }
 
-static bool rfc_start_rat(void)
+bool rfc_start_rat(void)
 {
     direct_command_t ratCommand;
     ratCommand.commandID = CMDR_CMDID_START_RAT;
     uint32_t status = rfc_send_cmd(&ratCommand);
-    if (status != 1) {
-        printf("bad CMDSTA: 0x%lx", status);
+    /* 0x1 if successful; 0x85 if already running */
+    if (status != 1 && status != 0x85) {
+        printf("bad CMDSTA: 0x%lx\n", status);
         while(1);
     }
+    printf("start_rat status: 0x%lx\n", status);
     return status == CMDSTA_RESULT_DONE;
 }
 
@@ -381,12 +383,12 @@ void rfc_powerdown(void)
     /* FS_POWERDOWN command doesn't cause RFCPEIFG.COMMAND_DONE interrupt */
     uint32_t cmd_status = rfc_send_cmd(&cmd);
     if (cmd_status != 1) {
-        printf("bad CMDSTA: 0x%lx", cmd_status);
+        printf("bad CMDSTA: 0x%lx\n", cmd_status);
         while(1);
     }
     uint16_t status = rfc_wait_cmd_done((radio_op_command_t*)&cmd);
     if (status != 0x400) {
-        printf("bad status: 0x%x", status);
+        printf("bad status: 0x%x\n", status);
         while(1);
     }
 
