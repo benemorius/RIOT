@@ -24,7 +24,7 @@
 
 #include "net/gnrc/ndp/internal.h"
 
-#define ENABLE_DEBUG    (0)
+#define ENABLE_DEBUG    (1)
 #include "debug.h"
 
 #if ENABLE_DEBUG
@@ -239,10 +239,10 @@ void gnrc_ndp_internal_send_nbr_sol(kernel_pid_t iface, ipv6_addr_t *src, ipv6_a
     /* cppcheck-suppress variableScope */
     size_t l2src_len = 0;
 
-    DEBUG("ndp internal: send neighbor solicitation (iface: %" PRIkernel_pid ", src: %s, ",
-          iface, ipv6_addr_to_str(addr_str, src, sizeof(addr_str)));
-    DEBUG(" tgt: %s, ", ipv6_addr_to_str(addr_str, tgt, sizeof(addr_str)));
-    DEBUG("dst: %s)\n", ipv6_addr_to_str(addr_str, dst, sizeof(addr_str)));
+//     DEBUG("ndp internal: send neighbor solicitation (iface: %" PRIkernel_pid ", src: %s, ",
+//           iface, ipv6_addr_to_str(addr_str, src, sizeof(addr_str)));
+//     DEBUG(" tgt: %s, ", ipv6_addr_to_str(addr_str, tgt, sizeof(addr_str)));
+//     DEBUG("dst: %s)\n", ipv6_addr_to_str(addr_str, dst, sizeof(addr_str)));
 
     /* check if there is a fitting source address to target */
     if (src == NULL) {
@@ -744,6 +744,7 @@ bool gnrc_ndp_internal_pi_opt_handle(kernel_pid_t iface, uint8_t icmpv6_type,
         return false;
     }
     if (icmpv6_type != ICMPV6_RTR_ADV || ipv6_addr_is_link_local(&pi_opt->prefix)) {
+        printf("not link local\n");
         /* else discard silently */
         return true;
     }
@@ -751,7 +752,8 @@ bool gnrc_ndp_internal_pi_opt_handle(kernel_pid_t iface, uint8_t icmpv6_type,
     if ((gnrc_ipv6_netif_get(iface)->flags & GNRC_IPV6_NETIF_FLAGS_SIXLOWPAN) &&
         (pi_opt->flags & NDP_OPT_PI_FLAGS_L)) {
         /* ignore: see https://tools.ietf.org/html/rfc6775#section-5.4 */
-        return true;
+        printf("something\n");
+//         return true;
     }
 #endif
     prefix = gnrc_ipv6_netif_find_addr(iface, &pi_opt->prefix);
@@ -786,6 +788,7 @@ bool gnrc_ndp_internal_pi_opt_handle(kernel_pid_t iface, uint8_t icmpv6_type,
             gnrc_ipv6_netif_remove_addr(iface, &netif_addr->addr);
         }
 
+        printf("something else\n");
         return true;
     }
     netif_addr->valid = byteorder_ntohl(pi_opt->valid_ltime);
@@ -799,6 +802,7 @@ bool gnrc_ndp_internal_pi_opt_handle(kernel_pid_t iface, uint8_t icmpv6_type,
     /* on-link flag MUST stay set if it was */
     netif_addr->flags &= NDP_OPT_PI_FLAGS_L;
     netif_addr->flags |= (pi_opt->flags & NDP_OPT_PI_FLAGS_MASK);
+    printf("here\n");
     return true;
 }
 

@@ -36,7 +36,7 @@
 
 #include "net/gnrc/ndp.h"
 
-#define ENABLE_DEBUG    (0)
+#define ENABLE_DEBUG    (1)
 #include "debug.h"
 
 #if ENABLE_DEBUG
@@ -559,6 +559,7 @@ void gnrc_ndp_rtr_adv_handle(kernel_pid_t iface, gnrc_pktsnip_t *pkt, ipv6_hdr_t
     /* parse options */
     while (sicmpv6_size > 0) {
         ndp_opt_t *opt = (ndp_opt_t *)(buf + opt_offset);
+        printf("option %i: %u\n", sicmpv6_size, opt->type);
         switch (opt->type) {
             case NDP_OPT_SL2A:
                 if ((l2src_len = gnrc_ndp_internal_sl2a_opt_handle(pkt, ipv6, rtr_adv->type, opt,

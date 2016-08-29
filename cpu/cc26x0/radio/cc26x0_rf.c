@@ -269,9 +269,11 @@ bool cc26x0_rf_on(void)
 //     RFC_DBELL->RFCPEIEN = 0x2;
     rfc_irq_enable();
 
+//     printf("rfc_start_rat\n");
     /*RFC TIMER */
     rfc_start_rat();
 
+//     printf("rfc_setup_154\n");
     rfc_setup_154();
 
     recv_154(25);

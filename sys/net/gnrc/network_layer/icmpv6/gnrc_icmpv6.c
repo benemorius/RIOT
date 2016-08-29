@@ -82,7 +82,7 @@ void gnrc_icmpv6_demux(kernel_pid_t iface, gnrc_pktsnip_t *pkt)
     if (_calc_csum(icmpv6, ipv6, pkt)) {
         DEBUG("icmpv6: wrong checksum.\n");
         /* don't release: IPv6 does this */
-        return;
+//         return;
     }
 
     switch (hdr->type) {

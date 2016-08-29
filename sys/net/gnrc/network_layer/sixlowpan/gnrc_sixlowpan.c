@@ -129,6 +129,7 @@ static void _receive(gnrc_pktsnip_t *pkt)
 #endif
 #ifdef MODULE_GNRC_SIXLOWPAN_IPHC
     else if (sixlowpan_iphc_is(dispatch)) {
+        DEBUG("got iphc\n");
         size_t dispatch_size, nh_len;
         gnrc_pktsnip_t *sixlowpan;
         gnrc_pktsnip_t *dec_hdr = gnrc_pktbuf_add(NULL, NULL, sizeof(ipv6_hdr_t),
@@ -166,6 +167,9 @@ static void _receive(gnrc_pktsnip_t *pkt)
     if (!gnrc_netapi_dispatch_receive(GNRC_NETTYPE_IPV6, GNRC_NETREG_DEMUX_CTX_ALL, pkt)) {
         DEBUG("6lo: No receivers for this packet found\n");
         gnrc_pktbuf_release(pkt);
+    }
+    else {
+        DEBUG("dispatched\n");
     }
 }
 
