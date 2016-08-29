@@ -39,6 +39,8 @@
 #include "periph_conf.h"
 #include "cc26x0_rf.h"
 #include "cc26x0_rf_netdev.h"
+#include "net/gnrc/netif.h"
+#include "net/gnrc/netapi.h"
 
 #define ENABLE_DEBUG    (1)
 #include "debug.h"
@@ -247,9 +249,7 @@ bool cc26x0_rf_on(void)
     cpu_clock_init();
 
     /* rfc mode must be set before powering up radio (undocumented) */
-    printf("RFCMODESEL: 0x%lx\n", PRCM->RFCMODESEL);
     PRCM->RFCMODESEL = 0x5;
-    printf("RFCMODESEL: 0x%lx\n", PRCM->RFCMODESEL);
 
     /* enable RFC clock */
     PRCM->RFCCLKG = 1;
@@ -288,4 +288,14 @@ void cc26x0_rf_setup(cc26x0_rf_t *dev)
     mutex_init(&dev->mutex);
 
     cc26x0_rf_init();
+
+
+//     uint8_t addr[8];
+//     size_t addr_len = gnrc_netif_addr_from_str(addr, sizeof(addr), "1:2:3:4:5:6:7:8");
+//     gnrc_netapi_set(7, NETOPT_ADDRESS_LONG, 0, addr, addr_len);
+//     addr_len = gnrc_netif_addr_from_str(addr, sizeof(addr), "1:2:3:4");
+//     gnrc_netapi_set(7, NETOPT_ADDRESS, 0, addr, addr_len);
+//
+//     uint16_t pan_id = 0x777;
+//     gnrc_netapi_set(7, NETOPT_NID, 0, (uint16_t *)&pan_id, sizeof(uint16_t));
 }

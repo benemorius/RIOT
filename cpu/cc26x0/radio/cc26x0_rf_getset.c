@@ -36,6 +36,7 @@
  */
 
 #include "cc26x0_rf.h"
+#include "periph/cpuid.h"
 
 #define ENABLE_DEBUG (0)
 #include "debug.h"
@@ -78,6 +79,18 @@ static const uint8_t power_lut[NUM_POWER_LEVELS] = {
 
 uint64_t cc26x0_rf_get_addr_long(void)
 {
+    printf("cc26x0_rf_get_addr_long()\n");
+
+    return cc26x0_rf_get_eui64_primary();
+
+//     uint64_t addr_long = 0;
+//     for (int i = 8; i > 0; i--) {
+//         addr_long <<= 8;
+//         addr_long |= i;
+//     }
+//     return addr_long;
+
+
 //     uint64_t addr = RFCORE_FFSM_EXT_ADDR0;
 //     addr <<= 8;
 //     addr |= RFCORE_FFSM_EXT_ADDR1;
@@ -94,44 +107,32 @@ uint64_t cc26x0_rf_get_addr_long(void)
 //     addr <<= 8;
 //     addr |= RFCORE_FFSM_EXT_ADDR7;
 //     return addr;
-    return 0;
 }
 
 uint16_t cc26x0_rf_get_addr_short(void)
 {
+    printf("cc26x0_rf_get_addr_short()\n");
+    return 0x0201;
+
 //     return (RFCORE_FFSM_SHORT_ADDR0 << 8) | RFCORE_FFSM_SHORT_ADDR1;
-    return 0;
 }
 
 unsigned int cc26x0_rf_get_chan(void)
 {
+    printf("cc26x0_rf_get_chan()\n");
+
+    return 25;
+
 //     return IEEE802154_FREQ2CHAN(CC2538_MIN_FREQ + RFCORE_XREG_FREQCTRL);
-    return 0;
 }
 
 uint64_t cc26x0_rf_get_eui64_primary(void)
 {
-//     /*
-//      * The primary EUI-64 seems to be written to memory in a non-sequential
-//      * byte order, with both 4-byte halves of the address flipped.
-//      */
-//     uint64_t eui64 = ((uint8_t*)CC2538_EUI64_LOCATION_PRI)[4];
-//     eui64 <<= 8;
-//     eui64 |= ((uint8_t*)CC2538_EUI64_LOCATION_PRI)[5];
-//     eui64 <<= 8;
-//     eui64 |= ((uint8_t*)CC2538_EUI64_LOCATION_PRI)[6];
-//     eui64 <<= 8;
-//     eui64 |= ((uint8_t*)CC2538_EUI64_LOCATION_PRI)[7];
-//     eui64 <<= 8;
-//     eui64 |= ((uint8_t*)CC2538_EUI64_LOCATION_PRI)[0];
-//     eui64 <<= 8;
-//     eui64 |= ((uint8_t*)CC2538_EUI64_LOCATION_PRI)[1];
-//     eui64 <<= 8;
-//     eui64 |= ((uint8_t*)CC2538_EUI64_LOCATION_PRI)[2];
-//     eui64 <<= 8;
-//     eui64 |= ((uint8_t*)CC2538_EUI64_LOCATION_PRI)[3];
-//     return eui64;
-    return 0;
+    printf("cc26x0_rf_get_eui64_primary()\n");
+
+    uint64_t cpuid[2];
+    cpuid_get(cpuid);
+    return (cpuid[1] >> 32) | (cpuid[1] << 32);
 }
 
 bool cc26x0_rf_get_monitor(void)
@@ -142,8 +143,11 @@ bool cc26x0_rf_get_monitor(void)
 
 uint16_t cc26x0_rf_get_pan(void)
 {
+    printf("cc26x0_rf_get_pan()\n");
+
+    return 0x777;
+
 //     return (RFCORE_FFSM_PAN_ID1 << 8) | RFCORE_FFSM_PAN_ID0;
-    return 0;
 }
 
 int cc26x0_rf_get_tx_power(void)
@@ -169,6 +173,8 @@ int cc26x0_rf_get_tx_power(void)
 
 void cc26x0_rf_set_addr_long(uint64_t addr)
 {
+    printf("cc26x0_rf_set_addr_long()\n");
+
 //     RFCORE_FFSM_EXT_ADDR0 = addr >> (7 * 8);
 //     RFCORE_FFSM_EXT_ADDR1 = addr >> (6 * 8);
 //     RFCORE_FFSM_EXT_ADDR2 = addr >> (5 * 8);
@@ -181,12 +187,16 @@ void cc26x0_rf_set_addr_long(uint64_t addr)
 
 void cc26x0_rf_set_addr_short(uint16_t addr)
 {
+    printf("cc26x0_rf_set_addr_short() 0x%x\n", addr);
+
 //     RFCORE_FFSM_SHORT_ADDR1 = addr;
 //     RFCORE_FFSM_SHORT_ADDR0 = addr >> 8;
 }
 
 void cc26x0_rf_set_chan(unsigned int chan)
 {
+    printf("cc26x0_rf_set_chan() channel %u\n", chan);
+
     DEBUG("%s(%u): Setting channel to ", __FUNCTION__, chan);
 
     if (chan < IEEE802154_MIN_CHANNEL) {
@@ -255,6 +265,8 @@ void cc26x0_rf_set_state(cc26x0_rf_t *dev, netopt_state_t state)
 
 void cc26x0_rf_set_pan(uint16_t pan)
 {
+    printf("cc26x0_rf_set_pan()\n");
+
 //     RFCORE_FFSM_PAN_ID0 = pan;
 //     RFCORE_FFSM_PAN_ID1 = pan >> 8;
 }

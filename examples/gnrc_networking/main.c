@@ -22,6 +22,8 @@
 
 #include "shell.h"
 #include "msg.h"
+#include "net/gnrc/netif.h"
+#include "net/gnrc/netapi.h"
 
 #define MAIN_QUEUE_SIZE     (8)
 static msg_t _main_msg_queue[MAIN_QUEUE_SIZE];
@@ -39,6 +41,17 @@ int main(void)
      * receive potentially fast incoming networking packets */
     msg_init_queue(_main_msg_queue, MAIN_QUEUE_SIZE);
     puts("RIOT network stack example application");
+
+//     /* set short and long addresses */
+//     uint8_t addr[8];
+//     size_t addr_len = gnrc_netif_addr_from_str(addr, sizeof(addr), "1:2:3:4:5:6:7:8");
+//     gnrc_netapi_set(7, NETOPT_ADDRESS_LONG, 0, addr, addr_len);
+//     addr_len = gnrc_netif_addr_from_str(addr, sizeof(addr), "1:2");
+//     gnrc_netapi_set(7, NETOPT_ADDRESS, 0, addr, addr_len);
+//
+//     /* set pan id */
+//     uint16_t pan_id = 0x777;
+//     gnrc_netapi_set(7, NETOPT_NID, 0, (uint16_t *)&pan_id, sizeof(uint16_t));
 
     /* start shell */
     puts("All up, running the shell now");

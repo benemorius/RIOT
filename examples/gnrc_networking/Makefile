@@ -17,11 +17,13 @@ BOARD_INSUFFICIENT_MEMORY := airfy-beacon chronos msb-430 msb-430h nrf51dongle \
 USEMODULE += gnrc_netdev_default
 USEMODULE += auto_init_gnrc_netif
 # Specify the mandatory networking modules for IPv6 and UDP
-USEMODULE += gnrc_ipv6_router_default
+# USEMODULE += gnrc_ipv6_router_default
 USEMODULE += gnrc_udp
+USEMODULE += gnrc_ipv6
+USEMODULE += gnrc_ndp
 # Add a routing protocol
-USEMODULE += gnrc_rpl
-USEMODULE += auto_init_gnrc_rpl
+# USEMODULE += gnrc_rpl
+# USEMODULE += auto_init_gnrc_rpl
 # This application dumps received packets to STDIO using the pktdump module
 USEMODULE += gnrc_pktdump
 # Additional networking modules that can be dropped if not needed
@@ -32,7 +34,12 @@ USEMODULE += shell_commands
 USEMODULE += ps
 USEMODULE += netstats_l2
 USEMODULE += netstats_ipv6
-USEMODULE += at86rf233
+
+USEMODULE += cc26x0_rf
+USEMODULE += netif
+USEMODULE += ieee802154
+USEMODULE += netdev2_ieee802154
+USEMODULE += gnrc_netdev2
 
 # Set a custom 802.15.4 channel if needed
 DEFAULT_CHANNEL ?= 26

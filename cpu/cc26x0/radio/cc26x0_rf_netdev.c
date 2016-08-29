@@ -58,6 +58,10 @@ static void _isr(netdev2_t *netdev);
 static int  _init(netdev2_t *dev);
 
 int send_154(uint8_t *payload, uint8_t payload_len);
+int rfc_read_frame(void *buf, unsigned short buf_len);
+uint8_t rfc_rx_length(void);
+void release_data_entry(void);
+int8_t rfc_rx_rssi(void);
 
 const netdev2_driver_t cc26x0_rf_driver = {
     .get  = _get,
@@ -285,7 +289,7 @@ static int _send(netdev2_t *netdev, const struct iovec *vector, unsigned count)
 {
     int pkt_len = 0;
 
-    printf("_send() %u chunks\n", count);
+//     printf("_send() %u chunks\n", count);
 
     cc26x0_rf_t *dev = (cc26x0_rf_t *) netdev;
     mutex_lock(&dev->mutex);
@@ -316,8 +320,8 @@ static int _send(netdev2_t *netdev, const struct iovec *vector, unsigned count)
 //     tx_buf[0] = pkt_len + CC2538_AUTOCRC_LEN;
 
     /* FIXME force panid to 0x777 */
-    tx_buf[3] = 0x77;
-    tx_buf[4] = 0x07;
+//     tx_buf[3] = 0x77;
+//     tx_buf[4] = 0x07;
 
     /* packet length will be prepended and crc appended by radio hardware */
     send_154(tx_buf, pkt_len);
@@ -329,6 +333,8 @@ static int _send(netdev2_t *netdev, const struct iovec *vector, unsigned count)
 
 static int _recv(netdev2_t *netdev, void *buf, size_t len, void *info)
 {
+    printf("_recv() buf 0x%lx len %u info 0x%lx\n", (uint32_t)buf, len, (uint32_t)info);
+
     cc26x0_rf_t *dev = (cc26x0_rf_t *) netdev;
     size_t pkt_len;
 
@@ -336,26 +342,26 @@ static int _recv(netdev2_t *netdev, void *buf, size_t len, void *info)
 
     if (buf == NULL) {
         /* GNRC wants to know how much data we've got for it */
-        pkt_len = rfcore_read_byte();
+        pkt_len = rfc_rx_length() - 4;
 
         /* Make sure pkt_len is sane */
         if (pkt_len > CC2538_RF_MAX_DATA_LEN) {
-//             RFCORE_SFR_RFST = ISFLUSHRX;
+            release_data_entry();
             mutex_unlock(&dev->mutex);
             return -EOVERFLOW;
         }
 
-        /* CRC check */
-        if (!(rfcore_peek_rx_fifo(pkt_len) & 0x80)) {
-            /* CRC failed; discard packet */
-//             RFCORE_SFR_RFST = ISFLUSHRX;
-            mutex_unlock(&dev->mutex);
-            return -ENODATA;
-        }
+//         /* CRC check */
+//         if (!(rfcore_peek_rx_fifo(pkt_len) & 0x80)) {
+//             /* CRC failed; discard packet */
+//             release_data_entry();
+//             mutex_unlock(&dev->mutex);
+//             return -ENODATA;
+//         }
 
         if (len > 0) {
             /* GNRC wants us to drop the packet */
-//             RFCORE_SFR_RFST = ISFLUSHRX;
+            release_data_entry();
         }
 
         mutex_unlock(&dev->mutex);
@@ -366,11 +372,11 @@ static int _recv(netdev2_t *netdev, void *buf, size_t len, void *info)
         pkt_len = len;
     }
 
-    rfcore_read_fifo(buf, pkt_len);
+    rfc_read_frame(buf, pkt_len);
 
     if (info != NULL) {
         netdev2_ieee802154_rx_info_t *radio_info = info;
-        radio_info->rssi = rfcore_read_byte();
+        radio_info->rssi = rfc_rx_rssi();
 
         /* This is not strictly 802.15.4 compliant, since according to
            the CC2538 documentation, this value will tend between ~50
@@ -378,10 +384,12 @@ static int _recv(netdev2_t *netdev, void *buf, size_t len, void *info)
            ~110 for the highest. The IEEE 802.15.4 spec mandates that
            this value be between 0-255, with 0 as lowest quality and
            255 as the highest. FIXME. */
-        radio_info->lqi = rfcore_read_byte() & 0x7F;
+        radio_info->lqi = 7;
+
+        printf("got packet with rssi %i lqi %u\n", (int8_t)radio_info->rssi, radio_info->lqi);
     }
 
-//     RFCORE_SFR_RFST = ISFLUSHRX;
+    release_data_entry();
     mutex_unlock(&dev->mutex);
 
     return pkt_len;

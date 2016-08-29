@@ -101,6 +101,7 @@ main_pid(thread_getpid())
     DEBUG("firmware version: %s\r\n", GIT_VERSION);
 
     cpuid_get(cpuid);
+    cpuid += 8;
     DEBUG("cpuid: %02x %02x %02x %02x %02x %02x %02x %02x\n",
         cpuid[0], cpuid[1], cpuid[2], cpuid[3], cpuid[4], cpuid[5], cpuid[6], cpuid[7]
     );

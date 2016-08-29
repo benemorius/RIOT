@@ -332,6 +332,7 @@ typedef struct rfc_bleAdvOutput_s rfc_bleAdvOutput_t;
 typedef struct rfc_bleWhiteListEntry_s rfc_bleWhiteListEntry_t;
 typedef struct rfc_CMD_FS_POWERDOWN_s rfc_CMD_FS_POWERDOWN_t;
 typedef struct rfc_dataEntry_s rfc_dataEntry_t;
+typedef struct rfc_dataEntryGeneral_s rfc_dataEntryGeneral_t;
 typedef struct rfc_CMD_FS_s rfc_CMD_FS_t;
 typedef struct rfc_CMD_TX_TEST_s rfc_CMD_TX_TEST_t;
 
@@ -730,6 +731,28 @@ struct __attribute__ ((packed)) rfc_CMD_TX_TEST_s {
    } endTrigger;                        //!<        Trigger classifier for ending the operation
    uint32_t syncWord;                   //!<        Sync word to use for transmitter
    uint32_t endTime;                    //!<        Time to end the operation
+};
+
+struct __attribute__ ((packed)) rfc_dataEntryGeneral_s {
+   uint8_t* pNextEntry;                 //!<        Pointer to next entry in the queue, NULL if this is the last entry
+   uint8_t status;                      //!<        Indicates status of entry, including whether it is free for the system CPU to write to
+   struct {
+      uint8_t type:2;                   //!< \brief Type of data entry structure<br>
+                                        //!<        0: General data entry <br>
+                                        //!<        1: Multi-element Rx entry<br>
+                                        //!<        2: Pointer entry<br>
+                                        //!<        3: Partial read Rx entry
+      uint8_t lenSz:2;                  //!< \brief Size of length word in start of each Rx entry element<br>
+                                        //!<        0: No length indicator<br>
+                                        //!<        1: One byte length indicator<br>
+                                        //!<        2: Two bytes length indicator<br>
+                                        //!<        3: <i>Reserved</i>
+      uint8_t irqIntv:4;                //!< \brief For partial read Rx entry only: The number of bytes between interrupt generated
+                                        //!<        by the radio CPU (0: 16 bytes)
+   } config;
+   uint16_t length;                     //!< \brief For pointer entries: Number of bytes in the data buffer pointed to<br>
+                                        //!<        For other entries: Number of bytes following this length field
+   uint8_t data;                        //!<        First byte of the data array to be received or transmitted
 };
 
 #include "cc26x0_rfc_ble.h"

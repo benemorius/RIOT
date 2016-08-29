@@ -17,6 +17,7 @@
 #include "lpm.h"
 #include "thread.h"
 #include "xtimer.h"
+#include "cc26x0_rf.h"
 
 #define BLE_ADV_STR "this is not a riot\n"
 
@@ -30,6 +31,9 @@
 
 void cpu_clock_init(void);
 static void init_rf_params(rfc_CMD_IEEE_RX_t* cmd);
+int rfc_read_frame(void *buf, unsigned short buf_len);
+uint8_t rfc_rx_length(void);
+int8_t rfc_rx_rssi(void);
 
 static rfc_bleAdvPar_t ble_params_buf __attribute__((__aligned__(4)));
 uint16_t ble_mac_address[3] __attribute__((__aligned__(4))) = {0xeeff, 0xccdd, 0xaabb};
@@ -38,12 +42,13 @@ char adv_name[BLE_ADV_NAME_BUF_LEN] = {"riot-test"};
 mutex_t cmd_wait = MUTEX_INIT;
 mutex_t done_wait = MUTEX_INIT;
 
-#define RX_BUF_SIZE 512
+#define RX_BUF_SIZE 140
 static uint8_t rx_buf_0[RX_BUF_SIZE] __attribute__((__aligned__(4)));
 static uint8_t rx_buf_1[RX_BUF_SIZE] __attribute__((__aligned__(4)));
 static uint8_t rx_buf_2[RX_BUF_SIZE] __attribute__((__aligned__(4)));
 static uint8_t rx_buf_3[RX_BUF_SIZE] __attribute__((__aligned__(4)));
 static __attribute__((__aligned__(4))) dataQueue_t rx_data_queue = { 0 };
+volatile static uint8_t *rx_read_entry;
 static __attribute__((__aligned__(4))) uint8_t rf_stats[16] = { 0 };
 
 typedef struct output_config {
@@ -70,6 +75,27 @@ static const output_config_t output_power[] = {
 };
 
 const output_config_t *tx_power_current = &output_power[0];
+
+void hex_dump(void *start_address, uint32_t bytes)
+{
+    uint8_t *address = start_address;
+    uint8_t *stopAddress = address + bytes;
+    printf("printing 0x%lx to 0x%lx\r\n", (uint32_t)address, (uint32_t)stopAddress);
+    for( ; address < stopAddress; )
+    {
+        printf("0x%08lx  %02x%02x %02x%02x  %02x%02x %02x%02x", (uint32_t)address, address[0], address[1], address[2], address[3], address[4], address[5], address[6], address[7]);
+        address += 8;
+        printf("  %02x%02x %02x%02x  %02x%02x %02x%02x", address[0], address[1], address[2], address[3], address[4], address[5], address[6], address[7]);
+        address += 8;
+
+//         printf("  %02x%02x %02x%02x  %02x%02x %02x%02x", address[0], address[1], address[2], address[3], address[4], address[5], address[6], address[7]);
+//         address += 8;
+//         printf("  %02x%02x %02x%02x  %02x%02x %02x%02x", address[0], address[1], address[2], address[3], address[4], address[5], address[6], address[7]);
+//         address += 8;
+
+        printf("\r\n");
+    }
+}
 
 void isr_rfc_cmd_ack(void)
 {
@@ -99,7 +125,7 @@ void isr_rfc_cpe0(void)
 {
     uint32_t flags = RFC_DBELL->RFCPEIFG & (~RFC_DBELL->RFCPEISL);
     RFC_DBELL->RFCPEIFG = ~flags;
-    printf("cpe0 0x%" PRIx32 "\n", flags);
+//     printf("cpe0 0x%" PRIx32 "\n", flags);
 
     if (flags & (0x2 | 0x8)) {
         mutex_unlock(&done_wait);
@@ -114,8 +140,23 @@ void isr_rfc_cpe0(void)
 void isr_rfc_cpe1(void)
 {
     uint32_t flags = RFC_DBELL->RFCPEIFG & RFC_DBELL->RFCPEISL;
-    printf("cpe1 0x%" PRIx32 "\n", flags);
+//     printf("cpe1 0x%" PRIx32 " ", flags);
     RFC_DBELL->RFCPEIFG = ~flags;
+
+    if (flags & 0x20000) {
+        printf("crc error\n");
+    }
+    if (flags & 0x400000) {
+        printf("rx queue overflow\n");
+    }
+    if (flags & 0x800000) {
+//         printf("rx done\n");
+    }
+    if (flags & 0x10000) {
+        printf("rx ok\n");
+        _irq_handler();
+//         rfc_read_frame(NULL, RX_BUF_SIZE);
+    }
 
     if (sched_context_switch_request) {
         thread_yield();
@@ -191,7 +232,7 @@ uint32_t rfc_cmd_and_wait(void *ropCmd, uint16_t *status)
     mutex_lock(&done_wait);
     mutex_unlock(&done_wait);
 
-    printf("fin\n");
+//     printf("fin\n");
 
     *status = cmd->status;
 
@@ -498,6 +539,7 @@ int rfc_setup_154(void)
     memset(rx_buf_2, 0, RX_BUF_SIZE);
     memset(rx_buf_3, 0, RX_BUF_SIZE);
 
+    rx_read_entry = rx_buf_0;
     rx_data_queue.pCurrEntry = rx_buf_0;
     rx_data_queue.pLastEntry = NULL;
 
@@ -525,37 +567,16 @@ int rfc_setup_154(void)
     return 0;
 }
 
-void hex_dump(void *start_address, uint32_t bytes)
-{
-    uint8_t *address = start_address;
-    uint8_t *stopAddress = address + bytes;
-    printf("printing 0x%lx to 0x%lx\r\n", (uint32_t)address, (uint32_t)stopAddress);
-    for( ; address < stopAddress; )
-    {
-        printf("0x%08lx  %02x%02x %02x%02x  %02x%02x %02x%02x", (uint32_t)address, address[0], address[1], address[2], address[3], address[4], address[5], address[6], address[7]);
-        address += 8;
-        printf("  %02x%02x %02x%02x  %02x%02x %02x%02x", address[0], address[1], address[2], address[3], address[4], address[5], address[6], address[7]);
-        address += 8;
-
-//         printf("  %02x%02x %02x%02x  %02x%02x %02x%02x", address[0], address[1], address[2], address[3], address[4], address[5], address[6], address[7]);
-//         address += 8;
-//         printf("  %02x%02x %02x%02x  %02x%02x %02x%02x", address[0], address[1], address[2], address[3], address[4], address[5], address[6], address[7]);
-//         address += 8;
-
-        printf("\r\n");
-    }
-}
-
 int send_154(uint8_t *payload, uint8_t payload_len)
 {
-    printf("send_154() length %u\n", payload_len);
+//     printf("send_154() length %u\n", payload_len);
 
     /* maximum 125 byte payload */
     if (payload_len > 125) {
         return -1;
     }
 
-    hex_dump(payload, payload_len);
+//     hex_dump(payload, payload_len);
 
     volatile rfc_CMD_IEEE_TX_t cmd __attribute__((__aligned__(4)));
 
@@ -744,4 +765,63 @@ static void init_rf_params(rfc_CMD_IEEE_RX_t *cmd)
     cmd->localPanID = 7;
     cmd->localShortAddr = 8;
     cmd->localExtAddr = 9;
+}
+
+void release_data_entry(void)
+{
+    rfc_dataEntryGeneral_t *entry = (rfc_dataEntryGeneral_t *)rx_read_entry;
+
+    /* Clear the length byte */
+    rx_read_entry[8] = 0;
+
+    /* Set status to 0 "Pending" in element */
+    entry->status = DATA_ENTRY_STATUS_PENDING;
+    rx_read_entry = entry->pNextEntry;
+}
+
+int rfc_read_frame(void *buf, unsigned short buf_len)
+{
+    int len = 0;
+
+//     if(rfc_rx_length() < 4) {
+//         printf("RF: too short\n");
+//
+//         release_data_entry();
+//         return 0;
+//     }
+
+    len = rfc_rx_length() - 4;
+
+//     if(len > buf_len) {
+//         printf("RF: too long\n");
+//
+//         release_data_entry();
+//         return 0;
+//     }
+
+    if (buf) {
+        memcpy(buf, (char *)&rx_read_entry[9], len);
+    }
+
+//     hex_dump((uint8_t*)rx_read_entry + 9, rfc_rx_length());
+
+    return len;
+}
+
+uint8_t rfc_rx_length(void)
+{
+    rfc_dataEntryGeneral_t *entry = (rfc_dataEntryGeneral_t *)rx_read_entry;
+
+    if(entry->status != DATA_ENTRY_STATUS_FINISHED) {
+        /* No available data */
+        printf("read_frame() no rx entry\n");
+        return 0;
+    }
+
+    return rx_read_entry[8];
+}
+
+int8_t rfc_rx_rssi(void)
+{
+    return rx_read_entry[9 + rfc_rx_length() - 2];
 }

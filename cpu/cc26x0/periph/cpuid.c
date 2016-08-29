@@ -24,5 +24,5 @@
 
 void cpuid_get(void *id)
 {
-    memcpy(id, (void *) &FCFG->MAC_15_4_0, CPUID_LEN);
+    memcpy(id, (void *) &FCFG->MAC_BLE_0, CPUID_LEN);
 }
