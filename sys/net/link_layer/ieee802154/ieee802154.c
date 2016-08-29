@@ -23,12 +23,14 @@ size_t ieee802154_set_frame_hdr(uint8_t *buf, const uint8_t *src, size_t src_len
                                 le_uint16_t src_pan, le_uint16_t dst_pan,
                                 uint8_t flags, uint8_t seq)
 {
+    flags |= IEEE802154_BCAST | IEEE802154_FCF_PAN_COMP;
     int pos = 3;    /* 0-1: FCS, 2: seq */
     uint8_t type = (flags & IEEE802154_FCF_TYPE_MASK);
     uint8_t bcast = (flags & IEEE802154_BCAST);
 
     buf[0] = flags & (~IEEE802154_BCAST);
-    buf[1] = IEEE802154_FCF_VERS_V1;
+//     buf[1] = IEEE802154_FCF_VERS_V1;
+    buf[1] = IEEE802154_FCF_VERS_V0;
 
     if (((src_len != 0) && (src == NULL)) ||
         ((!bcast) && (dst_len != 0) && (dst == NULL)) ||

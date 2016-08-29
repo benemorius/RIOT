@@ -274,13 +274,13 @@ void gnrc_ndp_internal_send_nbr_sol(kernel_pid_t iface, ipv6_addr_t *src, ipv6_a
                 return;
             }
         }
-        hdr = gnrc_sixlowpan_nd_opt_ar_build(0, GNRC_SIXLOWPAN_ND_AR_LTIME, (eui64_t *)l2src, pkt);
-        if (hdr == NULL) {
-            DEBUG("ndp internal: error allocatin Address Registration option.\n");
-            gnrc_pktbuf_release(pkt);
-            return;
-        }
-        pkt = hdr;
+//         hdr = gnrc_sixlowpan_nd_opt_ar_build(0, GNRC_SIXLOWPAN_ND_AR_LTIME, (eui64_t *)l2src, pkt);
+//         if (hdr == NULL) {
+//             DEBUG("ndp internal: error allocatin Address Registration option.\n");
+//             gnrc_pktbuf_release(pkt);
+//             return;
+//         }
+//         pkt = hdr;
     }
 #endif
 
