@@ -43,6 +43,7 @@
 #include "cc26x0_rf_netdev.h"
 #include "cc26x0_rf.h"
 #include "cc26x0_rf_internal.h"
+#include "xtimer.h"
 
 #define ENABLE_DEBUG        (1)
 #include "debug.h"
@@ -69,6 +70,14 @@ const netdev2_driver_t cc26x0_rf_driver = {
 
 /* Reference pointer for the IRQ handler */
 static netdev2_t *_dev;
+
+/* radio transmit buffer */
+uint8_t tx_buf[CC2538_RF_MAX_DATA_LEN] __attribute__((__aligned__(4)));
+/* radio transmit buffer write pointer */
+uint8_t tx_buf_w_p;
+/* radio transmit buffer read pointer */
+uint8_t tx_buf_r_p;
+
 
 void _irq_handler(void)
 {
@@ -276,22 +285,18 @@ static int _send(netdev2_t *netdev, const struct iovec *vector, unsigned count)
 {
     int pkt_len = 0;
 
-    printf("_send() %u bytes\n", count);
-
-    uint8_t buf[8] __attribute__((__aligned__(4)));
-    memset(buf, 0x55, sizeof(buf));
-    send_154(buf, 8);
+    printf("_send() %u chunks\n", count);
 
     cc26x0_rf_t *dev = (cc26x0_rf_t *) netdev;
     mutex_lock(&dev->mutex);
 
-    /* Flush TX FIFO */
-//     RFCORE_SFR_RFST = ISFLUSHTX;
+    /* reset tx buffer pointer */
+    tx_buf_w_p = 0;
 
     /* The first byte of the TX FIFO must be the packet length,
        but we don't know what it is yet. Write a null byte to the
        start of the FIFO, so we can come back and update it later */
-    rfcore_write_byte(0);
+//     tx_buf[tx_buf_w_p++] = 0;
 
     for (unsigned i = 0; i < count; i++) {
         pkt_len += vector[i].iov_len;
@@ -302,13 +307,21 @@ static int _send(netdev2_t *netdev, const struct iovec *vector, unsigned count)
             return -EOVERFLOW;
         }
 
-        rfcore_write_fifo(vector[i].iov_base, vector[i].iov_len);
+        memcpy(&tx_buf[tx_buf_w_p], vector[i].iov_base, vector[i].iov_len);
+        tx_buf_w_p += vector[i].iov_len;
     }
 
     /* Set first byte of TX FIFO to the packet length */
-    rfcore_poke_tx_fifo(0, pkt_len + CC2538_AUTOCRC_LEN);
+    /* Set first byte of tx buffer to the packet length */
+//     tx_buf[0] = pkt_len + CC2538_AUTOCRC_LEN;
 
-//     RFCORE_SFR_RFST = ISTXON;
+    /* FIXME force panid to 0x777 */
+    tx_buf[3] = 0x77;
+    tx_buf[4] = 0x07;
+
+    /* packet length will be prepended and crc appended by radio hardware */
+    send_154(tx_buf, pkt_len);
+
     mutex_unlock(&dev->mutex);
 
     return pkt_len;

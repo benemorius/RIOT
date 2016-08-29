@@ -525,14 +525,37 @@ int rfc_setup_154(void)
     return 0;
 }
 
+void hex_dump(void *start_address, uint32_t bytes)
+{
+    uint8_t *address = start_address;
+    uint8_t *stopAddress = address + bytes;
+    printf("printing 0x%lx to 0x%lx\r\n", (uint32_t)address, (uint32_t)stopAddress);
+    for( ; address < stopAddress; )
+    {
+        printf("0x%08lx  %02x%02x %02x%02x  %02x%02x %02x%02x", (uint32_t)address, address[0], address[1], address[2], address[3], address[4], address[5], address[6], address[7]);
+        address += 8;
+        printf("  %02x%02x %02x%02x  %02x%02x %02x%02x", address[0], address[1], address[2], address[3], address[4], address[5], address[6], address[7]);
+        address += 8;
+
+//         printf("  %02x%02x %02x%02x  %02x%02x %02x%02x", address[0], address[1], address[2], address[3], address[4], address[5], address[6], address[7]);
+//         address += 8;
+//         printf("  %02x%02x %02x%02x  %02x%02x %02x%02x", address[0], address[1], address[2], address[3], address[4], address[5], address[6], address[7]);
+//         address += 8;
+
+        printf("\r\n");
+    }
+}
+
 int send_154(uint8_t *payload, uint8_t payload_len)
 {
     printf("send_154() length %u\n", payload_len);
 
-    /* maximum 128 byte payload */
-    if (payload_len > 128) {
+    /* maximum 125 byte payload */
+    if (payload_len > 125) {
         return -1;
     }
+
+    hex_dump(payload, payload_len);
 
     volatile rfc_CMD_IEEE_TX_t cmd __attribute__((__aligned__(4)));
 
@@ -722,4 +745,3 @@ static void init_rf_params(rfc_CMD_IEEE_RX_t *cmd)
     cmd->localShortAddr = 8;
     cmd->localExtAddr = 9;
 }
-
