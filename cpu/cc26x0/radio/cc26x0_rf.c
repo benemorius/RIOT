@@ -34,13 +34,24 @@
  * @}
  */
 
-#include "periph_conf.h"
+#include <string.h>
 
+#include "periph_conf.h"
 #include "cc26x0_rf.h"
 #include "cc26x0_rf_netdev.h"
 
-#define ENABLE_DEBUG    (0)
+#define ENABLE_DEBUG    (1)
 #include "debug.h"
+
+uint32_t rfc_send_cmd(void *ropCmd);
+uint16_t rfc_wait_cmd_done(radio_op_command_t *command);
+uint32_t rfc_cmd_and_wait(void *ropCmd, uint16_t *status);
+void rfc_irq_enable(void);
+void rfc_irq_disable(void);
+bool rfc_start_rat(void);
+void cpu_clock_init(void);
+int rfc_setup_154(void);
+int recv_154(int channel);
 
 typedef struct {
     reg32_t *reg_addr;
@@ -150,7 +161,8 @@ void cc26x0_rf_init(void)
 //     RFCORE_SFR_RFST = ISFLUSHTX;
 //     RFCORE_SFR_RFST = ISFLUSHRX;
 
-    cc26x0_rf_on();
+
+//     cc26x0_rf_on();
 }
 
 bool cc26x0_rf_is_on(void)
@@ -171,15 +183,98 @@ void cc26x0_rf_off(void)
 //     if (RFCORE_XREG_RXENABLE != 0) {
 //         RFCORE_SFR_RFST = ISRFOFF;
 //     }
+
+    printf("cc26x0_rf_off()\n");
+    return;
+
+    /* ??? (not required I think) */
+    *(reg32_t*)(0x60041000 + 0x00000010) = 0x0;
+    *(reg32_t*)(0x60041000 + 0x00000014) = 0x0;
+
+    /* need to send FS_POWERDOWN or analog components will use power */
+    rfc_CMD_FS_POWERDOWN_t cmd;
+    memset(&cmd, 0, sizeof(cmd));
+    cmd.commandNo = CMDR_CMDID_FS_POWERDOWN;
+    cmd.condition.rule = R_OP_CONDITION_RULE_NEVER;
+
+    /* FS_POWERDOWN command doesn't cause RFCPEIFG.COMMAND_DONE interrupt */
+    uint32_t cmd_status = rfc_send_cmd(&cmd);
+    if (cmd_status != 1) {
+        printf("bad CMDSTA: 0x%lx", cmd_status);
+        while(1);
+    }
+    uint16_t status = rfc_wait_cmd_done((radio_op_command_t*)&cmd);
+    if (status != 0x400) {
+        printf("bad status: 0x%x", status);
+        while(1);
+    }
+
+    rfc_irq_disable();
+
+    /* Shut down the RFCORE clock domain in the MCU VD */
+    PRCM->RFCCLKG = 0;
+    PRCM->CLKLOADCTL = CLKLOADCTL_LOAD;
+    while (!(PRCM->CLKLOADCTL & CLKLOADCTL_LOADDONE)) {}
+
+    /* Turn off RFCORE PD */
+    PRCM->PDCTL0 &= ~PDCTL0_RFC_ON;
+    while (PRCM->PDSTAT0 & PDSTAT0_RFC_ON) {}
+
+    /* Enable the Osc interface and remember the state of the SMPH clock */
+    // Force power on AUX to ensure CPU has access
+    *(reg32_t*)(AON_WUC_BASE + AON_WUC_O_AUXCTL) |= AON_WUC_AUXCTL_AUX_FORCE_ON;
+    while(!(*(reg32_t*)(AON_WUC_BASE + AON_WUC_O_PWRSTAT) & AONWUC_AUX_POWER_ON)) { }
+
+    // Enable the AUX domain OSC clock and wait for it to be ready
+    *(reg32_t*)(AUX_WUC_BASE + AUX_WUC_O_MODCLKEN0) |= AUX_WUC_OSCCTRL_CLOCK;
+    while(!(*(reg32_t*)(AUX_WUC_BASE + AUX_WUC_O_MODCLKEN0) & AUX_WUC_MODCLKEN0_AUX_DDI0_OSC)) { }
+
+    /* Set HF and MF clock sources to the HF RC Osc */
+    DDI_0_OSC->CTL0 &= ~(DDI_0_OSC_CTL0_SCLK_HF_SRC_SEL_M | DDI_0_OSC_CTL0_SCLK_MF_SRC_SEL_M);
+
+    /* Check to not enable HF RC oscillator if already enabled */
+    if ((DDI_0_OSC->STAT0 & DDI_0_OSC_STAT0_SCLK_HF_SRC_M) != DDI_0_OSC_STAT0_SCLK_HF_SRC_RCOSC) {
+        /* Switch the HF clock source (cc26xxware executes this from ROM) */
+        ROM_HAPI_HFSOURCESAFESWITCH();
+    }
 }
 
 bool cc26x0_rf_on(void)
 {
-//     /* Flush RX FIFO */
-//     RFCORE_SFR_RFST = ISFLUSHRX;
-//
-//     /* Enable/calibrate RX */
-//     RFCORE_SFR_RFST = ISRXON;
+    printf("cc26x0_rf_on()\n");
+
+    /* switch to xosc */
+    cpu_clock_init();
+
+    /* rfc mode must be set before powering up radio (undocumented) */
+    printf("RFCMODESEL: 0x%lx\n", PRCM->RFCMODESEL);
+    PRCM->RFCMODESEL = 0x5;
+    printf("RFCMODESEL: 0x%lx\n", PRCM->RFCMODESEL);
+
+    /* enable RFC clock */
+    PRCM->RFCCLKG = 1;
+    PRCM->CLKLOADCTL = CLKLOADCTL_LOAD;
+    while (!(PRCM->CLKLOADCTL & CLKLOADCTL_LOADDONE)) ;
+
+    /* enable RFC power domain */
+    PRCM->PDCTL0 |= PDCTL0_RFC_ON;
+    while (!(PRCM->PDSTAT0 & PDSTAT0_RFC_ON)) {}
+
+    //RFC_PWR->PWMCLKEN |= RFC_PWR_PWMCLKEN_CPE;
+    //RFC_PWR->PWMCLKEN |= RFC_PWR_PWMCLKEN_CPERAM;
+    RFC_PWR->PWMCLKEN |= 0x7FF;
+//     printf("RFC_PWR->PWMCLKEN %lx\n", RFC_PWR->PWMCLKEN);
+
+    /* disable all except last command done interrupt */
+//     RFC_DBELL->RFCPEIEN = 0x2;
+    rfc_irq_enable();
+
+    /*RFC TIMER */
+    rfc_start_rat();
+
+    rfc_setup_154();
+
+    recv_154(25);
 
     return true;
 }
@@ -188,7 +283,6 @@ void cc26x0_rf_setup(cc26x0_rf_t *dev)
 {
     netdev2_t *netdev = (netdev2_t *)dev;
 
-    printf("setting driver to 0x%lx\n", (uint32_t)&cc26x0_rf_driver);
     netdev->driver = &cc26x0_rf_driver;
 
     mutex_init(&dev->mutex);

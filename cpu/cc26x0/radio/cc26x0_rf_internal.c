@@ -123,6 +123,7 @@ void rfcore_strobe(uint_fast8_t instr)
 
 void rfcore_write_byte(uint_fast8_t byte)
 {
+    printf("{%02x}", byte);
 //     RFCORE_ASSERT(RFCORE_XREG_TXFIFOCNT < CC2538_RF_FIFO_SIZE);
 //     RFCORE_SFR_RFDATA = byte;
 }

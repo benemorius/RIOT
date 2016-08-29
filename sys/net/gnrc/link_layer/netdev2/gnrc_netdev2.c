@@ -30,7 +30,7 @@
 #include "net/gnrc/netdev2.h"
 #include "net/ethernet/hdr.h"
 
-#define ENABLE_DEBUG    (0)
+#define ENABLE_DEBUG    (1)
 #include "debug.h"
 
 #if defined(MODULE_OD) && ENABLE_DEBUG
@@ -125,9 +125,11 @@ static void *_gnrc_netdev2_thread(void *args)
     dev->context = (void*) gnrc_netdev2;
 
     /* register the device to the network stack*/
+    printf("gnrc_netif_add()\n");
     gnrc_netif_add(thread_getpid());
 
     /* initialize low-level driver */
+    printf("init()\n");
     dev->driver->init(dev);
 
     /* start the event loop */

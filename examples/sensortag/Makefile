@@ -61,19 +61,38 @@ USEMODULE += bmp180
 
 USEMODULE += hashes
 
-# USEMODULE += sixlowpan
-# USEMODULE += aodvv2
+USEMODULE += cc26x0_rf
 
-# USEPKG += oonf_api
+USEMODULE += at86rf233
 
 
-# DIRS += lib/Adafruit_nRF8001
-# export INCLUDES += -Ilib/Adafruit_nRF8001
-# export USEMODULE += Adafruit_nRF8001
+USEMODULE += gnrc_netdev_default
+USEMODULE += auto_init_gnrc_netif
+# Specify the mandatory networking modules for IPv6 and UDP
+USEMODULE += gnrc_ipv6_router_default
+USEMODULE += gnrc_udp
+# Add a routing protocol
+USEMODULE += gnrc_rpl
+USEMODULE += auto_init_gnrc_rpl
+# This application dumps received packets to STDIO using the pktdump module
+USEMODULE += gnrc_pktdump
+# Additional networking modules that can be dropped if not needed
+USEMODULE += gnrc_icmpv6_echo
+# Add also the shell, some shell commands
+USEMODULE += netstats_l2
+USEMODULE += netstats_ipv6
 
-# DIRS += lib/sharp_memory_display
-# export INCLUDES += -Ilib/sharp_memory_display
-# export USEMODULE += sharp_memory_display
+
+# DISABLE_MODULE = auto_init
+
+# USEMODULE += gnrc_netdev_default
+# USEMODULE += gnrc_netdev2
+# USEMODULE += auto_init_gnrc_netif
+# USEMODULE += gnrc_ipv6
+
+# We use only the lower layers of the GNRC network stack, hence, we can
+# reduce the size of the packet buffer a bit
+CFLAGS += -DGNRC_PKTBUF_SIZE=512
 
 
 export INCLUDES += -I$(RIOTBASE)/sys/net/include \

@@ -44,7 +44,7 @@
 #include "cc26x0_rf.h"
 #include "cc26x0_rf_internal.h"
 
-#define ENABLE_DEBUG        (0)
+#define ENABLE_DEBUG        (1)
 #include "debug.h"
 
 #define _MAX_MHR_OVERHEAD   (25)
@@ -55,6 +55,8 @@ static int  _send(netdev2_t *netdev, const struct iovec *vector, unsigned count)
 static int  _recv(netdev2_t *netdev, void *buf, size_t len, void *info);
 static void _isr(netdev2_t *netdev);
 static int  _init(netdev2_t *dev);
+
+int send_154(uint8_t *payload, uint8_t payload_len);
 
 const netdev2_driver_t cc26x0_rf_driver = {
     .get  = _get,
@@ -273,6 +275,12 @@ static int _set(netdev2_t *netdev, netopt_t opt, void *value, size_t value_len)
 static int _send(netdev2_t *netdev, const struct iovec *vector, unsigned count)
 {
     int pkt_len = 0;
+
+    printf("_send() %u bytes\n", count);
+
+    uint8_t buf[8] __attribute__((__aligned__(4)));
+    memset(buf, 0x55, sizeof(buf));
+    send_154(buf, 8);
 
     cc26x0_rf_t *dev = (cc26x0_rf_t *) netdev;
     mutex_lock(&dev->mutex);

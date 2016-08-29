@@ -21,6 +21,30 @@
 
 #include <stdint.h>
 
+// #include "hw_memmap.h"
+#include "hw_adi.h"
+#include "hw_adi_3_refsys.h"
+#include "hw_adi_4_aux.h"
+#include "hw_aon_batmon.h"
+#include "hw_aon_event.h"
+#include "hw_aon_ioc.h"
+#include "hw_aon_rtc.h"
+#include "hw_aon_sysctl.h"
+#include "hw_aon_wuc.h"
+#include "hw_aux_wuc.h"
+#include "hw_ccfg.h"
+#include "hw_ddi.h"
+#include "hw_ddi_0_osc.h"
+#include "hw_fcfg1.h"
+#include "hw_flash.h"
+#include "hw_prcm.h"
+#include "hw_vims.h"
+
+/* ROM HAPI HFSourceSafeSwitch function */
+#define ROM_HAPI_HFSOURCESAFESWITCH_ADDR_P (0x10000048 + (14*4))
+#define ROM_HAPI_HFSOURCESAFESWITCH_ADDR (*(reg32_t*)ROM_HAPI_HFSOURCESAFESWITCH_ADDR_P)
+#define ROM_HAPI_HFSOURCESAFESWITCH() (((void(*)(void))ROM_HAPI_HFSOURCESAFESWITCH_ADDR)())
+
 #ifdef __cplusplus
 extern "C" {
 #endif

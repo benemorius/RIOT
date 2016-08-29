@@ -53,7 +53,7 @@ extern "C" {
  * @{
  */
 #ifndef ISR_STACKSIZE
-#define ISR_STACKSIZE                   (512U)
+#define ISR_STACKSIZE                   (1024U)
 #endif
 /** @} */
 

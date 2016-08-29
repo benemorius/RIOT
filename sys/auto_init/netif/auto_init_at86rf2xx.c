@@ -27,7 +27,7 @@
 #include "at86rf2xx.h"
 #include "at86rf2xx_params.h"
 
-#define ENABLE_DEBUG (0)
+#define ENABLE_DEBUG (1)
 #include "debug.h"
 
 /**
@@ -51,6 +51,7 @@ void auto_init_at86rf2xx(void)
 
         DEBUG("Initializing AT86RF2xx radio at SPI_%i\n", p->spi);
         at86rf2xx_setup(&at86rf2xx_devs[i], (at86rf2xx_params_t*) p);
+        DEBUG("gnrc_netdev2_ieee802154_init()\n");
         res = gnrc_netdev2_ieee802154_init(&gnrc_adpt[i],
                                            (netdev2_ieee802154_t *)&at86rf2xx_devs[i]);
 
@@ -58,6 +59,7 @@ void auto_init_at86rf2xx(void)
             DEBUG("Error initializing AT86RF2xx radio device!\n");
         }
         else {
+            DEBUG("gnrc_netdev2_init()\n");
             gnrc_netdev2_init(_at86rf2xx_stacks[i],
                               AT86RF2XX_MAC_STACKSIZE,
                               AT86RF2XX_MAC_PRIO,

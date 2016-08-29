@@ -331,6 +331,9 @@ typedef struct rfc_bleAdvPar_s rfc_bleAdvPar_t;
 typedef struct rfc_bleAdvOutput_s rfc_bleAdvOutput_t;
 typedef struct rfc_bleWhiteListEntry_s rfc_bleWhiteListEntry_t;
 typedef struct rfc_CMD_FS_POWERDOWN_s rfc_CMD_FS_POWERDOWN_t;
+typedef struct rfc_dataEntry_s rfc_dataEntry_t;
+typedef struct rfc_CMD_FS_s rfc_CMD_FS_t;
+typedef struct rfc_CMD_TX_TEST_s rfc_CMD_TX_TEST_t;
 
 struct __attribute__ ((packed)) radio_op_command_s {
     uint16_t commandNo; /* W */
@@ -612,6 +615,27 @@ typedef struct {
 } data_queue_t;
 
 
+struct __attribute__ ((packed)) rfc_dataEntry_s {
+   uint8_t* pNextEntry;                 //!<        Pointer to next entry in the queue, NULL if this is the last entry
+   uint8_t status;                      //!<        Indicates status of entry, including whether it is free for the system CPU to write to
+   struct {
+      uint8_t type:2;                   //!< \brief Type of data entry structure<br>
+                                        //!<        0: General data entry <br>
+                                        //!<        1: Multi-element Rx entry<br>
+                                        //!<        2: Pointer entry<br>
+                                        //!<        3: Partial read Rx entry
+      uint8_t lenSz:2;                  //!< \brief Size of length word in start of each Rx entry element<br>
+                                        //!<        0: No length indicator<br>
+                                        //!<        1: One byte length indicator<br>
+                                        //!<        2: Two bytes length indicator<br>
+                                        //!<        3: <i>Reserved</i>
+      uint8_t irqIntv:4;                //!< \brief For partial read Rx entry only: The number of bytes between interrupt generated
+                                        //!<        by the radio CPU (0: 16 bytes)
+   } config;
+   uint16_t length;                     //!< \brief For pointer entries: Number of bytes in the data buffer pointed to<br>
+                                        //!<        For other entries: Number of bytes following this length field
+};
+
 #define DATA_ENTRY_STATUS_PENDING       (0x0)
 #define DATA_ENTRY_STATUS_ACTIVE        (0x1)
 #define DATA_ENTRY_STATUS_BUSY          (0x2)
@@ -628,8 +652,85 @@ typedef struct {
 #define DATA_ENTRY_CONFIG_LENSZ_2BYTE   (0x2)
 
 
+#define CMD_FS                                                  0x0803
+struct __attribute__ ((packed)) rfc_CMD_FS_s {
+   uint16_t commandNo;                  //!<        The command ID number 0x0803
+   uint16_t status;                     //!< \brief An integer telling the status of the command. This value is
+                                        //!<        updated by the radio CPU during operation and may be read by the
+                                        //!<        system CPU at any time.
+   radio_op_command_t *pNextOp;         //!<        Pointer to the next operation to run after this operation is done
+   uint32_t startTime;                  //!<        Absolute or relative start time (depending on the value of <code>startTrigger</code>)
+   struct {
+      uint8_t triggerType:4;            //!<        The type of trigger
+      uint8_t bEnaCmd:1;                //!< \brief 0: No alternative trigger command<br>
+                                        //!<        1: CMD_TRIGGER can be used as an alternative trigger
+      uint8_t triggerNo:2;              //!<        The trigger number of the CMD_TRIGGER command that triggers this action
+      uint8_t pastTrig:1;               //!< \brief 0: A trigger in the past is never triggered, or for start of commands, give an error<br>
+                                        //!<        1: A trigger in the past is triggered as soon as possible
+   } startTrigger;                      //!<        Identification of the trigger that starts the operation
+   struct {
+      uint8_t rule:4;                   //!<        Condition for running next command: Rule for how to proceed
+      uint8_t nSkip:4;                  //!<        Number of skips if the rule involves skipping
+   } condition;
+   uint16_t frequency;                  //!<        The frequency in MHz to tune to
+   uint16_t fractFreq;                  //!<        Fractional part of the frequency to tune to
+   struct {
+      uint8_t bTxMode:1;                //!< \brief 0: Start synth in Rx mode<br>
+                                        //!<        1: Start synth in Tx mode
+      uint8_t refFreq:6;                //!< \brief 0: Use default reference frequency<br>
+                                        //!<        Others: Use reference frequency 24 MHz/<code>refFreq</code>
+   } synthConf;
+   uint8_t __dummy0;
+   uint8_t midPrecal;                   //!<        Mid pre-calibration value to use when <code>bOverrideCalib</code> and <code>bSkipCoarseCalib</code> are both 1
+   uint8_t ktPrecal;                    //!<        KT pre-calibration value to use when <code>bOverrideCalib</code> and <code>bSkipCoarseCalib</code> are both 1
+   uint16_t tdcPrecal;                  //!<        TDC pre-calibration value to use when <code>bOverrideCalib</code> and <code>bSkipCoarseCalib</code> are both 1
+};
 
 
+#define CMD_TX_TEST                                             0x0808
+struct __attribute__ ((packed)) rfc_CMD_TX_TEST_s {
+   uint16_t commandNo;                  //!<        The command ID number 0x0808
+   uint16_t status;                     //!< \brief An integer telling the status of the command. This value is
+                                        //!<        updated by the radio CPU during operation and may be read by the
+                                        //!<        system CPU at any time.
+   radio_op_command_t *pNextOp;         //!<        Pointer to the next operation to run after this operation is done
+   uint32_t startTime;                  //!<        Absolute or relative start time (depending on the value of <code>startTrigger</code>)
+   struct {
+      uint8_t triggerType:4;            //!<        The type of trigger
+      uint8_t bEnaCmd:1;                //!< \brief 0: No alternative trigger command<br>
+                                        //!<        1: CMD_TRIGGER can be used as an alternative trigger
+      uint8_t triggerNo:2;              //!<        The trigger number of the CMD_TRIGGER command that triggers this action
+      uint8_t pastTrig:1;               //!< \brief 0: A trigger in the past is never triggered, or for start of commands, give an error<br>
+                                        //!<        1: A trigger in the past is triggered as soon as possible
+   } startTrigger;                      //!<        Identification of the trigger that starts the operation
+   struct {
+      uint8_t rule:4;                   //!<        Condition for running next command: Rule for how to proceed
+      uint8_t nSkip:4;                  //!<        Number of skips if the rule involves skipping
+   } condition;
+   struct {
+      uint8_t bUseCw:1;                 //!< \brief 0: Send modulated signal<br>
+                                        //!<        1: Send continuous wave
+      uint8_t bFsOff:1;                 //!< \brief 0: Keep frequency synth on after command<br>
+                                        //!<        1: Turn frequency synth off after command
+      uint8_t whitenMode:2;             //!< \brief 0: No whitening<br>
+                                        //!<        1: Default whitening<br>
+                                        //!<        2: PRBS-15<br>
+                                        //!<        3: PRBS-32
+   } config;
+   uint8_t __dummy0;
+   uint16_t txWord;                     //!<        Value to send to the modem before whitening
+   uint8_t __dummy1;
+   struct {
+      uint8_t triggerType:4;            //!<        The type of trigger
+      uint8_t bEnaCmd:1;                //!< \brief 0: No alternative trigger command<br>
+                                        //!<        1: CMD_TRIGGER can be used as an alternative trigger
+      uint8_t triggerNo:2;              //!<        The trigger number of the CMD_TRIGGER command that triggers this action
+      uint8_t pastTrig:1;               //!< \brief 0: A trigger in the past is never triggered, or for start of commands, give an error<br>
+                                        //!<        1: A trigger in the past is triggered as soon as possible
+   } endTrigger;                        //!<        Trigger classifier for ending the operation
+   uint32_t syncWord;                   //!<        Sync word to use for transmitter
+   uint32_t endTime;                    //!<        Time to end the operation
+};
 
 #include "cc26x0_rfc_ble.h"
 

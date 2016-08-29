@@ -12,9 +12,11 @@
 
 #include "cc26x0_prcm.h"
 #include "cc26x0_rfc.h"
+#include "cc26x0_rfc_ieee.h"
 #include "mutex.h"
 #include "lpm.h"
 #include "thread.h"
+#include "xtimer.h"
 
 #define BLE_ADV_STR "this is not a riot\n"
 
@@ -27,6 +29,7 @@
 #define BLE_UUID_SIZE               16
 
 void cpu_clock_init(void);
+static void init_rf_params(rfc_CMD_IEEE_RX_t* cmd);
 
 static rfc_bleAdvPar_t ble_params_buf __attribute__((__aligned__(4)));
 uint16_t ble_mac_address[3] __attribute__((__aligned__(4))) = {0xeeff, 0xccdd, 0xaabb};
@@ -34,6 +37,39 @@ char adv_name[BLE_ADV_NAME_BUF_LEN] = {"riot-test"};
 
 mutex_t cmd_wait = MUTEX_INIT;
 mutex_t done_wait = MUTEX_INIT;
+
+#define RX_BUF_SIZE 512
+static uint8_t rx_buf_0[RX_BUF_SIZE] __attribute__((__aligned__(4)));
+static uint8_t rx_buf_1[RX_BUF_SIZE] __attribute__((__aligned__(4)));
+static uint8_t rx_buf_2[RX_BUF_SIZE] __attribute__((__aligned__(4)));
+static uint8_t rx_buf_3[RX_BUF_SIZE] __attribute__((__aligned__(4)));
+static __attribute__((__aligned__(4))) dataQueue_t rx_data_queue = { 0 };
+static __attribute__((__aligned__(4))) uint8_t rf_stats[16] = { 0 };
+
+typedef struct output_config {
+    uint8_t dbm;
+    uint8_t register_ib;
+    uint8_t register_gc;
+    uint8_t temp_coeff;
+} output_config_t;
+
+static const output_config_t output_power[] = {
+    {  5, 0x30, 0x00, 0x93 },
+    {  4, 0x24, 0x00, 0x93 },
+    {  3, 0x1c, 0x00, 0x5a },
+    {  2, 0x18, 0x00, 0x4e },
+    {  1, 0x14, 0x00, 0x42 },
+    {  0, 0x21, 0x01, 0x31 },
+    { -3, 0x18, 0x01, 0x25 },
+    { -6, 0x11, 0x01, 0x1d },
+    { -9, 0x0e, 0x01, 0x19 },
+    {-12, 0x0b, 0x01, 0x14 },
+    {-15, 0x0b, 0x03, 0x0c },
+    {-18, 0x09, 0x03, 0x0c },
+    {-21, 0x07, 0x03, 0x0c },
+};
+
+const output_config_t *tx_power_current = &output_power[0];
 
 void isr_rfc_cmd_ack(void)
 {
@@ -51,7 +87,7 @@ void isr_rfc_cmd_ack(void)
 void isr_rfc_hw(void)
 {
     uint32_t flags = RFC_DBELL->RFHWIFG;
-//     printf("hw 0x%" PRIx32 "\n", flags);
+    printf("hw 0x%" PRIx32 "\n", flags);
     RFC_DBELL->RFHWIFG = ~flags;
 
     if (sched_context_switch_request) {
@@ -63,9 +99,9 @@ void isr_rfc_cpe0(void)
 {
     uint32_t flags = RFC_DBELL->RFCPEIFG & (~RFC_DBELL->RFCPEISL);
     RFC_DBELL->RFCPEIFG = ~flags;
-//     printf("cpe0 0x%" PRIx32 "\n", flags);
+    printf("cpe0 0x%" PRIx32 "\n", flags);
 
-    if (flags & 0x2) {
+    if (flags & (0x2 | 0x8)) {
         mutex_unlock(&done_wait);
     }
 //     printf("done\n");
@@ -78,7 +114,7 @@ void isr_rfc_cpe0(void)
 void isr_rfc_cpe1(void)
 {
     uint32_t flags = RFC_DBELL->RFCPEIFG & RFC_DBELL->RFCPEISL;
-//     printf("cpe1 0x%" PRIx32 "\n", flags);
+    printf("cpe1 0x%" PRIx32 "\n", flags);
     RFC_DBELL->RFCPEIFG = ~flags;
 
     if (sched_context_switch_request) {
@@ -123,7 +159,7 @@ uint32_t rfc_send_cmd(void *ropCmd)
     return RFC_DBELL->CMDSTA;
 }
 
-uint16_t rfc_wait_cmd_done(radio_op_command_t *command)
+uint16_t rfc_wait_cmd_done(volatile radio_op_command_t *command)
 {
 //     printf("rfc_wait_cmd_done()\n");
 
@@ -131,7 +167,6 @@ uint16_t rfc_wait_cmd_done(radio_op_command_t *command)
     /* wait for cmd execution. condition on rop status doesn't work by itself (too fast?). */
     do {
         if (++timeout_cnt > 500000) {
-            command->status = R_OP_STATUS_DONE_TIMEOUT;
             break;
         }
     } while (command->status < R_OP_STATUS_SKIPPED);
@@ -156,7 +191,7 @@ uint32_t rfc_cmd_and_wait(void *ropCmd, uint16_t *status)
     mutex_lock(&done_wait);
     mutex_unlock(&done_wait);
 
-//     printf("fin\n");
+    printf("fin\n");
 
     *status = cmd->status;
 
@@ -363,11 +398,6 @@ void rfc_prepare(void)
 #include "cpu.h"
 #include "hw_ddi_0_osc.h"
 
-/* ROM HAPI HFSourceSafeSwitch function */
-#define ROM_HAPI_HFSOURCESAFESWITCH_ADDR_P (0x10000048 + (14*4))
-#define ROM_HAPI_HFSOURCESAFESWITCH_ADDR (*(reg32_t*)ROM_HAPI_HFSOURCESAFESWITCH_ADDR_P)
-#define ROM_HAPI_HFSOURCESAFESWITCH() (((void(*)(void))ROM_HAPI_HFSOURCESAFESWITCH_ADDR)())
-
 void rfc_powerdown(void)
 {
     /* ??? (not required I think) */
@@ -421,3 +451,275 @@ void rfc_powerdown(void)
         ROM_HAPI_HFSOURCESAFESWITCH();
     }
 }
+
+int rfc_setup_154(void)
+{
+//     printf("rfc_setup_154()\n");
+
+    radio_setup_cmd_t rs;
+    memset(&rs, 0, sizeof(rs));
+
+    rs.ropCmd.commandNo = CMDR_CMDID_SETUP;
+    rs.ropCmd.condition.rule = R_OP_CONDITION_RULE_NEVER;
+    rs.mode = RADIO_SETUP_MODE_IEEE8021504;
+    rs.txPower.IB = tx_power_current->register_ib;
+    rs.txPower.GC = tx_power_current->register_gc;
+    rs.txPower.tempCoeff = tx_power_current->temp_coeff;
+
+    /* Overrides for IEEE 802.15.4, differential mode */
+    static uint32_t ieee_overrides[] = {
+        0x00354038, /* Synth: Set RTRIM (POTAILRESTRIM) to 5 */
+        0x4001402D, /* Synth: Correct CKVD latency setting (address) */
+        0x00608402, /* Synth: Correct CKVD latency setting (value) */
+        //  0x4001405D, /* Synth: Set ANADIV DIV_BIAS_MODE to PG1 (address) */
+        //  0x1801F800, /* Synth: Set ANADIV DIV_BIAS_MODE to PG1 (value) */
+        0x000784A3, /* Synth: Set FREF = 3.43 MHz (24 MHz / 7) */
+        0xA47E0583, /* Synth: Set loop bandwidth after lock to 80 kHz (K2) */
+        0xEAE00603, /* Synth: Set loop bandwidth after lock to 80 kHz (K3, LSB) */
+        0x00010623, /* Synth: Set loop bandwidth after lock to 80 kHz (K3, MSB) */
+        0x002B50DC, /* Adjust AGC DC filter */
+        0x05000243, /* Increase synth programming timeout */
+        0x002082C3, /* Increase synth programming timeout */
+        0xFFFFFFFF, /* End of override list */
+    };
+    rs.pRegOverride = ieee_overrides;
+
+    uint16_t status;
+    rfc_cmd_and_wait(&rs, &status);
+
+    if (status != R_OP_STATUS_DONE_OK) {
+        return status;
+    }
+
+    printf("setup_154 got 0x%x\n", status);
+
+    memset(rx_buf_0, 0, RX_BUF_SIZE);
+    memset(rx_buf_1, 0, RX_BUF_SIZE);
+    memset(rx_buf_2, 0, RX_BUF_SIZE);
+    memset(rx_buf_3, 0, RX_BUF_SIZE);
+
+    rx_data_queue.pCurrEntry = rx_buf_0;
+    rx_data_queue.pLastEntry = NULL;
+
+    rfc_dataEntry_t *entry;
+    entry = (rfc_dataEntry_t *)rx_buf_0;
+    entry->pNextEntry = rx_buf_1;
+    entry->config.lenSz = 1;
+    entry->length = sizeof(rx_buf_0) - 8;
+
+    entry = (rfc_dataEntry_t *)rx_buf_1;
+    entry->pNextEntry = rx_buf_2;
+    entry->config.lenSz = 1;
+    entry->length = sizeof(rx_buf_0) - 8;
+
+    entry = (rfc_dataEntry_t *)rx_buf_2;
+    entry->pNextEntry = rx_buf_3;
+    entry->config.lenSz = 1;
+    entry->length = sizeof(rx_buf_0) - 8;
+
+    entry = (rfc_dataEntry_t *)rx_buf_3;
+    entry->pNextEntry = rx_buf_0;
+    entry->config.lenSz = 1;
+    entry->length = sizeof(rx_buf_0) - 8;
+
+    return 0;
+}
+
+int send_154(uint8_t *payload, uint8_t payload_len)
+{
+    printf("send_154() length %u\n", payload_len);
+
+    /* maximum 128 byte payload */
+    if (payload_len > 128) {
+        return -1;
+    }
+
+    volatile rfc_CMD_IEEE_TX_t cmd __attribute__((__aligned__(4)));
+
+    memset((radio_op_command_t*)&cmd, 0x00, sizeof(cmd));
+
+    cmd.commandNo = CMDR_CMDID_IEEE_TX;
+    cmd.condition.rule = R_OP_CONDITION_RULE_NEVER;
+    cmd.startTrigger.triggerType = R_OP_STARTTRIG_TYPE_TRIG_NOW;
+
+    cmd.payloadLen = payload_len;
+    cmd.pPayload = payload;
+
+    uint32_t cmd_status = rfc_send_cmd((radio_op_command_t*)&cmd);
+    uint16_t status = rfc_wait_cmd_done((radio_op_command_t*)&cmd);
+
+    printf("send_154 cmd_status 0x%lx status 0x%x\n", cmd_status, cmd.status);
+
+    if (cmd_status != 1) {
+        printf("bad CMDSTA: 0x%lx\n", cmd_status);
+        while(1);
+    }
+
+    if (status != 0x2400) {
+        printf("bad status: 0x%x\n", status);
+        while(1);
+    }
+
+    return 0;
+}
+
+void fs_on(void)
+{
+    rfc_CMD_FS_t cmd;
+    memset(&cmd, 0x00, sizeof(cmd));
+    cmd.condition.rule = R_OP_CONDITION_RULE_NEVER;
+    cmd.commandNo = CMD_FS;
+    cmd.frequency = 2475;
+    cmd.fractFreq = 0;
+    cmd.synthConf.bTxMode = 1;
+    uint32_t cmd_status = rfc_send_cmd(&cmd);
+    uint16_t status = rfc_wait_cmd_done((radio_op_command_t*)&cmd);
+
+    printf("fs_on cmd_status 0x%lx status 0x%x\n", cmd_status, status);
+
+    if (cmd_status != 1) {
+        printf("bad CMDSTA: 0x%lx\n", cmd_status);
+        while(1);
+    }
+
+    if (status != 0x0400) {
+        printf("bad status: 0x%x\n", status);
+        while(1);
+    }
+
+}
+
+void test_tx(void)
+{
+    rfc_CMD_TX_TEST_t cmd;
+    memset(&cmd, 0x00, sizeof(cmd));
+    cmd.condition.rule = R_OP_CONDITION_RULE_NEVER;
+    cmd.commandNo = CMD_TX_TEST;
+    cmd.endTrigger.triggerType = R_OP_STARTTRIG_TYPE_TRIG_NEVER;
+
+    uint32_t cmd_status = rfc_send_cmd(&cmd);
+    uint16_t status = rfc_wait_cmd_done((radio_op_command_t*)&cmd);
+
+    printf("test_tx cmd_status 0x%lx status 0x%x\n", cmd_status, status);
+
+    if (cmd_status != 1) {
+        printf("bad CMDSTA: 0x%lx\n", cmd_status);
+        while(1);
+    }
+
+    if (status != 0x0002) {
+        printf("bad status: 0x%x\n", status);
+        while(1);
+    }
+}
+
+int recv_154(int channel)
+{
+    printf("recv_154() channel %i\n", channel);
+//     fs_on();
+//     test_tx();
+
+//     while (1) {
+//         send_154(0, 0);
+//         xtimer_usleep(1000*100);
+//     }
+//     return 0;
+
+    static rfc_CMD_IEEE_RX_t cmd __attribute__((__aligned__(4)));
+    init_rf_params(&cmd);
+    cmd.channel = channel;
+
+    uint32_t cmd_status = rfc_send_cmd(&cmd);
+    uint16_t status = rfc_wait_cmd_done((radio_op_command_t*)&cmd);
+
+    printf("recv_154 cmd_status 0x%lx status 0x%x\n", cmd_status, status);
+
+    if (cmd_status != 1) {
+        printf("bad CMDSTA: 0x%lx\n", cmd_status);
+        while(1);
+    }
+
+    if (status != 0x0002) {
+        printf("bad status: 0x%x\n", status);
+        while(1);
+    }
+
+    send_154(0, 0);
+    send_154(0, 0);
+
+//     while (1) {
+//         send_154(0, 0);
+//         xtimer_usleep(1000*100);
+//     }
+
+    return 0;
+}
+
+static void init_rf_params(rfc_CMD_IEEE_RX_t *cmd)
+{
+    memset(cmd, 0x00, sizeof(*cmd));
+
+    cmd->commandNo = CMDR_CMDID_IEEE_RX;
+    cmd->pNextOp = NULL;
+    cmd->startTime = 0x00000000;
+    cmd->condition.rule = R_OP_CONDITION_RULE_NEVER;
+
+    cmd->rxConfig.bAutoFlushCrc = 1;
+    cmd->rxConfig.bAutoFlushIgn = 0;
+    cmd->rxConfig.bIncludePhyHdr = 0;
+    cmd->rxConfig.bIncludeCrc = 1;
+    cmd->rxConfig.bAppendRssi = 1;
+    cmd->rxConfig.bAppendCorrCrc = 1;
+    cmd->rxConfig.bAppendSrcInd = 0;
+    cmd->rxConfig.bAppendTimestamp = 0;
+
+    cmd->pRxQ = &rx_data_queue;
+    cmd->pOutput = (rfc_ieeeRxOutput_t *)rf_stats;
+
+    cmd->frameFiltOpt.frameFiltEn = 0;
+
+    cmd->frameFiltOpt.frameFiltStop = 0;
+
+    cmd->frameFiltOpt.autoAckEn = 0;
+
+    cmd->frameFiltOpt.slottedAckEn = 0;
+    cmd->frameFiltOpt.autoPendEn = 0;
+    cmd->frameFiltOpt.defaultPend = 0;
+    cmd->frameFiltOpt.bPendDataReqOnly = 0;
+    cmd->frameFiltOpt.bPanCoord = 0;
+    cmd->frameFiltOpt.maxFrameVersion = 1;
+    cmd->frameFiltOpt.bStrictLenFilter = 0;
+
+    /* Receive all frame types */
+    cmd->frameTypes.bAcceptFt0Beacon = 1;
+    cmd->frameTypes.bAcceptFt1Data = 1;
+    cmd->frameTypes.bAcceptFt2Ack = 1;
+    cmd->frameTypes.bAcceptFt3MacCmd = 1;
+    cmd->frameTypes.bAcceptFt4Reserved = 1;
+    cmd->frameTypes.bAcceptFt5Reserved = 1;
+    cmd->frameTypes.bAcceptFt6Reserved = 1;
+    cmd->frameTypes.bAcceptFt7Reserved = 1;
+
+    /* Configure CCA settings */
+    cmd->ccaOpt.ccaEnEnergy = 1;
+    cmd->ccaOpt.ccaEnCorr = 1;
+    cmd->ccaOpt.ccaEnSync = 0;
+    cmd->ccaOpt.ccaCorrOp = 1;
+    cmd->ccaOpt.ccaSyncOp = 1;
+    cmd->ccaOpt.ccaCorrThr = 3;
+
+    cmd->ccaRssiThr = 0xA6;
+
+    cmd->numExtEntries = 0x00;
+    cmd->numShortEntries = 0x00;
+    cmd->pExtEntryList = 0;
+    cmd->pShortEntryList = 0;
+
+    cmd->endTrigger.triggerType = R_OP_STARTTRIG_TYPE_TRIG_NEVER;
+    cmd->endTime = 0x00000000;
+
+    cmd->localPanID = 7;
+    cmd->localShortAddr = 8;
+    cmd->localExtAddr = 9;
+}
+

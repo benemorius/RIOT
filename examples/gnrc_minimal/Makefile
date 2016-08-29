@@ -36,6 +36,14 @@ USEMODULE += gnrc_icmpv6_echo
 # Use minimal standard PRNG
 USEMODULE += prng_minstd
 
+USEMODULE += netif
+USEMODULE += ieee802154
+USEMODULE += netdev2_ieee802154
+USEMODULE += gnrc_netdev2
+USEMODULE += cc26x0_rf
+
+# USEMODULE += at86rf233
+
 # Set a custom 802.15.4 channel if needed
 DEFAULT_CHANNEL ?= 26
 CFLAGS += -DDEFAULT_CHANNEL=$(DEFAULT_CHANNEL)

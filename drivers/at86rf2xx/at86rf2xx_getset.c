@@ -28,7 +28,7 @@
 #include "at86rf2xx_registers.h"
 #include "periph/spi.h"
 
-#define ENABLE_DEBUG (0)
+#define ENABLE_DEBUG (1)
 #include "debug.h"
 
 #ifdef MODULE_AT86RF212B

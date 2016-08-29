@@ -38,16 +38,16 @@ extern "C" {
 #define AT86RF2XX_PARAM_SPI_SPEED   (SPI_SPEED_5MHZ)
 #endif
 #ifndef AT86RF2XX_PARAM_CS
-#define AT86RF2XX_PARAM_CS          (GPIO_PIN(0, 0))
+#define AT86RF2XX_PARAM_CS          (GPIO_PIN(30))
 #endif
 #ifndef AT86RF2XX_PARAM_INT
-#define AT86RF2XX_PARAM_INT         (GPIO_PIN(0, 1))
+#define AT86RF2XX_PARAM_INT         (GPIO_PIN(30))
 #endif
 #ifndef AT86RF2XX_PARAM_SLEEP
-#define AT86RF2XX_PARAM_SLEEP       (GPIO_PIN(0, 2))
+#define AT86RF2XX_PARAM_SLEEP       (GPIO_PIN(30))
 #endif
 #ifndef AT86RF2XX_PARAM_RESET
-#define AT86RF2XX_PARAM_RESET       (GPIO_PIN(0, 3))
+#define AT86RF2XX_PARAM_RESET       (GPIO_PIN(30))
 #endif
 
 #define AT86RF2XX_PARAMS_DEFAULT    {.spi = AT86RF2XX_PARAM_SPI, \
