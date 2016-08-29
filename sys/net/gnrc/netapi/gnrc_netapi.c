@@ -66,7 +66,7 @@ static inline int _snd_rcv(kernel_pid_t pid, uint16_t type, gnrc_pktsnip_t *pkt)
     msg.type = type;
     msg.content.ptr = (void *)pkt;
     /* send message */
-    printf("send packet to pid %i\n", pid);
+    printf("send packet to pid %i size %u\n", pid, pkt->size);
     int ret = msg_try_send(&msg, pid);
     if (ret < 1) {
         DEBUG("gnrc_netapi: dropped message to %" PRIkernel_pid " (%s)\n", pid,

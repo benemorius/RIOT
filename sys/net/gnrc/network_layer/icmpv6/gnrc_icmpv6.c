@@ -80,7 +80,7 @@ void gnrc_icmpv6_demux(kernel_pid_t iface, gnrc_pktsnip_t *pkt)
     hdr = (icmpv6_hdr_t *)icmpv6->data;
 
     if (_calc_csum(icmpv6, ipv6, pkt)) {
-        DEBUG("icmpv6: wrong checksum.\n");
+        printf("icmpv6: wrong checksum.\n");
         /* don't release: IPv6 does this */
 //         return;
     }
@@ -105,7 +105,7 @@ void gnrc_icmpv6_demux(kernel_pid_t iface, gnrc_pktsnip_t *pkt)
 
 #ifdef MODULE_GNRC_NDP
         case ICMPV6_RTR_ADV:
-            DEBUG("icmpv6: router advertisement received\n");
+            printf("icmpv6: router advertisement received size %u\n", icmpv6->size);
             gnrc_ndp_rtr_adv_handle(iface, pkt, ipv6->data, (ndp_rtr_adv_t *)hdr,
                                     icmpv6->size);
             break;

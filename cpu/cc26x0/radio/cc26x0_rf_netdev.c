@@ -342,7 +342,7 @@ static int _recv(netdev2_t *netdev, void *buf, size_t len, void *info)
 
     if (buf == NULL) {
         /* GNRC wants to know how much data we've got for it */
-        pkt_len = rfc_rx_length() - 4;
+        pkt_len = rfc_rx_length() - 2;
 
         /* Make sure pkt_len is sane */
         if (pkt_len > CC2538_RF_MAX_DATA_LEN) {

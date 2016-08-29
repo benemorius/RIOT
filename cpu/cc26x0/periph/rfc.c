@@ -569,14 +569,14 @@ int rfc_setup_154(void)
 
 int send_154(uint8_t *payload, uint8_t payload_len)
 {
-//     printf("send_154() length %u\n", payload_len);
+    printf("send_154() length %u\n", payload_len);
 
     /* maximum 125 byte payload */
     if (payload_len > 125) {
         return -1;
     }
 
-//     hex_dump(payload, payload_len);
+    hex_dump(payload, payload_len);
 
     volatile rfc_CMD_IEEE_TX_t cmd __attribute__((__aligned__(4)));
 
@@ -592,7 +592,7 @@ int send_154(uint8_t *payload, uint8_t payload_len)
     uint32_t cmd_status = rfc_send_cmd((radio_op_command_t*)&cmd);
     uint16_t status = rfc_wait_cmd_done((radio_op_command_t*)&cmd);
 
-    printf("send_154 cmd_status 0x%lx status 0x%x\n", cmd_status, cmd.status);
+//     printf("send_154 cmd_status 0x%lx status 0x%x\n", cmd_status, cmd.status);
 
     if (cmd_status != 1) {
         printf("bad CMDSTA: 0x%lx\n", cmd_status);
@@ -688,8 +688,8 @@ int recv_154(int channel)
         while(1);
     }
 
-    send_154(0, 0);
-    send_154(0, 0);
+//     send_154(0, 0);
+//     send_154(0, 0);
 
 //     while (1) {
 //         send_154(0, 0);
@@ -803,7 +803,8 @@ int rfc_read_frame(void *buf, unsigned short buf_len)
         memcpy(buf, (char *)&rx_read_entry[9], len);
     }
 
-//     hex_dump((uint8_t*)rx_read_entry + 9, rfc_rx_length());
+    printf("read %u bytes of %u\n", len, rfc_rx_length());
+    hex_dump((uint8_t*)rx_read_entry + 9, rfc_rx_length());
 
     return len;
 }

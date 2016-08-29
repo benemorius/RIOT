@@ -752,7 +752,6 @@ bool gnrc_ndp_internal_pi_opt_handle(kernel_pid_t iface, uint8_t icmpv6_type,
     if ((gnrc_ipv6_netif_get(iface)->flags & GNRC_IPV6_NETIF_FLAGS_SIXLOWPAN) &&
         (pi_opt->flags & NDP_OPT_PI_FLAGS_L)) {
         /* ignore: see https://tools.ietf.org/html/rfc6775#section-5.4 */
-        printf("something\n");
 //         return true;
     }
 #endif
@@ -802,7 +801,6 @@ bool gnrc_ndp_internal_pi_opt_handle(kernel_pid_t iface, uint8_t icmpv6_type,
     /* on-link flag MUST stay set if it was */
     netif_addr->flags &= NDP_OPT_PI_FLAGS_L;
     netif_addr->flags |= (pi_opt->flags & NDP_OPT_PI_FLAGS_MASK);
-    printf("here\n");
     return true;
 }
 

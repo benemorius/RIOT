@@ -69,6 +69,8 @@ static void _receive(gnrc_pktsnip_t *pkt)
     gnrc_pktsnip_t *payload;
     uint8_t *dispatch;
 
+    printf("6lowpan received %u bytes\n", pkt->size);
+
     /* seize payload as a temporary variable */
     payload = gnrc_pktbuf_start_write(pkt); /* need to duplicate since pkt->next
                                              * might get replaced */
@@ -127,9 +129,9 @@ static void _receive(gnrc_pktsnip_t *pkt)
         return;
     }
 #endif
-#ifdef MODULE_GNRC_SIXLOWPAN_IPHC
+// #ifdef MODULE_GNRC_SIXLOWPAN_IPHC
     else if (sixlowpan_iphc_is(dispatch)) {
-        DEBUG("got iphc\n");
+        DEBUG("got iphc size %u of %u\n", payload->size, pkt->size);
         size_t dispatch_size, nh_len;
         gnrc_pktsnip_t *sixlowpan;
         gnrc_pktsnip_t *dec_hdr = gnrc_pktbuf_add(NULL, NULL, sizeof(ipv6_hdr_t),
@@ -157,7 +159,7 @@ static void _receive(gnrc_pktsnip_t *pkt)
         pkt = gnrc_pktbuf_replace_snip(pkt, sixlowpan, dec_hdr);
         payload->type = GNRC_NETTYPE_UNDEF;
     }
-#endif
+// #endif
     else {
         DEBUG("6lo: dispatch %02" PRIx8 " ... is not supported\n",
               dispatch[0]);
@@ -169,7 +171,7 @@ static void _receive(gnrc_pktsnip_t *pkt)
         gnrc_pktbuf_release(pkt);
     }
     else {
-        DEBUG("dispatched\n");
+        DEBUG("dispatched %u byte snip\n", pkt->size);
     }
 }
 
