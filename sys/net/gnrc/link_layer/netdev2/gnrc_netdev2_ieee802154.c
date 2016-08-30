@@ -21,7 +21,7 @@
 
 #include "net/gnrc/netdev2/ieee802154.h"
 
-#define ENABLE_DEBUG    (0)
+#define ENABLE_DEBUG    (1)
 #include "debug.h"
 
 static gnrc_pktsnip_t *_recv(gnrc_netdev2_t *gnrc_netdev2);
@@ -186,7 +186,7 @@ static int _send(gnrc_netdev2_t *gnrc_netdev2, gnrc_pktsnip_t *pkt)
                                         dst, netif_hdr->dst_l2addr_len,
                                         dev_pan, dev_pan, flags,
                                         state->seq++)) == 0) {
-        DEBUG("_send_ieee802154: Error preperaring frame\n");
+        DEBUG("_send_ieee802154: Error preperaring frame: %i\n", res);
         return -EINVAL;
     }
     /* prepare packet for sending */

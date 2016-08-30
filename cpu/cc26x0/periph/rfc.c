@@ -80,10 +80,10 @@ void hex_dump(void *start_address, uint32_t bytes)
 {
     uint8_t *address = start_address;
     uint8_t *stopAddress = address + bytes;
-    printf("printing 0x%lx to 0x%lx\r\n", (uint32_t)address, (uint32_t)stopAddress);
+//     printf("printing 0x%lx to 0x%lx\r\n", (uint32_t)address, (uint32_t)stopAddress);
     for( ; address < stopAddress; )
     {
-        printf("0x%08lx  %02x%02x %02x%02x  %02x%02x %02x%02x", (uint32_t)address, address[0], address[1], address[2], address[3], address[4], address[5], address[6], address[7]);
+        printf("0x%02lx  %02x%02x %02x%02x  %02x%02x %02x%02x", (uint32_t)address - (uint32_t)start_address, address[0], address[1], address[2], address[3], address[4], address[5], address[6], address[7]);
         address += 8;
         printf("  %02x%02x %02x%02x  %02x%02x %02x%02x", address[0], address[1], address[2], address[3], address[4], address[5], address[6], address[7]);
         address += 8;

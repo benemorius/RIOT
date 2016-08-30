@@ -15,6 +15,7 @@
 
 #include <assert.h>
 #include <errno.h>
+#include <stdio.h>
 
 #include "net/ieee802154.h"
 
@@ -23,25 +24,44 @@ size_t ieee802154_set_frame_hdr(uint8_t *buf, const uint8_t *src, size_t src_len
                                 le_uint16_t src_pan, le_uint16_t dst_pan,
                                 uint8_t flags, uint8_t seq)
 {
-    flags |= IEEE802154_BCAST | IEEE802154_FCF_PAN_COMP;
+
+    /* seems necessary to communicate with linux */
+    if (src_pan.u16 == dst_pan.u16) {
+        flags |= IEEE802154_FCF_PAN_COMP;
+    }
+
+    /* seems necessary to communicate with linux */
+    if (dst_len == 0) {
+        flags |= IEEE802154_BCAST;
+    }
+
     int pos = 3;    /* 0-1: FCS, 2: seq */
     uint8_t type = (flags & IEEE802154_FCF_TYPE_MASK);
     uint8_t bcast = (flags & IEEE802154_BCAST);
 
     buf[0] = flags & (~IEEE802154_BCAST);
-//     buf[1] = IEEE802154_FCF_VERS_V1;
-    buf[1] = IEEE802154_FCF_VERS_V0;
+    buf[1] = IEEE802154_FCF_VERS_V1;
+//     buf[1] = IEEE802154_FCF_VERS_V0;
 
     if (((src_len != 0) && (src == NULL)) ||
-        ((!bcast) && (dst_len != 0) && (dst == NULL)) ||
-        ((flags & IEEE802154_FCF_PAN_COMP) &&
-         (((!bcast) && (dst_len == 0)) || (src_len == 0)))) {
+        ((!bcast) && (dst_len != 0) && (dst == NULL))
+        ) {
+        printf("802154: null address with nonzero length\n");
+        return 0;
+    }
+
+    if ((flags & IEEE802154_FCF_PAN_COMP)
+        && (((!bcast) && (dst_len == 0)) || (src_len == 0))
+    ) {
+        printf("802154: pan compression not allowed\n");
+        printf("802154: src_len %i dst_len %i bcast %i\n", src_len, dst_len, bcast);
         return 0;
     }
 
     /* Frame type is not beacon or ACK, but both address modes are zero */
     if ((type != IEEE802154_FCF_TYPE_BEACON) && (type != IEEE802154_FCF_TYPE_ACK) &&
         (src_len == 0) && (dst_len == 0)) {
+        printf("802154: address required\n");
         return 0;
     }
 
@@ -79,6 +99,7 @@ size_t ieee802154_set_frame_hdr(uint8_t *buf, const uint8_t *src, size_t src_len
                 }
                 break;
             default:
+                printf("802154: dst address length not valid\n");
                 return 0;
         }
     }
@@ -107,6 +128,7 @@ size_t ieee802154_set_frame_hdr(uint8_t *buf, const uint8_t *src, size_t src_len
             }
             break;
         default:
+            printf("802154: src address length not valid\n");
             return 0;
     }
 

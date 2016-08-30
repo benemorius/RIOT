@@ -638,6 +638,14 @@ void gnrc_ndp_rtr_adv_handle(kernel_pid_t iface, gnrc_pktsnip_t *pkt, ipv6_hdr_t
          *  Hence, reset router solicitation counter and reset timer. */
         if_entry->rtr_sol_count = 0;
         gnrc_sixlowpan_nd_rtr_sol_reschedule(nc_entry, next_rtr_sol);
+
+//         /* use multicast address for destination */
+//         ipv6_addr_t m_prefix;
+//         ipv6_addr_t dst;
+//         ipv6_addr_init_prefix(&dst, &nc_entry->ipv6_addr, 128);
+//         ipv6_addr_from_str(&m_prefix, "ff02::1:ff00:0");
+//         ipv6_addr_init_prefix(&dst, &m_prefix, 104);
+
         gnrc_ndp_internal_send_nbr_sol(nc_entry->iface, NULL, &nc_entry->ipv6_addr,
                                        &nc_entry->ipv6_addr);
         if (if_entry->flags & GNRC_IPV6_NETIF_FLAGS_ROUTER) {
@@ -664,6 +672,12 @@ void gnrc_ndp_retrans_nbr_sol(gnrc_ipv6_nc_t *nc_entry)
             else {
                 dst.u64[0] = nc_entry->ipv6_addr.u64[0];
                 dst.u64[1] = nc_entry->ipv6_addr.u64[1];
+
+//                 /* use multicast address for destination */
+//                 ipv6_addr_t m_prefix;
+//                 ipv6_addr_init_prefix(&dst, &nc_entry->ipv6_addr, 128);
+//                 ipv6_addr_from_str(&m_prefix, "ff02::1:ff00:0");
+//                 ipv6_addr_init_prefix(&dst, &m_prefix, 104);
             }
 
             nc_entry->probes_remaining--;

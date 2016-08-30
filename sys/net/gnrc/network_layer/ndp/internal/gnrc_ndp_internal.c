@@ -239,10 +239,15 @@ void gnrc_ndp_internal_send_nbr_sol(kernel_pid_t iface, ipv6_addr_t *src, ipv6_a
     /* cppcheck-suppress variableScope */
     size_t l2src_len = 0;
 
-//     DEBUG("ndp internal: send neighbor solicitation (iface: %" PRIkernel_pid ", src: %s, ",
-//           iface, ipv6_addr_to_str(addr_str, src, sizeof(addr_str)));
-//     DEBUG(" tgt: %s, ", ipv6_addr_to_str(addr_str, tgt, sizeof(addr_str)));
-//     DEBUG("dst: %s)\n", ipv6_addr_to_str(addr_str, dst, sizeof(addr_str)));
+    ipv6_addr_to_str(addr_str, src, sizeof(addr_str));
+    DEBUG("ndp internal: send neighbor solicitation (iface: %" PRIkernel_pid ", src: %s, ",
+          iface, addr_str);
+
+    ipv6_addr_to_str(addr_str, tgt, sizeof(addr_str));
+    DEBUG(" tgt: %s, ", addr_str);
+
+    ipv6_addr_to_str(addr_str, dst, sizeof(addr_str));
+    DEBUG("dst: %s)\n", addr_str);
 
     /* check if there is a fitting source address to target */
     if (src == NULL) {

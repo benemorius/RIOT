@@ -47,6 +47,9 @@ char *ipv6_addr_to_str(char *result, const ipv6_addr_t *addr, uint8_t result_len
     } best = { -1, 0}, cur = { -1, 0};
 
     if ((result == NULL) || (addr == NULL)) {
+        if (result != NULL) {
+            result[0] = '\0';
+        }
         return NULL;
     }
 

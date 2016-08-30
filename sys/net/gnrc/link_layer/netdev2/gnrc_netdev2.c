@@ -137,6 +137,7 @@ static void *_gnrc_netdev2_thread(void *args)
         DEBUG("gnrc_netdev2: waiting for incoming messages\n");
         msg_receive(&msg);
         /* dispatch NETDEV and NETAPI messages */
+//         printf("pid %i got msg 0x%x\n", thread_getpid(), msg.type);
         switch (msg.type) {
             case NETDEV2_MSG_TYPE_EVENT:
                 DEBUG("gnrc_netdev2: GNRC_NETDEV_MSG_TYPE_EVENT received\n");

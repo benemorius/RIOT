@@ -911,7 +911,7 @@ static uint8_t _get_prefix_len(char *addr)
 
 static int _netif_add(char *cmd_name, kernel_pid_t dev, int argc, char **argv)
 {
-#ifdef MODULE_GNRC_IPV6_NETIF
+// #ifdef MODULE_GNRC_IPV6_NETIF
     enum {
         _UNICAST = 0,
         _MULTICAST,     /* multicast value just to check if given addr is mc */
@@ -975,7 +975,7 @@ static int _netif_add(char *cmd_name, kernel_pid_t dev, int argc, char **argv)
            prefix_len, dev);
 
     return 0;
-#else
+// #else
     (void)cmd_name;
     (void)dev;
     (void)argc;
@@ -983,7 +983,7 @@ static int _netif_add(char *cmd_name, kernel_pid_t dev, int argc, char **argv)
     puts("error: unable to add IPv6 address.");
 
     return 1;
-#endif
+// #endif
 }
 
 static int _netif_del(kernel_pid_t dev, char *addr_str)

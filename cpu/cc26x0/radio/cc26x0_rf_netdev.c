@@ -306,7 +306,7 @@ static int _send(netdev2_t *netdev, const struct iovec *vector, unsigned count)
         pkt_len += vector[i].iov_len;
 
         if (pkt_len > CC2538_RF_MAX_DATA_LEN) {
-            DEBUG("cc26x0_rf: packet too large (%u > %u)\n",
+            printf("cc26x0_rf: packet too large (%u > %u)\n",
                   pkt_len, CC2538_RF_MAX_DATA_LEN);
             return -EOVERFLOW;
         }
