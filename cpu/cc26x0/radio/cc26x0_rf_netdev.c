@@ -333,7 +333,7 @@ static int _send(netdev2_t *netdev, const struct iovec *vector, unsigned count)
 
 static int _recv(netdev2_t *netdev, void *buf, size_t len, void *info)
 {
-    printf("_recv() buf 0x%lx len %u info 0x%lx\n", (uint32_t)buf, len, (uint32_t)info);
+//     printf("_recv() buf 0x%lx len %u info 0x%lx\n", (uint32_t)buf, len, (uint32_t)info);
 
     cc26x0_rf_t *dev = (cc26x0_rf_t *) netdev;
     size_t pkt_len;

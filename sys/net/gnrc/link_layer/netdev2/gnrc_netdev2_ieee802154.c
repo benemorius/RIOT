@@ -124,14 +124,14 @@ static gnrc_pktsnip_t *_recv(gnrc_netdev2_t *gnrc_netdev2)
                                          hdr->src_l2addr_len),
                   nread);
 #if defined(MODULE_OD)
-            od_hex_dump(pkt->data, nread, OD_WIDTH_DEFAULT);
+//             od_hex_dump(pkt->data, nread, OD_WIDTH_DEFAULT);
 #endif
 #endif
             gnrc_pktbuf_remove_snip(pkt, ieee802154_hdr);
             LL_APPEND(pkt, netif_hdr);
         }
 
-        DEBUG("_recv_ieee802154: reallocating.\n");
+//         DEBUG("_recv_ieee802154: reallocating.\n");
         gnrc_pktbuf_realloc_data(pkt, nread);
     }
 

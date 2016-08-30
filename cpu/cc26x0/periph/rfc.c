@@ -153,7 +153,7 @@ void isr_rfc_cpe1(void)
 //         printf("rx done\n");
     }
     if (flags & 0x10000) {
-        printf("rx ok\n");
+//         printf("rx ok\n");
         _irq_handler();
 //         rfc_read_frame(NULL, RX_BUF_SIZE);
     }

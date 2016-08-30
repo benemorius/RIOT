@@ -69,8 +69,6 @@ static void _receive(gnrc_pktsnip_t *pkt)
     gnrc_pktsnip_t *payload;
     uint8_t *dispatch;
 
-    printf("6lowpan received %u bytes\n", pkt->size);
-
     /* seize payload as a temporary variable */
     payload = gnrc_pktbuf_start_write(pkt); /* need to duplicate since pkt->next
                                              * might get replaced */

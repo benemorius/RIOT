@@ -37,6 +37,8 @@
 #include "hashes/md5.h"
 #include <algorithm>
 #include "bmp180.h"
+#include "net/gnrc/ipv6.h"
+#include "net/gnrc/udp.h"
 
 #include <stdio.h>
 
@@ -62,6 +64,8 @@ extern "C" void rfc_prepare(void);
 extern "C" bool rfc_setup_ble(void);
 extern "C" void rfc_ble_beacon(void);
 extern "C" void rfc_powerdown(void);
+
+void send_udp(ipv6_addr_t *addr, uint16_t port, const uint8_t *data, uint8_t length);
 
 void debug_printf(const char *format, ...) {
 //     tm time;
@@ -101,7 +105,7 @@ main_pid(thread_getpid())
     DEBUG("firmware version: %s\r\n", GIT_VERSION);
 
     cpuid_get(cpuid);
-    cpuid += 8;
+    memcpy(cpuid, cpuid + 8, 8);
     DEBUG("cpuid: %02x %02x %02x %02x %02x %02x %02x %02x\n",
         cpuid[0], cpuid[1], cpuid[2], cpuid[3], cpuid[4], cpuid[5], cpuid[6], cpuid[7]
     );
@@ -288,10 +292,33 @@ void Sensortag::mainloop()
                  i * interval
         );
 
-        rfc_prepare();
-        rfc_setup_ble();
-        rfc_ble_beacon();
-        rfc_powerdown();
+//         rfc_prepare();
+//         rfc_setup_ble();
+//         rfc_ble_beacon();
+//         rfc_powerdown();
+
+        char udp_data[128];
+        snprintf(udp_data, sizeof(udp_data), "%s\n", adv_name);
+
+        snprintf(udp_data, sizeof(udp_data),
+                 "% 4li %c%i.%02iC %u.%02u%% %6li Pa %c%li.%02liC\n",
+               i * interval,
+               temperature_sign, temperature / 100, temperature % 100,
+               humidity / 100, humidity % 100,
+               pressure / 256,
+               bmp_temp_sign, bmp_temp / 100, bmp_temp % 100
+        );
+
+        gnrc_ipv6_nc_t *router = gnrc_ipv6_nc_get_next_router(NULL);
+        if (router) {
+            ipv6_addr_t *gw_addr = &router->ipv6_addr;
+            uint16_t port = 1111;
+            char addr_str[64];
+            printf("send to %s port %i\n", ipv6_addr_to_str(addr_str, gw_addr, sizeof(addr_str)), port);
+            ipv6_addr_t addr;
+            ipv6_addr_from_str(&addr, "ff02::2");
+            send_udp(gw_addr, port, (uint8_t*)udp_data, strlen(udp_data));
+        }
 
         flash_led(GPIO_PIN(18), 2);
 
@@ -300,5 +327,39 @@ void Sensortag::mainloop()
 //             NVIC_SystemReset();
 //         }
         ++i;
+    }
+}
+
+void send_udp(ipv6_addr_t *addr, uint16_t port, const uint8_t *data, uint8_t length)
+{
+    gnrc_pktsnip_t *payload, *udp, *ip;
+//     unsigned payload_size;
+    /* allocate payload */
+    payload = gnrc_pktbuf_add(NULL, (void*)data, strlen((const char*)data), GNRC_NETTYPE_UNDEF);
+    if (payload == NULL) {
+        puts("Error: unable to copy data to packet buffer");
+        return;
+    }
+    /* store size for output */
+//     payload_size = (unsigned)payload->size;
+    /* allocate UDP header, set source port := destination port */
+    udp = gnrc_udp_hdr_build(payload, port, port);
+    if (udp == NULL) {
+        puts("Error: unable to allocate UDP header");
+        gnrc_pktbuf_release(payload);
+        return;
+    }
+    /* allocate IPv6 header */
+    ip = gnrc_ipv6_hdr_build(udp, NULL, addr);
+    if (ip == NULL) {
+        puts("Error: unable to allocate IPv6 header");
+        gnrc_pktbuf_release(udp);
+        return;
+    }
+    /* send packet */
+    if (!gnrc_netapi_dispatch_send(GNRC_NETTYPE_UDP, GNRC_NETREG_DEMUX_CTX_ALL, ip)) {
+        puts("Error: unable to locate UDP thread");
+        gnrc_pktbuf_release(ip);
+        return;
     }
 }

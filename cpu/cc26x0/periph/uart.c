@@ -100,6 +100,7 @@ int uart_init(uart_t uart, uint32_t baudrate, uart_rx_cb_t rx_cb, void *arg)
 
 void uart_write(uart_t uart, const uint8_t *data, size_t len)
 {
+//     return;
     for (size_t i = 0; i < len; i++) {
         while (UART->FR & UART_FR_TXFF) {}
         if (data[i] == '\n') {

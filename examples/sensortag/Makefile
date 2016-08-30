@@ -62,20 +62,21 @@ USEMODULE += bmp180
 USEMODULE += hashes
 
 USEMODULE += cc26x0_rf
-
-USEMODULE += at86rf233
-
+USEMODULE += netif
+USEMODULE += ieee802154
+USEMODULE += netdev2_ieee802154
+USEMODULE += gnrc_netdev2
 
 USEMODULE += gnrc_netdev_default
 USEMODULE += auto_init_gnrc_netif
 # Specify the mandatory networking modules for IPv6 and UDP
-USEMODULE += gnrc_ipv6_router_default
+USEMODULE += gnrc_ipv6_default
 USEMODULE += gnrc_udp
 # Add a routing protocol
 USEMODULE += gnrc_rpl
 USEMODULE += auto_init_gnrc_rpl
 # This application dumps received packets to STDIO using the pktdump module
-USEMODULE += gnrc_pktdump
+# USEMODULE += gnrc_pktdump
 # Additional networking modules that can be dropped if not needed
 USEMODULE += gnrc_icmpv6_echo
 # Add also the shell, some shell commands

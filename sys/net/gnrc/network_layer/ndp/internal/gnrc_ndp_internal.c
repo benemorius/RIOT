@@ -24,7 +24,7 @@
 
 #include "net/gnrc/ndp/internal.h"
 
-#define ENABLE_DEBUG    (1)
+#define ENABLE_DEBUG    (0)
 #include "debug.h"
 
 #if ENABLE_DEBUG
@@ -239,6 +239,7 @@ void gnrc_ndp_internal_send_nbr_sol(kernel_pid_t iface, ipv6_addr_t *src, ipv6_a
     /* cppcheck-suppress variableScope */
     size_t l2src_len = 0;
 
+#if ENABLE_DEBUG
     ipv6_addr_to_str(addr_str, src, sizeof(addr_str));
     DEBUG("ndp internal: send neighbor solicitation (iface: %" PRIkernel_pid ", src: %s, ",
           iface, addr_str);
@@ -248,6 +249,7 @@ void gnrc_ndp_internal_send_nbr_sol(kernel_pid_t iface, ipv6_addr_t *src, ipv6_a
 
     ipv6_addr_to_str(addr_str, dst, sizeof(addr_str));
     DEBUG("dst: %s)\n", addr_str);
+#endif
 
     /* check if there is a fitting source address to target */
     if (src == NULL) {

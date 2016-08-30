@@ -37,6 +37,9 @@
 char shell_thread_stack [THREAD_STACKSIZE_MAIN + 256];
 volatile uint32_t SysTickCnt;
 
+#define MAIN_QUEUE_SIZE     (8)
+static msg_t _main_msg_queue[MAIN_QUEUE_SIZE];
+
 void *shell_thread(void *arg);
 
 void SysTick_Handler(void)
@@ -67,10 +70,9 @@ uint32_t read(void)
 
 int main()
 {
-	//enable bus, usage, and memmanage faults
-// 	SCB->SHCSR |= (1<<18) | (1<<17) | (1<<16);
-
-// 	SysTick_Config(SystemCoreClockGet()/1000 - 1); //interrupt period 1ms
+    /* we need a message queue for the thread running the shell in order to
+     * receive potentially fast incoming networking packets */
+    msg_init_queue(_main_msg_queue, MAIN_QUEUE_SIZE);
 
     printf("\n************ Sensortag ***********\n");
     printf("\n");

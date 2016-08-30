@@ -43,16 +43,16 @@ int main(void)
     msg_init_queue(_main_msg_queue, MAIN_QUEUE_SIZE);
     puts("RIOT network stack example application");
 
-    /* subscribe to ns multicast */
-    ipv6_addr_t m_prefix;
-    ipv6_addr_from_str(&m_prefix, "ff02::1:ff00:0");
-    ipv6_addr_t m_addr;
-    kernel_pid_t ifs[GNRC_NETIF_NUMOF];
-    gnrc_netif_get(ifs);
-    ipv6_addr_t *addr = &gnrc_ipv6_netif_get(ifs[0])->addrs[1].addr;
-    ipv6_addr_init_prefix(&m_addr, addr, 128);
-    ipv6_addr_init_prefix(&m_addr, &m_prefix, 104);
-    gnrc_ipv6_netif_add_addr(7, &m_addr, 128, GNRC_IPV6_NETIF_ADDR_FLAGS_NDP_AUTO | GNRC_IPV6_NETIF_ADDR_FLAGS_UNICAST);
+//     /* subscribe to ns multicast */
+//     ipv6_addr_t m_prefix;
+//     ipv6_addr_from_str(&m_prefix, "ff02::1:ff00:0");
+//     ipv6_addr_t m_addr;
+//     kernel_pid_t ifs[GNRC_NETIF_NUMOF];
+//     gnrc_netif_get(ifs);
+//     ipv6_addr_t *addr = &gnrc_ipv6_netif_get(ifs[0])->addrs[1].addr;
+//     ipv6_addr_init_prefix(&m_addr, addr, 128);
+//     ipv6_addr_init_prefix(&m_addr, &m_prefix, 104);
+//     gnrc_ipv6_netif_add_addr(7, &m_addr, 128, GNRC_IPV6_NETIF_ADDR_FLAGS_NDP_AUTO | GNRC_IPV6_NETIF_ADDR_FLAGS_UNICAST);
 
 //     /* set short and long addresses */
 //     uint8_t addr[8];
