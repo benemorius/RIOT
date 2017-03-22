@@ -174,7 +174,7 @@ enum {
 
 #ifndef DOXYGEN
 /**
- * @brief   Override default ADC resolution values
+ * @name   ADC resolution values
  * @{
  */
 #define HAVE_ADC_RES_T
