@@ -7,8 +7,8 @@
  */
 
 /**
- * @defgroup    cpu_kinetis_common_bme Bit Manipulation Engine (BME)
- * @ingroup     cpu_kinetis_common
+ * @defgroup    cpu_kinetis_bme Kinetis Bit Manipulation Engine (BME)
+ * @ingroup     cpu_kinetis
  * @brief       Macros for using decorated memory accesses with the Bit
  *              Manipulation Engine available in Kinetis Cortex-M0+ devices
  *
