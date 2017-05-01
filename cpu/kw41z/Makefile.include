@@ -1,0 +1,26 @@
+# define the CPU architecture for the kw41z
+export CPU_ARCH = cortex-m0plus
+
+# map CPU models to generic Kinetis linkerscript
+LD_MKW41Z512VHT4 = kinetis_f512l32u96.ld
+LD_MKW31Z512VHT4 = kinetis_f512l32u96.ld
+LD_MKW21Z512VHT4 = kinetis_f512l32u96.ld
+LD_MKW41Z256VHT4 = kinetis_f256l16u48.ld
+LD_MKW31Z256VHT4 = kinetis_f256l16u48.ld
+LD_MKW21Z256VHT4 = kinetis_f256l16u48.ld
+
+# tell the build system that the CPU depends on the Kinetis common files
+export USEMODULE += kinetis_common
+
+# define path to kinetis module, which is needed for this CPU
+export KINETIS_COMMON = $(RIOTCPU)/kinetis_common/
+# CPU depends on the kinetis module, so include it
+include $(KINETIS_COMMON)Makefile.include
+
+# this CPU implementation is using Kinetis common startup
+export COMMON_STARTUP = $(KINETIS_COMMON)
+
+# add the CPU specific system calls implementations for the linker
+export UNDEF += $(BINDIR)/cpu/vectors.o
+
+include $(RIOTMAKE)/arch/cortexm.inc.mk

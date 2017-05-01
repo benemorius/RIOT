@@ -84,6 +84,7 @@ void isr_enet_1588_timer(void); /**< ENET 1588 timer interrupt handler */
 void isr_enet_error(void);   /**< ENET error interrupt handler */
 void isr_enet_rx(void);      /**< ENET receive interrupt handler */
 void isr_enet_tx(void);      /**< ENET transmit interrupt handler */
+void isr_ftfa(void);         /**< FTFA command complete or collision interrupt handler */
 void isr_ftfl(void);         /**< FTFL command complete interrupt handler */
 void isr_ftfl_collision(void); /**< FTFL collision interrupt handler */
 void isr_ftm0(void);         /**< FTM0 interrupt handler */
@@ -98,9 +99,11 @@ void isr_i2s0_tx(void);      /**< I2S0 transmit interrupt handler */
 void isr_llwu(void);         /**< LLWU interrupt handler */
 void isr_lpuart0(void);      /**< LPUART0 interrupt handler */
 void isr_lptmr0(void);       /**< LPTMR0 interrupt handler */
+void isr_ltc(void);          /**< Low power Trusted Cryptography interrupt handler */
 void isr_mcg(void);          /**< MCG interrupt handler */
 void isr_mcm(void);          /**< MCM interrupt handler */
 void isr_pdb0(void);         /**< PDB0 interrupt handler */
+void isr_pit(void);          /**< PIT combined interrupt handler */
 void isr_pit0(void);         /**< PIT channel 0 interrupt handler */
 void isr_pit1(void);         /**< PIT channel 1 interrupt handler */
 void isr_pit2(void);         /**< PIT channel 2 interrupt handler */
@@ -111,6 +114,9 @@ void isr_portb(void);        /**< PORTB interrupt handler */
 void isr_portc(void);        /**< PORTC interrupt handler */
 void isr_portd(void);        /**< PORTD interrupt handler */
 void isr_porte(void);        /**< PORTE interrupt handler */
+void isr_portbc(void);       /**< PORTB+PORTC combined interrupt handler */
+void isr_radio_int0(void);   /**< Radio transceiver INT0 interrupt handler */
+void isr_radio_int1(void);   /**< Radio transceiver INT1 interrupt handler */
 void isr_rng(void);          /**< Random number generator interrupt handler */
 void isr_rtc(void);          /**< RTC alarm interrupt handler */
 void isr_rtc_seconds(void);  /**< RTC seconds interrupt handler */
@@ -119,6 +125,11 @@ void isr_spi0(void);         /**< SPI0 interrupt handler */
 void isr_spi1(void);         /**< SPI1 interrupt handler */
 void isr_spi2(void);         /**< SPI2 interrupt handler */
 void isr_swi(void);          /**< Software interrupt handler */
+void isr_tpm0(void);         /**< Timer/PWM module 0 interrupt handler */
+void isr_tpm1(void);         /**< Timer/PWM module 1 interrupt handler */
+void isr_tpm2(void);         /**< Timer/PWM module 2 interrupt handler */
+void isr_tpm3(void);         /**< Timer/PWM module 3 interrupt handler */
+void isr_trng0an(void);      /**< TRNG0AN interrupt handler */
 void isr_tsi(void);          /**< TSI interrupt handler */
 void isr_uart0_lon(void);    /**< UART0 LON sources interrupt handler */
 void isr_uart0_error(void);  /**< UART0 error interrupt handler */
