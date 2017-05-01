@@ -46,6 +46,8 @@ typedef uint16_t gpio_t;
  */
 #define GPIO_PIN(x, y)      (((x + 1) << 12) | (x << 6) | y)
 
+#if (__CORTEX_M >= 3)
+/* Kinetis Cortex-M4 has a 128 bit SIM UID */
 /**
  * @brief   Starting offset of CPU_ID
  */
@@ -54,6 +56,17 @@ typedef uint16_t gpio_t;
  * @brief   Length of the CPU_ID in octets
  */
 #define CPUID_LEN           (16U)
+#else /* (__CORTEX_M >= 3) */
+/* Kinetis Cortex-M0+ has a 96 bit SIM UID */
+/**
+ * @brief   Starting offset of CPU_ID
+ */
+#define CPUID_ADDR          (&SIM->UIDMH)
+/**
+ * @brief   Length of the CPU_ID in octets
+ */
+#define CPUID_LEN           (12U)
+#endif /* (__CORTEX_M >= 3) */
 
 /**
  * @brief   Generate GPIO mode bitfields
