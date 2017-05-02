@@ -144,6 +144,18 @@ ifneq (,$(filter kw2xrf,$(USEMODULE)))
     endif
 endif
 
+ifneq (,$(filter kw41zrf,$(USEMODULE)))
+    USEMODULE += luid
+    USEMODULE += netif
+    USEMODULE += ieee802154
+    USEMODULE += netdev_ieee802154
+    ifneq (,$(filter gnrc_netdev_default,$(USEMODULE)))
+      # XXX: this can be modeled as a dependency for gnrc_netdev_default as soon
+      # as all drivers are ported to netdev
+      USEMODULE += gnrc_netdev
+    endif
+endif
+
 ifneq (,$(filter hd44780,$(USEMODULE)))
     FEATURES_REQUIRED += periph_gpio
     USEMODULE += xtimer
