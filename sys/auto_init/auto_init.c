@@ -304,6 +304,11 @@ void auto_init(void)
     auto_init_kw2xrf();
 #endif
 
+#ifdef MODULE_KW41ZRF
+    extern void auto_init_kw41zrf(void);
+    auto_init_kw41zrf();
+#endif
+
 #ifdef MODULE_USBUS_CDC_ECM
     extern void auto_init_netdev_cdcecm(void);
     auto_init_netdev_cdcecm();
