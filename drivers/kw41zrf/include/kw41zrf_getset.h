@@ -79,13 +79,6 @@ uint8_t kw41zrf_get_channel(kw41zrf_t *dev);
 void kw41zrf_abort_sequence(kw41zrf_t *dev);
 
 /**
- * @brief   Set idle sequence state of device
- *
- * @param[in] dev       kw41zrf device descriptor
- */
-// void kw41zrf_set_idle_sequence(kw41zrf_t *dev);
-
-/**
  * @brief   Set sequence state of device
  *
  * @param[in] dev       kw41zrf device descriptor
