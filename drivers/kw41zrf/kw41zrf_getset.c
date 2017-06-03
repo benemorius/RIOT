@@ -204,6 +204,12 @@ uint8_t kw41zrf_get_cca_mode(kw41zrf_t *dev)
     return (ZLL->PHY_CTRL & ZLL_PHY_CTRL_CCATYPE_MASK) >> ZLL_PHY_CTRL_CCATYPE_SHIFT;
 }
 
+int8_t kw41zrf_get_ed_level(kw41zrf_t *dev)
+{
+    (void) dev;
+    return (ZLL->LQI_AND_RSSI & ZLL_LQI_AND_RSSI_CCA1_ED_FNL_MASK) >> ZLL_LQI_AND_RSSI_CCA1_ED_FNL_SHIFT;
+}
+
 void kw41zrf_set_option(kw41zrf_t *dev, uint16_t option, bool state)
 {
     DEBUG("[kw41zrf] set option 0x%04x to %x\n", option, state);
@@ -340,7 +346,7 @@ int kw41zrf_cca(kw41zrf_t *dev)
      * short enough to just spin */
     while ((((ZLL->PHY_CTRL & ZLL_PHY_CTRL_XCVSEQ_MASK) >> ZLL_PHY_CTRL_XCVSEQ_SHIFT) == XCVSEQ_CCA)
         && ((ZLL->SEQ_CTRL_STS & ZLL_SEQ_CTRL_STS_SEQ_IDLE_MASK) == 0)) {}
-    DEBUG("[kw41zrf] kw41zrf_cca done, RSSI: %d\n", (int8_t)((ZLL->LQI_AND_RSSI & ZLL_LQI_AND_RSSI_CCA1_ED_FNL_MASK) >> ZLL_LQI_AND_RSSI_CCA1_ED_FNL_SHIFT));
+    DEBUG("[kw41zrf] kw41zrf_cca done, RSSI: %d\n", kw41zrf_get_ed_level(dev));
     if (ZLL->IRQSTS & ZLL_IRQSTS_CCA_MASK) {
         DEBUG("[kw41zrf] Channel busy\n");
         return 1;
