@@ -28,6 +28,8 @@
 #include "bit.h"
 #include "periph_conf.h"
 #include "periph/uart.h"
+#include "llwu.h"
+#include "pm_layered.h"
 
 #define ENABLE_DEBUG (0)
 #include "debug.h"
@@ -63,6 +65,12 @@
 #define LPUART_OVERSAMPLING_RATE (16)
 #endif
 
+typedef struct {
+    uart_rx_cb_t rx_cb;     /**< data received interrupt callback */
+    void *arg;              /**< argument to both callback routines */
+    unsigned active;        /**< set to 1 while the receiver is active */
+} uart_isr_ctx_t;
+
 /**
  * @brief Runtime configuration space, holds pointers to callback functions for RX
  */
@@ -96,9 +104,14 @@ int uart_init(uart_t uart, uint32_t baudrate, uart_rx_cb_t rx_cb, void *arg)
 {
     assert(uart < UART_NUMOF);
 
+    if (config[uart].rx_cb) {
+        pm_unblock(KINETIS_PM_LLS);
+    }
+
     /* remember callback addresses */
     config[uart].rx_cb = rx_cb;
     config[uart].arg = arg;
+    config[uart].active = 0;
 
     uart_init_pins(uart);
 
@@ -118,6 +131,19 @@ int uart_init(uart_t uart, uint32_t baudrate, uart_rx_cb_t rx_cb, void *arg)
 #endif
         default:
             return UART_NODEV;
+    }
+
+    if (config[uart].rx_cb) {
+        if (uart_config[uart].llwu_rx != LLWU_WAKEUP_PIN_UNDEF) {
+            /* Configure the RX pin for LLWU wakeup to be able to use RX in LLS mode */
+            llwu_wakeup_pin_set(uart_config[uart].llwu_rx, LLWU_WAKEUP_EDGE_FALLING, NULL, NULL);
+        }
+        else {
+            /* UART and LPUART receivers are stopped in LLS, prevent LLS when there
+             * is a configured RX callback and no LLWU wakeup pin configured */
+            DEBUG("uart: Blocking LLS\n");
+            pm_block(KINETIS_PM_LLS);
+        }
     }
     return UART_OK;
 }
@@ -163,16 +189,16 @@ static inline void uart_init_uart(uart_t uart, uint32_t baudrate)
     clk = uart_config[uart].freq;
 
     /* disable transmitter and receiver */
-    dev->C2 &= ~(UART_C2_TE_MASK | UART_C2_RE_MASK);
+    dev->C2 = 0;
 
     /* Select mode */
-    dev->C1 = uart_config[uart].mode;
+    dev->C1 = uart_config[uart].mode | 0;
 
     /* calculate baudrate */
     ubd = (uint16_t)(clk / (baudrate * 16));
 
-    /* set baudrate */
-    dev->BDH = (uint8_t)UART_BDH_SBR(ubd >> 8);
+    /* set baudrate, enable RX active edge detection */
+    dev->BDH = (uint8_t)UART_BDH_SBR(ubd >> 8) | UART_BDH_RXEDGIE_MASK;
     dev->BDL = (uint8_t)UART_BDL_SBR(ubd);
 
 #if KINETIS_UART_ADVANCED
@@ -202,8 +228,10 @@ static inline void uart_init_uart(uart_t uart, uint32_t baudrate)
     dev->CFIFO = UART_CFIFO_RXFLUSH_MASK | UART_CFIFO_TXFLUSH_MASK;
 #endif /* KINETIS_UART_ADVANCED */
 
-    /* enable transmitter and receiver + RX interrupt */
-    dev->C2 |= UART_C2_TE_MASK | UART_C2_RE_MASK | UART_C2_RIE_MASK;
+    /* enable transmitter and receiver + RX interrupt + IDLE interrupt */
+    dev->C2 = UART_C2_TE_MASK | UART_C2_RE_MASK | UART_C2_RIE_MASK | UART_C2_ILIE_MASK;
+    /* enable interrupts on failure flags */
+    dev->C3 |= UART_C3_ORIE_MASK | UART_C3_PEIE_MASK | UART_C3_FEIE_MASK | UART_C3_NEIE_MASK;
 
     /* enable receive interrupt */
     NVIC_EnableIRQ(uart_config[uart].irqn);
@@ -219,37 +247,62 @@ KINETIS_UART_WRITE_INLINE void uart_write_uart(uart_t uart, const uint8_t *data,
         while (!(dev->S1 & UART_S1_TDRE_MASK)) {}
         dev->D = data[i];
     }
+    /* Wait for transmission complete */
+    while ((dev->S1 & UART_S1_TC_MASK) == 0) {}
 }
 
 static inline void irq_handler_uart(uart_t uart)
 {
     UART_Type *dev = uart_config[uart].dev;
 
-    /*
-     * On Cortex-M0, it happens that S1 is read with LDR
-     * instruction instead of LDRB. This will read the data register
-     * at the same time and arrived byte will be lost. Maybe it's a GCC bug.
-     *
-     * Observed with: arm-none-eabi-gcc (4.8.3-8+..)
-     * It does not happen with: arm-none-eabi-gcc (4.8.3-9+11)
-     */
-
-    if (dev->S1 & UART_S1_RDRF_MASK) {
-        /* RDRF flag will be cleared when dev-D was read */
-        uint8_t data = dev->D;
-
+    uint8_t s1 = dev->S1;
+    uint8_t s2 = dev->S2;
+    /* Clear IRQ flags */
+    dev->S2 = s2;
+    if (s2 & UART_S2_RXEDGIF_MASK) {
+        if (!config[uart].active) {
+            config[uart].active = 1;
+            /* Keep CPU on until we are finished with RX */
+            DEBUG("UART ACTIVE\n");
+            pm_block(KINETIS_PM_STOP);
+        }
+    }
+    /* The IRQ flags in S1 are cleared by reading the D register */
+    uint8_t data = dev->D;
+    (void) data;
+    if (s1 & UART_S1_OR_MASK) {
+        /* UART overrun, the data was lost */
+        DEBUG("UART OR\n");
+    }
+    if (s1 & UART_S1_RDRF_MASK) {
+        if (s1 & (UART_S1_FE_MASK | UART_S1_PF_MASK | UART_S1_NF_MASK)) {
+            if (s1 & UART_S1_FE_MASK) {
+                DEBUG("UART framing error %02x\n", (unsigned) s1);
+            }
+            if (s1 & UART_S1_PF_MASK) {
+                DEBUG("UART parity error %02x\n", (unsigned) s1);
+            }
+            if (s1 & UART_S1_NF_MASK) {
+                DEBUG("UART noise %02x\n", (unsigned) s1);
+            }
+            /* FE is set when a logic 0 is accepted as the stop bit. */
+            /* PF is set when PE is set, S2[LBKDE] is disabled, and the parity
+             * of the received data does not match its parity bit. */
+            /* NF is set when the UART detects noise on the receiver input. */
+        }
+        /* Only run callback if no error occurred */
         if (config[uart].rx_cb != NULL) {
             config[uart].rx_cb(config[uart].arg, data);
         }
     }
-
-#if (KINETIS_UART_ADVANCED == 0)
-    /* clear overrun flag */
-    if (dev->S1 & UART_S1_OR_MASK) {
-        dev->S1 = UART_S1_OR_MASK;
+    if (s1 & UART_S1_IDLE_MASK) {
+        if (config[uart].active) {
+            config[uart].active = 0;
+            /* Let the CPU sleep when idle */
+            pm_unblock(KINETIS_PM_STOP);
+            DEBUG("UART IDLE\n");
+        }
     }
-#endif
-
     cortexm_isr_end();
 }
 
@@ -323,6 +376,8 @@ KINETIS_UART_WRITE_INLINE void uart_write_lpuart(uart_t uart, const uint8_t *dat
         while ((dev->STAT & LPUART_STAT_TDRE_MASK) == 0) {}
         dev->DATA = data[i];
     }
+    /* Wait for transmission complete */
+    while ((dev->STAT & LPUART_STAT_TC_MASK) == 0) {}
 }
 
 static inline void irq_handler_lpuart(uart_t uart)

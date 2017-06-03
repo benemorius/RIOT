@@ -20,6 +20,7 @@
 #include "cpu.h"
 #include "periph/init.h"
 #include "mcg.h"
+#include "llwu.h"
 
 /**
  * @brief Initialize the CPU, set IRQ priorities
@@ -35,6 +36,10 @@ void cpu_init(void)
     SMC->PMPROT |= SMC_PMPROT_ALLS_MASK | SMC_PMPROT_AVLP_MASK;
     /* initialize the CPU clocking provided by the MCG module */
     kinetis_mcg_init();
+
+    /* initialize the LLWU module for sleep/wakeup management */
+    llwu_init();
+
     /* trigger static peripheral initialization */
     periph_init();
 }
