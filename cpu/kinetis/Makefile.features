@@ -13,8 +13,10 @@ ifneq (,$(filter-out $(_KINETIS_BOARDS_WITHOUT_HWRNG),$(BOARD)))
   FEATURES_PROVIDED += periph_hwrng
 endif
 
+FEATURES_PROVIDED += periph_llwu
 FEATURES_PROVIDED += periph_gpio
 FEATURES_PROVIDED += periph_gpio_irq
+
 ifeq (EA,$(KINETIS_SERIES))
 FEATURES_PROVIDED += periph_ics
 else
