@@ -159,6 +159,14 @@ void kw41zrf_set_cca_mode(kw41zrf_t *dev, uint8_t mode);
 uint8_t kw41zrf_get_cca_mode(kw41zrf_t *dev);
 
 /**
+ * @brief   Get latest ED measurement from the device
+ *
+ * @param[in] dev       kw41zrf device descriptor
+ * @return              most recent ED level
+ */
+int8_t kw41zrf_get_ed_level(kw41zrf_t *dev);
+
+/**
  * @brief   Get state of a given device
  *
  * @param[in] dev       kw41zrf device descriptor

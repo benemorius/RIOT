@@ -341,6 +341,14 @@ int kw41zrf_netdev_get(netdev_t *netdev, netopt_t opt, void *value, size_t len)
             }
             break;
 
+        case NETOPT_LAST_ED_LEVEL:
+            if (len < sizeof(int8_t)) {
+                return -EOVERFLOW;
+            }
+            else {
+                *(int8_t *)value = kw41zrf_get_ed_level(dev);
+            }
+            return sizeof(int8_t);
         case NETOPT_CHANNEL_PAGE:
         default:
             break;
