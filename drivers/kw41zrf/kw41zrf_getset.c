@@ -335,12 +335,12 @@ netopt_state_t kw41zrf_get_status(kw41zrf_t *dev)
 
 int kw41zrf_cca(kw41zrf_t *dev)
 {
-    /* TODO: add Standalone CCA here */
     kw41zrf_set_sequence(dev, XCVSEQ_CCA);
     /* using CCA mode 1, this takes exactly RX warmup time + 128 µs, which is
      * short enough to just spin */
-    while (((ZLL->PHY_CTRL & ZLL_PHY_CTRL_XCVSEQ_MASK) >> ZLL_PHY_CTRL_XCVSEQ_SHIFT) == XCVSEQ_CCA) {}
-    DEBUG("[kw41zrf] kw41zrf_cca done\n");
+    while ((((ZLL->PHY_CTRL & ZLL_PHY_CTRL_XCVSEQ_MASK) >> ZLL_PHY_CTRL_XCVSEQ_SHIFT) == XCVSEQ_CCA)
+        && ((ZLL->SEQ_CTRL_STS & ZLL_SEQ_CTRL_STS_SEQ_IDLE_MASK) == 0)) {}
+    DEBUG("[kw41zrf] kw41zrf_cca done, RSSI: %d\n", (int8_t)((ZLL->LQI_AND_RSSI & ZLL_LQI_AND_RSSI_CCA1_ED_FNL_MASK) >> ZLL_LQI_AND_RSSI_CCA1_ED_FNL_SHIFT));
     if (ZLL->IRQSTS & ZLL_IRQSTS_CCA_MASK) {
         DEBUG("[kw41zrf] Channel busy\n");
         return 1;
