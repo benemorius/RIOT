@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2017 Eistec AB
+ * Copyright (C) 2017-2018 Eistec AB
  * Copyright (C) 2014 PHYTEC Messtechnik GmbH
  * Copyright (C) 2014 Freie Universität Berlin
  *
@@ -28,6 +28,9 @@
 #include "bit.h"
 #include "periph_conf.h"
 #include "periph/uart.h"
+#if MODULE_PERIPH_LLWU
+#include "llwu.h"
+#endif
 
 #define ENABLE_DEBUG (0)
 #include "debug.h"
@@ -77,6 +80,20 @@
 #define LPUART_1_SRC            0
 #endif
 
+#ifndef LPUART_IDLECFG
+/* See IDLECFG in the reference manual. Longer idle configurations give more
+ * robust LPUART RX from low power modes, but will also keep the CPU awake for
+ * longer periods. */
+#define LPUART_IDLECFG      (0b001)
+#endif
+
+typedef struct {
+    uart_rx_cb_t rx_cb;     /**< data received interrupt callback */
+    void *arg;              /**< argument to both callback routines */
+    unsigned active;        /**< set to 1 while the receiver is active, to avoid mismatched PM_BLOCK/PM_UNBLOCK */
+    unsigned enabled;       /**< set to 1 while the receiver is enabled, to avoid mismatched PM_BLOCK/PM_UNBLOCK */
+} uart_isr_ctx_t;
+
 /**
  * @brief Runtime configuration space, holds pointers to callback functions for RX
  */
@@ -86,9 +103,13 @@ static inline void uart_init_pins(uart_t uart);
 
 #if KINETIS_HAVE_UART
 static inline void uart_init_uart(uart_t uart, uint32_t baudrate);
+static inline void uart_poweron_uart(uart_t uart);
+static inline void uart_poweroff_uart(uart_t uart);
 #endif
 #if KINETIS_HAVE_LPUART
 static inline void uart_init_lpuart(uart_t uart, uint32_t baudrate);
+static inline void uart_poweron_lpuart(uart_t uart);
+static inline void uart_poweroff_lpuart(uart_t uart);
 #endif
 
 /* Only use the dispatch function for uart_write if both UART and LPUART are
@@ -106,18 +127,46 @@ KINETIS_UART_WRITE_INLINE void uart_write_lpuart(uart_t uart, const uint8_t *dat
 #endif
 #endif
 
+#ifdef MODULE_PERIPH_LLWU
+/**
+ * @brief   LLWU callback for UART RX pin
+ *
+ * This function is called only when the CPU is in LLS mode and a falling edge
+ * occurs on the RX pin.
+ */
+static void uart_llwu_cb(void *arg)
+{
+    uart_t uart = (uart_t)arg;
+    if (!config[uart].active) {
+        config[uart].active = 1;
+        /* Keep CPU on until we are finished with RX */
+        DEBUG("LLS UART\n");
+        PM_BLOCK(KINETIS_PM_STOP);
+    }
+}
+#endif
+
 int uart_init(uart_t uart, uint32_t baudrate, uart_rx_cb_t rx_cb, void *arg)
 {
     assert(uart < UART_NUMOF);
 
-    /* remember callback addresses */
-    config[uart].rx_cb = rx_cb;
-    config[uart].arg = arg;
-
-    uart_init_pins(uart);
+    /* disable interrupts from UART module */
+    NVIC_DisableIRQ(uart_config[uart].irqn);
 
     /* Turn on module clock gate */
     bit_set32(uart_config[uart].scgc_addr, uart_config[uart].scgc_bit);
+
+    /* Power off before messing with settings, this will ensure a consistent
+     * state if we are re-initializing an already initialized module */
+    uart_poweroff(uart);
+
+    /* remember callback addresses */
+    config[uart].rx_cb = rx_cb;
+    config[uart].arg = arg;
+    config[uart].active = 0;
+    config[uart].enabled = 0;
+
+    uart_init_pins(uart);
 
     switch (uart_config[uart].type) {
 #if KINETIS_HAVE_UART
@@ -133,19 +182,97 @@ int uart_init(uart_t uart, uint32_t baudrate, uart_rx_cb_t rx_cb, void *arg)
         default:
             return UART_NODEV;
     }
+
+    /* Turn on module */
+    uart_poweron(uart);
+
+    /* enable interrupts from UART module */
+    NVIC_EnableIRQ(uart_config[uart].irqn);
+
     return UART_OK;
 }
 
 void uart_poweron(uart_t uart)
 {
-    (void)uart;
-    /* not implemented (yet) */
+    assert(uart < UART_NUMOF);
+    unsigned state = irq_disable();
+    if (config[uart].rx_cb) {
+        if (!config[uart].enabled) {
+            config[uart].enabled = 1;
+#ifdef MODULE_PERIPH_LLWU
+            if (uart_config[uart].llwu_rx != LLWU_WAKEUP_PIN_UNDEF) {
+                /* Configure the RX pin for LLWU wakeup to be able to use RX in LLS mode */
+                llwu_wakeup_pin_set(uart_config[uart].llwu_rx, LLWU_WAKEUP_EDGE_FALLING, uart_llwu_cb, (void*)uart);
+            }
+            else
+#endif
+            {
+                /* UART and LPUART receivers are stopped in LLS, prevent LLS when there
+                 * is a configured RX callback and no LLWU wakeup pin configured */
+                DEBUG("uart: Blocking LLS\n");
+                PM_BLOCK(KINETIS_PM_LLS);
+            }
+        }
+    }
+    switch (uart_config[uart].type) {
+#if KINETIS_HAVE_UART
+        case KINETIS_UART:
+            uart_poweron_uart(uart);
+            break;
+#endif
+#if KINETIS_HAVE_LPUART
+        case KINETIS_LPUART:
+            uart_poweron_lpuart(uart);
+            break;
+#endif
+        default:
+            break;
+    }
+    irq_restore(state);
 }
 
 void uart_poweroff(uart_t uart)
 {
-    (void)uart;
-    /* not implemented (yet) */
+    assert(uart < UART_NUMOF);
+    unsigned state = irq_disable();
+    if (config[uart].rx_cb) {
+        if (config[uart].enabled) {
+            config[uart].enabled = 0;
+#ifdef MODULE_PERIPH_LLWU
+            if (uart_config[uart].llwu_rx != LLWU_WAKEUP_PIN_UNDEF) {
+                /* Disable LLWU wakeup for the RX pin */
+                llwu_wakeup_pin_set(uart_config[uart].llwu_rx, LLWU_WAKEUP_EDGE_NONE, NULL, NULL);
+            }
+            else
+#endif
+            {
+                /* re-enable LLS since we are not listening anymore */
+                DEBUG("uart: unblocking LLS\n");
+                PM_UNBLOCK(KINETIS_PM_LLS);
+            }
+            if (config[uart].active) {
+                /* We were in the middle of a RX sequence, need to release that
+                 * PM blocker as well */
+                PM_UNBLOCK(KINETIS_PM_STOP);
+                config[uart].active = 0;
+            }
+        }
+    }
+    switch (uart_config[uart].type) {
+#if KINETIS_HAVE_UART
+        case KINETIS_UART:
+            uart_poweroff_uart(uart);
+            break;
+#endif
+#if KINETIS_HAVE_LPUART
+        case KINETIS_LPUART:
+            uart_poweroff_lpuart(uart);
+            break;
+#endif
+        default:
+            break;
+    }
+    irq_restore(state);
 }
 
 #if KINETIS_HAVE_UART && KINETIS_HAVE_LPUART
@@ -189,7 +316,7 @@ static inline void uart_init_uart(uart_t uart, uint32_t baudrate)
     clk = uart_config[uart].freq;
 
     /* disable transmitter and receiver */
-    dev->C2 &= ~(UART_C2_TE_MASK | UART_C2_RE_MASK);
+    dev->C2 = 0;
 
     /* Select mode */
     dev->C1 = uart_config[uart].mode;
@@ -213,8 +340,8 @@ static inline void uart_init_uart(uart_t uart, uint32_t baudrate)
      * TXFIFOSIZE == 0 means size = 1 (i.e. only one byte, no hardware FIFO) */
     if ((dev->PFIFO & UART_PFIFO_TXFIFOSIZE_MASK) != 0) {
         uint8_t txfifo_size =
-        (2 << ((dev->PFIFO & UART_PFIFO_TXFIFOSIZE_MASK) >>
-        UART_PFIFO_TXFIFOSIZE_SHIFT));
+            (2 << ((dev->PFIFO & UART_PFIFO_TXFIFOSIZE_MASK) >>
+            UART_PFIFO_TXFIFOSIZE_SHIFT));
         dev->TWFIFO = UART_TWFIFO_TXWATER(txfifo_size - 1);
     }
     else {
@@ -228,15 +355,19 @@ static inline void uart_init_uart(uart_t uart, uint32_t baudrate)
     dev->CFIFO = UART_CFIFO_RXFLUSH_MASK | UART_CFIFO_TXFLUSH_MASK;
 #endif /* KINETIS_UART_ADVANCED */
 
-    /* enable transmitter and receiver + RX interrupt */
-    dev->C2 |= UART_C2_TE_MASK | UART_C2_RE_MASK | UART_C2_RIE_MASK;
-
-    /* enable receive interrupt */
-    NVIC_EnableIRQ(uart_config[uart].irqn);
+    if (config[uart].rx_cb) {
+        /* enable RX active edge interrupt */
+        bit_set8(&dev->BDH, UART_BDH_RXEDGIE_SHIFT);
+        /* enable receiver + RX interrupt + IDLE interrupt */
+        dev->C2 = UART_C2_RIE_MASK | UART_C2_ILIE_MASK;
+        /* enable interrupts on failure flags */
+        dev->C3 |= UART_C3_ORIE_MASK | UART_C3_PEIE_MASK | UART_C3_FEIE_MASK | UART_C3_NEIE_MASK;
+    }
+    /* clear interrupt flags */
+    uint8_t s = dev->S2;
+    dev->S2 = s;
 }
-#endif /* KINETIS_HAVE_UART */
 
-#if KINETIS_HAVE_UART
 KINETIS_UART_WRITE_INLINE void uart_write_uart(uart_t uart, const uint8_t *data, size_t len)
 {
     UART_Type *dev = uart_config[uart].dev;
@@ -245,6 +376,30 @@ KINETIS_UART_WRITE_INLINE void uart_write_uart(uart_t uart, const uint8_t *data,
         while (!(dev->S1 & UART_S1_TDRE_MASK)) {}
         dev->D = data[i];
     }
+    /* Wait for transmission complete */
+    while ((dev->S1 & UART_S1_TC_MASK) == 0) {}
+}
+
+static inline void uart_poweron_uart(uart_t uart)
+{
+    UART_Type *dev = uart_config[uart].dev;
+
+    /* Enable transmitter */
+    bit_set8(&dev->C2, UART_C2_TE_SHIFT);
+    if (config[uart].rx_cb) {
+        /* Enable receiver */
+        bit_set8(&dev->C2, UART_C2_RE_SHIFT);
+    }
+}
+
+static inline void uart_poweroff_uart(uart_t uart)
+{
+    UART_Type *dev = uart_config[uart].dev;
+
+    /* Disable receiver */
+    bit_clear8(&dev->C2, UART_C2_RE_SHIFT);
+    /* Disable transmitter */
+    bit_clear8(&dev->C2, UART_C2_TE_SHIFT);
 }
 
 #if defined(UART_0_ISR) || defined(UART_1_ISR) || defined(UART_2_ISR) || \
@@ -253,31 +408,64 @@ static inline void irq_handler_uart(uart_t uart)
 {
     UART_Type *dev = uart_config[uart].dev;
 
-    /*
-     * On Cortex-M0, it happens that S1 is read with LDR
-     * instruction instead of LDRB. This will read the data register
-     * at the same time and arrived byte will be lost. Maybe it's a GCC bug.
-     *
-     * Observed with: arm-none-eabi-gcc (4.8.3-8+..)
-     * It does not happen with: arm-none-eabi-gcc (4.8.3-9+11)
-     */
-
-    if (dev->S1 & UART_S1_RDRF_MASK) {
-        /* RDRF flag will be cleared when dev-D was read */
-        uint8_t data = dev->D;
-
-        if (config[uart].rx_cb != NULL) {
+    uint8_t s1 = dev->S1;
+    uint8_t s2 = dev->S2;
+    /* Clear IRQ flags */
+    dev->S2 = s2;
+    /* The IRQ flags in S1 are cleared by reading the D register */
+    uint8_t data = dev->D;
+    (void) data;
+    if (dev->SFIFO & UART_SFIFO_RXUF_MASK) {
+        /* RX FIFO underrun occurred, flush the RX FIFO to get the internal
+         * pointer back in sync */
+        dev->CFIFO |= UART_CFIFO_RXFLUSH_MASK;
+        /* Clear SFIFO flags */
+        dev->SFIFO = dev->SFIFO;
+        DEBUG("UART RXUF\n");
+    }
+    DEBUG("U: %c\n", data);
+    if (s2 & UART_S2_RXEDGIF_MASK) {
+        if (!config[uart].active) {
+            config[uart].active = 1;
+            /* Keep CPU on until we are finished with RX */
+            DEBUG("UART ACTIVE\n");
+            PM_BLOCK(KINETIS_PM_STOP);
+        }
+    }
+    if (s1 & UART_S1_OR_MASK) {
+        /* UART overrun, some data has been lost */
+        DEBUG("UART OR\n");
+    }
+    if (s1 & UART_S1_RDRF_MASK) {
+        if (s1 & (UART_S1_FE_MASK | UART_S1_PF_MASK | UART_S1_NF_MASK)) {
+            if (s1 & UART_S1_FE_MASK) {
+                DEBUG("UART framing error %02x\n", (unsigned) s1);
+            }
+            if (s1 & UART_S1_PF_MASK) {
+                DEBUG("UART parity error %02x\n", (unsigned) s1);
+            }
+            if (s1 & UART_S1_NF_MASK) {
+                DEBUG("UART noise %02x\n", (unsigned) s1);
+            }
+            /* FE is set when a logic 0 is accepted as the stop bit. */
+            /* PF is set when PE is set, S2[LBKDE] is disabled, and the parity
+             * of the received data does not match its parity bit. */
+            /* NF is set when the UART detects noise on the receiver input. */
+        }
+        /* Only run callback if no error occurred */
+        else if (config[uart].rx_cb != NULL) {
             config[uart].rx_cb(config[uart].arg, data);
         }
     }
-
-#if (KINETIS_UART_ADVANCED == 0)
-    /* clear overrun flag */
-    if (dev->S1 & UART_S1_OR_MASK) {
-        dev->S1 = UART_S1_OR_MASK;
+    if (s1 & UART_S1_IDLE_MASK) {
+        if (config[uart].active) {
+            config[uart].active = 0;
+            /* Let the CPU sleep when idle */
+            PM_UNBLOCK(KINETIS_PM_STOP);
+            DEBUG("UART IDLE\n");
+        }
     }
-#endif
-
+    DEBUG("UART: s1 %x C1 %x C2 %x S1 %x S2 %x D %x SF %x\n", s1, dev->C1, dev->C2, dev->S1, dev->S2, data, dev->SFIFO);
     cortexm_isr_end();
 }
 #endif
@@ -358,14 +546,21 @@ static inline void uart_init_lpuart(uart_t uart, uint32_t baudrate)
     }
 
     uint32_t sbr = clk / (best_osr * baudrate);
-    /* set baud rate */
+    /* set baud rate, enable RX active edge interrupt */
     dev->BAUD = LPUART_BAUD_OSR(best_osr - 1) | LPUART_BAUD_SBR(sbr);
 
-    /* enable transmitter and receiver + RX interrupt */
-    dev->CTRL |= LPUART_CTRL_TE_MASK | LPUART_CTRL_RE_MASK | LPUART_CTRL_RIE_MASK;
-
-    /* enable receive interrupt */
-    NVIC_EnableIRQ(uart_config[uart].irqn);
+    if (config[uart].rx_cb) {
+        /* enable RX active edge interrupt */
+        bit_set32(&dev->BAUD, LPUART_BAUD_RXEDGIE_SHIFT);
+        /* enable RX interrupt + error interrupts */
+        dev->CTRL |= LPUART_CTRL_RIE_MASK |
+            LPUART_CTRL_ILIE_MASK | LPUART_CTRL_IDLECFG(LPUART_IDLECFG) |
+            LPUART_CTRL_ORIE_MASK | LPUART_CTRL_PEIE_MASK |
+            LPUART_CTRL_FEIE_MASK | LPUART_CTRL_NEIE_MASK;
+    }
+    /* clear interrupt flags */
+    uint32_t s = dev->STAT;
+    dev->STAT = s;
 }
 
 KINETIS_UART_WRITE_INLINE void uart_write_lpuart(uart_t uart, const uint8_t *data, size_t len)
@@ -376,6 +571,30 @@ KINETIS_UART_WRITE_INLINE void uart_write_lpuart(uart_t uart, const uint8_t *dat
         while ((dev->STAT & LPUART_STAT_TDRE_MASK) == 0) {}
         dev->DATA = data[i];
     }
+    /* Wait for transmission complete */
+    while ((dev->STAT & LPUART_STAT_TC_MASK) == 0) {}
+}
+
+static inline void uart_poweron_lpuart(uart_t uart)
+{
+    LPUART_Type *dev = uart_config[uart].dev;
+
+    /* Enable transmitter */
+    bit_set32(&dev->CTRL, LPUART_CTRL_TE_SHIFT);
+    if (config[uart].rx_cb) {
+        /* Enable receiver */
+        bit_set32(&dev->CTRL, LPUART_CTRL_RE_SHIFT);
+    }
+}
+
+static inline void uart_poweroff_lpuart(uart_t uart)
+{
+    LPUART_Type *dev = uart_config[uart].dev;
+
+    /* Disable receiver */
+    bit_clear32(&dev->CTRL, LPUART_CTRL_RE_SHIFT);
+    /* Disable transmitter */
+    bit_clear32(&dev->CTRL, LPUART_CTRL_TE_SHIFT);
 }
 
 #if defined(LPUART_0_ISR) || defined(LPUART_1_ISR) || defined(LPUART_2_ISR) || \
@@ -387,6 +606,14 @@ static inline void irq_handler_lpuart(uart_t uart)
     /* Clear all IRQ flags */
     dev->STAT = stat;
 
+    if (stat & LPUART_STAT_RXEDGIF_MASK) {
+        if (!config[uart].active) {
+            config[uart].active = 1;
+            /* Keep CPU on until we are finished with RX */
+            DEBUG("LPUART ACTIVE\n");
+            PM_BLOCK(KINETIS_PM_STOP);
+        }
+    }
     if (stat & LPUART_STAT_RDRF_MASK) {
         /* RDRF flag will be cleared when LPUART_DATA is read */
         uint8_t data = dev->DATA;
@@ -412,6 +639,14 @@ static inline void irq_handler_lpuart(uart_t uart)
         /* Input buffer overflow, means that the software was too slow to
          * receive the data */
         DEBUG("LPUART overrun %08" PRIx32 "\n", stat);
+    }
+    if (stat & LPUART_STAT_IDLE_MASK) {
+        if (config[uart].active) {
+            config[uart].active = 0;
+            /* Let the CPU sleep when idle */
+            PM_UNBLOCK(KINETIS_PM_STOP);
+            DEBUG("LPUART IDLE\n");
+        }
     }
 
     cortexm_isr_end();

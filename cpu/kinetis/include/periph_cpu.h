@@ -26,6 +26,22 @@
 
 #include "cpu.h"
 
+#if MODULE_PM_LAYERED
+#include "pm_layered.h"
+/**
+ * @brief   pm_block iff pm_layered is used
+ */
+#define PM_BLOCK(x) pm_block(x)
+/**
+ * @brief   pm_unblock iff pm_layered is used
+ */
+#define PM_UNBLOCK(x) pm_unblock(x)
+#else
+/* ignore these calls when not using pm_layered */
+#define PM_BLOCK(x)
+#define PM_UNBLOCK(x)
+#endif
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -130,9 +146,18 @@ typedef uint16_t gpio_t;
 #define PERIPH_TIMER_PROVIDES_SET
 
 /**
- * @brief   number of usable power modes
+ * @name    Kinetis power mode configuration
+ * @{
  */
-#define PM_NUM_MODES    (1U)
+#define PM_NUM_MODES    (4U)
+enum {
+    KINETIS_PM_LLS  = 0,
+    KINETIS_PM_VLPS = 1,
+    KINETIS_PM_STOP = 2,
+    KINETIS_PM_WAIT = 3,
+};
+#define PM_BLOCKER_INITIAL  { .val_u32 = 0 }
+/** @} */
 
 #ifdef RTC
 /* All Kinetis CPUs have exactly one RTC hardware module, except for the KL02
@@ -365,6 +390,8 @@ typedef struct {
     LPTMR_Type *dev;
     /** Input clock frequency */
     uint32_t base_freq;
+    /** LLWU wakeup module number for this timer */
+    llwu_wakeup_module_t llwu;
     /** Clock source setting */
     uint8_t src;
     /** IRQn interrupt number */
@@ -499,8 +526,20 @@ typedef struct {
     volatile uint32_t *scgc_addr; /**< Clock enable register, in SIM module */
     uint8_t scgc_bit;             /**< Clock enable bit, within the register */
     uart_mode_t mode;             /**< UART mode: data bits, parity, stop bits */
-    uart_type_t type;             /**< Hardware module type (KINETIS_UART or KINETIS_LPUART)*/
+    uart_type_t type;             /**< Hardware module type (KINETIS_UART or KINETIS_LPUART) */
+    /**
+     * @brief LLWU wakeup source RX pin to allow RX while in LLS mode
+     *
+     * Set to @c LLWU_WAKEUP_PIN_UNDEF if the chosen RX pin is not available to
+     * the LLWU.
+     */
+    llwu_wakeup_pin_t llwu_rx;
 } uart_conf_t;
+
+/**
+ * @brief  Override the default uart_isr_ctx_t in uart.c
+ */
+#define HAVE_UART_ISR_CTX_T
 
 #if !defined(KINETIS_HAVE_PLL)
 #if defined(MCG_C6_PLLS_MASK) || DOXYGEN
