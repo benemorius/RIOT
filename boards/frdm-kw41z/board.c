@@ -21,48 +21,6 @@
 #include "board.h"
 #include "periph/gpio.h"
 #include "periph/rtt.h"
-#include "mcg.h"
-#if 0
-/* Opcodes for AT45DB041E not yet implemented */
-#include "vfs.h"
-#include "fs/devfs.h"
-#include "mtd_spi_nor.h"
-
-static mtd_spi_nor_t frdm_nor_dev = {
-    .base = {
-        .driver = &mtd_spi_nor_driver,
-        .page_size = 256,
-        .pages_per_sector = 256,
-        .sector_count = 8,
-    },
-    .opcode = &mtd_spi_nor_opcode_at45,
-    .spi = FRDM_NOR_SPI_DEV,
-    .cs = FRDM_NOR_SPI_CS,
-    .addr_width = 4,
-    .mode = SPI_MODE_3,
-    .clk = SPI_CLK_10MHZ,
-};
-
-mtd_dev_t *mtd0 = (mtd_dev_t *)&frdm_nor_dev;
-
-static devfs_t frdm_nor_devfs = {
-    .path = "/mtd0",
-    .f_op = &mtd_vfs_ops,
-    .private_data = &frdm_nor_dev,
-};
-
-static inline int frdm_nor_init(void)
-{
-    int res = mtd_init(mtd0);
-
-    if (res >= 0) {
-        /* Register DevFS node */
-        devfs_register(&mulle_nor_devfs);
-    }
-
-    return res;
-}
-#endif
 
 static inline void set_lpuart_clock_source(void)
 {
@@ -79,8 +37,11 @@ void board_init(void)
     /* Start the RTT, used as time base for xtimer */
     rtt_init();
 
-    /* initialize and turn off LED3 (red onboard LED) */
+    /* initialize and turn off LEDs */
     gpio_init(LED0_PIN, GPIO_OUT);
     gpio_set(LED0_PIN);
-    /* frdm_nor_init(); */
+    gpio_init(LED1_PIN, GPIO_OUT);
+    gpio_set(LED1_PIN);
+    gpio_init(LED2_PIN, GPIO_OUT);
+    gpio_set(LED2_PIN);
 }
