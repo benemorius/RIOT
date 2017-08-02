@@ -57,7 +57,7 @@ static const  saul_adc_params_t saul_adc_params[] =
         .res  = ADC_RES_16BIT,
     },
     {
-        .name = "ADC0_DP",
+        .name = "ADC0_DP-DM",
         .line = ADC_LINE(5),
         .res  = ADC_RES_16BIT,
     },
