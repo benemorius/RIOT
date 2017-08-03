@@ -1,25 +1,29 @@
 #!/bin/sh
 
 ETHOS_DIR="$(dirname $(readlink -f $0))"
+SUDO=
+if [ "$EUID" -ne 0 ]; then
+    SUDO=sudo
+fi
 
 create_tap() {
-    ip tuntap add ${TAP} mode tap user ${USER}
-    sysctl -w net.ipv6.conf.${TAP}.forwarding=1
-    sysctl -w net.ipv6.conf.${TAP}.accept_ra=0
-    ip link set ${TAP} up
-    ip a a fe80::1/64 dev ${TAP}
-    ip a a fd00:dead:beef::1/128 dev lo
-    ip route add ${PREFIX} via fe80::2 dev ${TAP}
+    ${SUDO} ip tuntap add ${TAP} mode tap user ${USER}
+    ${SUDO} sysctl -w net.ipv6.conf.${TAP}.forwarding=1
+    ${SUDO} sysctl -w net.ipv6.conf.${TAP}.accept_ra=0
+    ${SUDO} ip link set ${TAP} up
+    ${SUDO} ip a a fe80::1/64 dev ${TAP}
+    ${SUDO} ip a a fd00:dead:beef::1/128 dev lo
+    ${SUDO} ip route add ${PREFIX} via fe80::2 dev ${TAP}
 }
 
 remove_tap() {
-    ip tuntap del ${TAP} mode tap
+    ${SUDO} ip tuntap del ${TAP} mode tap
 }
 
 cleanup() {
     echo "Cleaning up..."
     remove_tap
-    ip a d fd00:dead:beef::1/128 dev lo
+    ${SUDO} ip a d fd00:dead:beef::1/128 dev lo
     kill ${UHCPD_PID}
     trap "" INT QUIT TERM EXIT
 }
