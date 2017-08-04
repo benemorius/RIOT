@@ -124,7 +124,6 @@ typedef struct {
  * @brief   Setup an KW41ZRF based device state
  *
  * @param[out] dev          device descriptor
- * @param[in]  params       parameters for device initialization
  */
 void kw41zrf_setup(kw41zrf_t *dev);
 

@@ -49,8 +49,6 @@ typedef enum kw41zrf_timer_timebase {
 
 /**
  * @brief   Mask all transceiver interrupts
- *
- * @param[in] dev       kw41zrf device descriptor
  */
 static inline void kw41zrf_mask_irqs(void)
 {
@@ -58,9 +56,7 @@ static inline void kw41zrf_mask_irqs(void)
 }
 
 /**
- * @brief   Allow transceiver interrupts
- *
- * @param[in] dev       kw41zrf device descriptor
+ * @brief   Unmask all transceiver interrupts
  */
 static inline void kw41zrf_unmask_irqs(void)
 {
