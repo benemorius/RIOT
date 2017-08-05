@@ -97,6 +97,7 @@ static const uart_conf_t uart_config[] = {
         .irqn   = LPUART0_IRQn,
         .scgc_addr = &SIM->SCGC5,
         .scgc_bit = SIM_SCGC5_LPUART0_SHIFT,
+        .mode   = UART_MODE_8N1,
         .type   = KINETIS_LPUART,
     },
 };
