@@ -123,8 +123,6 @@ static int kw41zrf_netdev_send(netdev_t *netdev, const struct iovec *vector, uns
     /* Abort whatever is going on */
     kw41zrf_set_sequence(dev, XCVSEQ_IDLE);
 
-    DEBUG("[kw41zrf] TX %u bytes\n", len);
-
     /* load packet data into buffer */
     for (unsigned i = 0; i < count; i++, ptr++) {
         /* current packet data + FCS too long */
@@ -135,6 +133,8 @@ static int kw41zrf_netdev_send(netdev_t *netdev, const struct iovec *vector, uns
         }
         len = kw41zrf_tx_load(ptr->iov_base, ptr->iov_len, len);
     }
+
+    DEBUG("[kw41zrf] TX %u bytes\n", len);
 
     /*
      * First octet in the TX buffer contains the frame length.
@@ -163,6 +163,10 @@ static int kw41zrf_netdev_recv(netdev_t *netdev, void *buf, size_t len, void *in
 {
     /* get size of the received packet */
     uint8_t pkt_len = (ZLL->IRQSTS & ZLL_IRQSTS_RX_FRAME_LENGTH_MASK) >> ZLL_IRQSTS_RX_FRAME_LENGTH_SHIFT;
+    if (pkt_len < IEEE802154_FCS_LEN) {
+        __asm__ volatile ("BKPT #1\n");
+//         return -EAGAIN;
+    }
     /* skip FCS */
     pkt_len -= IEEE802154_FCS_LEN;
     DEBUG("[kw41zrf] RX %u bytes\n", pkt_len);

@@ -191,7 +191,7 @@ void kw41zrf_abort_rx_ops_enable(kw41zrf_t *dev, uint32_t timeout)
 void kw41zrf_abort_rx_ops_disable(kw41zrf_t *dev)
 {
     bit_clear32(&ZLL->PHY_CTRL, ZLL_PHY_CTRL_TMR3CMP_EN_SHIFT);
-    DEBUG("[kw41zrf] abort_rx_ops_disable, now: %" PRIx32 "\n", kw41zrf_timer_get(dev));
+    DEBUG("[kw41zrf] abort_rx_ops_disable, cmp: %8" PRIx32 " now: %8" PRIx32 "\n", ZLL->T3CMP, kw41zrf_timer_get(dev));
 }
 
 uint32_t kw41zrf_get_timestamp(kw41zrf_t *dev)
