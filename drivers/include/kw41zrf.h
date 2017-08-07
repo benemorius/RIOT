@@ -24,8 +24,6 @@
 #include <stdint.h>
 
 #include "board.h"
-#include "periph/spi.h"
-#include "periph/gpio.h"
 #include "net/netdev.h"
 #include "net/netdev/ieee802154.h"
 #include "net/gnrc/nettype.h"
@@ -86,20 +84,27 @@ extern "C" {
  *
  * @{
  */
-#define KW41ZRF_OPT_SRC_ADDR_LONG    (NETDEV_IEEE802154_SRC_MODE_LONG)  /**< legacy define */
-#define KW41ZRF_OPT_RAWDUMP          (NETDEV_IEEE802154_RAW)            /**< legacy define */
-#define KW41ZRF_OPT_ACK_REQ          (NETDEV_IEEE802154_ACK_REQ)        /**< legacy define */
+enum kw41zrf_opt {
+    KW41ZRF_OPT_SRC_ADDR_LONG = NETDEV_IEEE802154_SRC_MODE_LONG, /**< legacy define */
+    KW41ZRF_OPT_RAWDUMP = NETDEV_IEEE802154_RAW,                 /**< legacy define */
+    KW41ZRF_OPT_ACK_REQ = NETDEV_IEEE802154_ACK_REQ,             /**< legacy define */
 
-#define KW41ZRF_OPT_AUTOCCA        (0x0100) /**< CCA before TX active */
-#define KW41ZRF_OPT_PROMISCUOUS    (0x0200) /**< promiscuous mode active */
-#define KW41ZRF_OPT_PRELOADING     (0x0400) /**< preloading enabled */
-#define KW41ZRF_OPT_TELL_TX_START  (0x0800) /**< notify MAC layer on TX start */
-#define KW41ZRF_OPT_TELL_TX_END    (0x1000) /**< notify MAC layer on TX finished */
-#define KW41ZRF_OPT_TELL_RX_START  (0x2000) /**< notify MAC layer on RX start */
-#define KW41ZRF_OPT_TELL_RX_END    (0x4000) /**< notify MAC layer on RX finished */
-#define KW41ZRF_OPT_AUTOACK        (0x8000) /**< enable automatic sending of
-                                             *   ACKs for incoming packet */
+    KW41ZRF_OPT_AUTOCCA       = (0x0100), /**< CCA before TX active */
+    KW41ZRF_OPT_PROMISCUOUS   = (0x0200), /**< promiscuous mode active */
+    KW41ZRF_OPT_PRELOADING    = (0x0400), /**< preloading enabled */
+    KW41ZRF_OPT_TELL_TX_START = (0x0800), /**< notify MAC layer on TX start */
+    KW41ZRF_OPT_TELL_TX_END   = (0x1000), /**< notify MAC layer on TX finished */
+    KW41ZRF_OPT_TELL_RX_START = (0x2000), /**< notify MAC layer on RX start */
+    KW41ZRF_OPT_TELL_RX_END   = (0x4000), /**< notify MAC layer on RX finished */
+    KW41ZRF_OPT_AUTOACK       = (0x8000), /**< enable automatic sending of
+                                           *   ACKs for incoming packet */
+};
 /** @} */
+
+/**
+ * @brief ISR callback function type
+ */
+typedef void (*kw41zrf_cb_t)(void *arg);
 
 /**
  * @brief   Device descriptor for KW41ZRF radio devices
@@ -131,12 +136,12 @@ void kw41zrf_setup(kw41zrf_t *dev);
  * @brief   Initialize the given KW41ZRF device
  *
  * @param[out] dev          device descriptor
- * @param[in] cb            irq callback
+ * @param[in]  cb           irq callback
  *
  * @return                  0 on success
  * @return                  <0 on error
  */
-int kw41zrf_init(kw41zrf_t *dev, gpio_cb_t cb);
+int kw41zrf_init(kw41zrf_t *dev, kw41zrf_cb_t cb);
 
 /**
  * @brief   Configure radio with default values

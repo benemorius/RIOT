@@ -59,7 +59,7 @@ static int kw41zrf_netdev_init(netdev_t *netdev)
     kw41zrf_t *dev = (kw41zrf_t *)netdev;
 
     /* initialise SPI and GPIOs */
-    if (kw41zrf_init(dev, &kw41zrf_irq_handler)) {
+    if (kw41zrf_init(dev, kw41zrf_irq_handler)) {
         LOG_ERROR("[kw41zrf] unable to initialize device\n");
         return -1;
     }
@@ -114,11 +114,16 @@ static int kw41zrf_netdev_send(netdev_t *netdev, const struct iovec *vector, uns
     const struct iovec *ptr = vector;
     size_t len = 0;
 
-    /* make sure ongoing T or TR sequence are finished */
+    /* make sure any ongoing T or TR sequence is finished */
     if (kw41zrf_can_switch_to_idle(dev) == 0) {
         /* TX in progress */
-        return -ENOBUFS;
+        return -EBUSY;
     }
+
+    /* Abort whatever is going on */
+    kw41zrf_set_sequence(dev, XCVSEQ_IDLE);
+
+    DEBUG("[kw41zrf] TX %u bytes\n", len);
 
     /* load packet data into buffer */
     for (unsigned i = 0; i < count; i++, ptr++) {
@@ -130,11 +135,6 @@ static int kw41zrf_netdev_send(netdev_t *netdev, const struct iovec *vector, uns
         }
         len = kw41zrf_tx_load(ptr->iov_base, ptr->iov_len, len);
     }
-
-    /* Abort what is going on */
-    kw41zrf_set_sequence(dev, XCVSEQ_IDLE);
-
-    DEBUG("[kw41zrf] TX %u bytes\n", len);
 
     /*
      * First octet in the TX buffer contains the frame length.
@@ -554,7 +554,10 @@ static uint32_t _isr_event_seq_t_ccairq(kw41zrf_t *dev, uint32_t irqsts)
             /* Channel was determined busy */
             DEBUG("[kw41zrf] CCA ch busy (RSSI: %d)\n",
                   (int8_t)((ZLL->LQI_AND_RSSI & ZLL_LQI_AND_RSSI_CCA1_ED_FNL_MASK) >>
-                  ZLL_LQI_AND_RSSI_CCA1_ED_FNL_SHIFT));
+                ZLL_LQI_AND_RSSI_CCA1_ED_FNL_SHIFT));
+            /* Abort TX sequence */
+            ZLL->PHY_CTRL = (ZLL->PHY_CTRL & ~ZLL_PHY_CTRL_XCVSEQ_MASK) | ZLL_PHY_CTRL_XCVSEQ(XCVSEQ_IDLE);
+
             if (dev->netdev.flags & KW41ZRF_OPT_TELL_TX_END) {
                 dev->netdev.netdev.event_callback(&dev->netdev.netdev, NETDEV_EVENT_TX_MEDIUM_BUSY);
             }
@@ -565,7 +568,7 @@ static uint32_t _isr_event_seq_t_ccairq(kw41zrf_t *dev, uint32_t irqsts)
                   (int8_t)((ZLL->LQI_AND_RSSI & ZLL_LQI_AND_RSSI_CCA1_ED_FNL_MASK) >>
                   ZLL_LQI_AND_RSSI_CCA1_ED_FNL_SHIFT));
             if (dev->netdev.flags & KW41ZRF_OPT_TELL_TX_START) {
-                /* TX will start after CCA check succeeded */
+                /* TX will start automatically after CCA check succeeded */
                 dev->netdev.netdev.event_callback(&dev->netdev.netdev, NETDEV_EVENT_TX_STARTED);
             }
         }
