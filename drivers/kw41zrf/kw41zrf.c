@@ -82,6 +82,13 @@ int kw41zrf_init(kw41zrf_t *dev, gpio_cb_t cb)
         return -ENODEV;
     }
 
+    /* Enable RSIM oscillator in Run mode, in order to be able to access the XCVR
+     * registers if using the internal reference clock for the CPU core */
+    bit_set32(&RSIM->CONTROL, RSIM_CONTROL_RF_OSC_EN_SHIFT);
+
+    /* Wait for oscillator ready signal */
+    while((RSIM->CONTROL & RSIM_CONTROL_RF_OSC_READY_MASK) == 0) {}
+
     xcvrStatus_t xcvrStatus = XCVR_Init(ZIGBEE_MODE, DR_500KBPS);
     if (xcvrStatus != gXcvrSuccess_c) {
         return -EIO;
