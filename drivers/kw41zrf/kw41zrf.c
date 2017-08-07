@@ -76,7 +76,7 @@ void kw41zrf_setup(kw41zrf_t *dev)
     DEBUG("[kw41zrf] setup finished\n");
 }
 
-int kw41zrf_init(kw41zrf_t *dev, gpio_cb_t cb)
+int kw41zrf_init(kw41zrf_t *dev, kw41zrf_cb_t cb)
 {
     if (dev == NULL) {
         return -ENODEV;

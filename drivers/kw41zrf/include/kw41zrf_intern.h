@@ -22,6 +22,10 @@
 
 #include <stdint.h>
 #include "kw41zrf.h"
+/* For XCVSEQ_IDLE */
+#include "kw41zrf_getset.h"
+/* For ZLL CPU registers */
+#include "cpu.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -89,13 +93,27 @@ void kw41zrf_disable_interrupts(kw41zrf_t *dev);
 void kw41zrf_set_power_mode(kw41zrf_t *dev, kw41zrf_powermode_t pm);
 
 /**
- * @brief
+ * @brief Determine if the transceiver may switch to idle mode
  *
- * @param[in] dev
+ * @param[in] dev       kw41zrf device descriptor
  *
- * @return
+ * @return 0 if transceiver is in progress transmitting a packet
+ * @return 1 otherwise
  */
 int kw41zrf_can_switch_to_idle(kw41zrf_t *dev);
+
+/**
+ * @brief Abort the current autosequence
+ *
+ * @param[in] dev       kw41zrf device descriptor
+ */
+static inline void kw41zrf_abort_sequence(kw41zrf_t *dev)
+{
+    /* Writing IDLE to XCVSEQ aborts any ongoing sequence */
+    ZLL->PHY_CTRL = (ZLL->PHY_CTRL & ~ZLL_PHY_CTRL_XCVSEQ_MASK) | ZLL_PHY_CTRL_XCVSEQ(XCVSEQ_IDLE);
+    /* Clear interrupt flags */
+    ZLL->IRQSTS = ZLL->IRQSTS;
+}
 
 /**
  * @brief   Initialize the Event Timer Block (up counter)
