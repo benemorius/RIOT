@@ -51,10 +51,11 @@ static const clock_config_t clock_config = {
     .fll_factor_fee = KINETIS_MCG_FLL_FACTOR_1280, /* FLL freq = 40 MHz */
     .enable_oscillator = true, /* Use RF module oscillator */
     .select_fast_irc = true,
-    .enable_mcgirclk = false,
+    .enable_mcgirclk = true, /* Used for LPUART clocking */
 };
 #define CLOCK_CORECLOCK              (32000000ul)
 #define CLOCK_BUSCLOCK               (CLOCK_CORECLOCK / 2)
+#define CLOCK_MCGIRCLK               (4000000ul)
 /** @} */
 
 /**
@@ -89,7 +90,7 @@ static const clock_config_t clock_config = {
 static const uart_conf_t uart_config[] = {
     {
         .dev    = LPUART0,
-        .freq   = CLOCK_CORECLOCK,
+        .freq   = CLOCK_MCGIRCLK,
         .pin_rx = GPIO_PIN(PORT_C,  6),
         .pin_tx = GPIO_PIN(PORT_C,  7),
         .pcr_rx = PORT_PCR_MUX(4),
