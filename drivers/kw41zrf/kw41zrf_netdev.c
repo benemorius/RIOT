@@ -87,6 +87,7 @@ static inline size_t kw41zrf_tx_load(const void *buf, size_t len, size_t offset)
 
 static void kw41zrf_tx_exec(kw41zrf_t *dev)
 {
+    kw41zrf_abort_sequence(dev);
     uint16_t len_fcf = ZLL->PKT_BUFFER_TX[0];
     DEBUG("[kw41zrf] len_fcf=0x%04x\n", len_fcf);
     /* Check FCF field in the TX buffer to see if the ACK_REQ flag was set in
@@ -97,12 +98,14 @@ static void kw41zrf_tx_exec(kw41zrf_t *dev)
         uint8_t payload_len = len_fcf & 0xff;
         uint32_t tx_timeout = dev->tx_warmup_time + KW41ZRF_SHR_PHY_TIME +
             payload_len * KW41ZRF_PER_BYTE_TIME + KW41ZRF_ACK_WAIT_TIME;
-        DEBUG("[kw41zrf] Start TR\n");
-        kw41zrf_set_sequence(dev, XCVSEQ_TX_RX);
         /* Set timeout for RX ACK */
         kw41zrf_abort_rx_ops_enable(dev, tx_timeout);
+        /* Initiate transmission */
+        DEBUG("[kw41zrf] Start TR\n");
+        kw41zrf_set_sequence(dev, XCVSEQ_TX_RX);
     }
     else {
+        /* Initiate transmission */
         DEBUG("[kw41zrf] Start T\n");
         kw41zrf_set_sequence(dev, XCVSEQ_TRANSMIT);
     }
@@ -119,9 +122,6 @@ static int kw41zrf_netdev_send(netdev_t *netdev, const struct iovec *vector, uns
         /* TX in progress */
         return -EBUSY;
     }
-
-    /* Abort whatever is going on */
-    kw41zrf_set_sequence(dev, XCVSEQ_IDLE);
 
     /* load packet data into buffer */
     for (unsigned i = 0; i < count; i++, ptr++) {
@@ -559,8 +559,6 @@ static uint32_t _isr_event_seq_t_ccairq(kw41zrf_t *dev, uint32_t irqsts)
             DEBUG("[kw41zrf] CCA ch busy (RSSI: %d)\n",
                   (int8_t)((ZLL->LQI_AND_RSSI & ZLL_LQI_AND_RSSI_CCA1_ED_FNL_MASK) >>
                 ZLL_LQI_AND_RSSI_CCA1_ED_FNL_SHIFT));
-            /* Abort TX sequence */
-            ZLL->PHY_CTRL = (ZLL->PHY_CTRL & ~ZLL_PHY_CTRL_XCVSEQ_MASK) | ZLL_PHY_CTRL_XCVSEQ(XCVSEQ_IDLE);
 
             if (dev->netdev.flags & KW41ZRF_OPT_TELL_TX_END) {
                 dev->netdev.netdev.event_callback(&dev->netdev.netdev, NETDEV_EVENT_TX_MEDIUM_BUSY);
@@ -730,6 +728,7 @@ static uint32_t _isr_event_seq_tr(kw41zrf_t *dev, uint32_t irqsts)
                 dev->netdev.netdev.event_callback(&dev->netdev.netdev, NETDEV_EVENT_TX_COMPLETE);
             }
         }
+        kw41zrf_abort_sequence(dev);
         kw41zrf_abort_rx_ops_disable(dev);
         kw41zrf_set_sequence(dev, dev->idle_state);
     }
@@ -749,6 +748,7 @@ static uint32_t _isr_event_seq_ccca(kw41zrf_t *dev, uint32_t irqsts)
         else {
             DEBUG("[kw41zrf] CCCA ch idle\n");
         }
+        kw41zrf_abort_sequence(dev);
         kw41zrf_abort_rx_ops_disable(dev);
         kw41zrf_set_sequence(dev, dev->idle_state);
     }
