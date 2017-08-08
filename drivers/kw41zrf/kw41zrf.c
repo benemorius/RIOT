@@ -148,7 +148,8 @@ void kw41zrf_reset_phy(kw41zrf_t *dev)
         ZLL_PHY_CTRL_CCAMSK_MASK |
         ZLL_PHY_CTRL_RXMSK_MASK |
         ZLL_PHY_CTRL_TXMSK_MASK |
-        ZLL_PHY_CTRL_SEQMSK_MASK;
+        ZLL_PHY_CTRL_SEQMSK_MASK |
+        ZLL_PHY_CTRL_XCVSEQ(XCVSEQ_IDLE);
 
     /* Clear and disable all interrupts */
     kw41zrf_disable_interrupts(dev);

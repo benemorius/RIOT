@@ -17,8 +17,8 @@
  * @author      Joakim Nohlgård <joakim.nohlgard@eistec.se>
  */
 
-#ifndef KW2XRF_INTERN_H
-#define KW2XRF_INTERN_H
+#ifndef KW41ZRF_INTERN_H
+#define KW41ZRF_INTERN_H
 
 #include <stdint.h>
 #include "kw41zrf.h"
@@ -56,7 +56,8 @@ typedef enum kw41zrf_timer_timebase {
  */
 static inline void kw41zrf_mask_irqs(void)
 {
-    bit_set32(&ZLL->PHY_CTRL, ZLL_PHY_CTRL_TRCV_MSK_SHIFT);
+    NVIC_DisableIRQ(Radio_1_IRQn);
+    NVIC_ClearPendingIRQ(Radio_1_IRQn);
 }
 
 /**
@@ -64,7 +65,7 @@ static inline void kw41zrf_mask_irqs(void)
  */
 static inline void kw41zrf_unmask_irqs(void)
 {
-    bit_clear32(&ZLL->PHY_CTRL, ZLL_PHY_CTRL_TRCV_MSK_SHIFT);
+    NVIC_EnableIRQ(Radio_1_IRQn);
 }
 
 /**
@@ -131,12 +132,18 @@ void kw41zrf_timer_init(kw41zrf_t *dev, kw41zrf_timer_timebase_t tb);
 /**
  * @brief   Enable start sequence time
  *
+ * @attention Use only when the sequence manager is in XCVSEQ_IDLE, or you may
+ * get spurious retransmissions or other hard to trace errors.
+ *
  * @param[in] dev       kw41zrf device descriptor
  */
 void kw41zrf_timer2_seq_start_on(kw41zrf_t *dev);
 
 /**
  * @brief   Disable start sequence timer
+ *
+ * @attention Use only when the sequence manager is in XCVSEQ_IDLE, or you may
+ * get spurious retransmissions or other hard to trace errors.
  *
  * @param[in] dev       kw41zrf device descriptor
  */
@@ -145,6 +152,9 @@ void kw41zrf_timer2_seq_start_off(kw41zrf_t *dev);
 /**
  * @brief   Enable abort sequence timer
  *
+ * @attention Use only when the sequence manager is in XCVSEQ_IDLE, or you may
+ * get spurious retransmissions or other hard to trace errors.
+ *
  * @param[in] dev       kw41zrf device descriptor
  */
 void kw41zrf_timer3_seq_abort_on(kw41zrf_t *dev);
@@ -152,12 +162,18 @@ void kw41zrf_timer3_seq_abort_on(kw41zrf_t *dev);
 /**
  * @brief   Disable abort sequence timer
  *
+ * @attention Use only when the sequence manager is in XCVSEQ_IDLE, or you may
+ * get spurious retransmissions or other hard to trace errors.
+ *
  * @param[in] dev       kw41zrf device descriptor
  */
 void kw41zrf_timer3_seq_abort_off(kw41zrf_t *dev);
 
 /**
  * @brief   Use T2CMP or T2PRIMECMP to Trigger Transceiver Operations
+ *
+ * @attention Use only when the sequence manager is in XCVSEQ_IDLE, or you may
+ * get spurious retransmissions or other hard to trace errors.
  *
  * @param[in] dev       kw41zrf device descriptor
  * @param[in] timeout   timeout value
@@ -167,12 +183,18 @@ void kw41zrf_trigger_tx_ops_enable(kw41zrf_t *dev, uint32_t timeout);
 /**
  * @brief   Disable Trigger for Transceiver Operations
  *
+ * @attention Use only when the sequence manager is in XCVSEQ_IDLE, or you may
+ * get spurious retransmissions or other hard to trace errors.
+ *
  * @param[in] dev       kw41zrf device descriptor
  */
 void kw41zrf_trigger_tx_ops_disable(kw41zrf_t *dev);
 
 /**
  * @brief   Use T3CMP to Abort an RX operation
+ *
+ * @attention Use only when the sequence manager is in XCVSEQ_IDLE, or you may
+ * get spurious retransmissions or other hard to trace errors.
  *
  * @param[in] dev       kw41zrf device descriptor
  * @param[in] timeout   timeout value
@@ -182,12 +204,19 @@ void kw41zrf_abort_rx_ops_enable(kw41zrf_t *dev, uint32_t timeout);
 /**
  * @brief   Disable Trigger to Abort an RX operation
  *
+ * @attention Use only when the sequence manager is in XCVSEQ_IDLE, or you may
+ * get spurious retransmissions or other hard to trace errors.
+ *
  * @param[in] dev       kw41zrf device descriptor
  */
 void kw41zrf_abort_rx_ops_disable(kw41zrf_t *dev);
 
 /**
- * @brief   Returns Timestamp of the actual received packet
+ * @brief   Returns timestamp of the beginning of the most recently received packet
+ *
+ * The latched timestamp corresponds to the point where the SFD detection was
+ * triggered for the most recent packet, i.e. right before the first byte of the
+ * packet.
  *
  * @param[in] dev       kw41zrf device descriptor
  *
@@ -199,5 +228,5 @@ uint32_t kw41zrf_get_timestamp(kw41zrf_t *dev);
 }
 #endif
 
-#endif /* KW2XRF_INTERN_H */
+#endif /* KW41ZRF_INTERN_H */
 /** @} */
