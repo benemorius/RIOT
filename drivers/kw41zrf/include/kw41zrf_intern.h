@@ -135,7 +135,6 @@ static inline void kw41zrf_timer_set(kw41zrf_t *dev, volatile uint32_t *cmp_reg,
 {
     uint32_t now = kw41zrf_timer_get(dev);
 
-//     DEBUG("[kw41zrf] timer now: %" PRIx32 ", set %" PRIx32 "\n", now, now + timeout);
     *cmp_reg = now + timeout;
 }
 
@@ -183,7 +182,6 @@ static inline void kw41zrf_trigger_tx_ops_enable(kw41zrf_t *dev, uint32_t timeou
 static inline void kw41zrf_trigger_tx_ops_disable(kw41zrf_t *dev)
 {
     bit_clear32(&ZLL->PHY_CTRL, ZLL_PHY_CTRL_TMRTRIGEN_SHIFT);
-//     DEBUG("[kw41zrf] trigger_tx_ops_disable, now: %" PRIx32 "\n", kw41zrf_timer_get(dev));
 }
 
 /**
