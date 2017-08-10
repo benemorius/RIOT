@@ -71,9 +71,6 @@ static int kw41zrf_netdev_init(netdev_t *netdev)
     /* reset device to default values and put it into RX state */
     kw41zrf_reset_phy(dev);
 
-    /* Use TC3 for RX timeouts */
-    kw41zrf_timer3_seq_abort_on(dev);
-
     return 0;
 }
 

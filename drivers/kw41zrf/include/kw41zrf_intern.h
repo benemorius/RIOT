@@ -117,6 +117,29 @@ static inline void kw41zrf_abort_sequence(kw41zrf_t *dev)
 }
 
 /**
+ * @brief Load the timer value (Setting Current Time) */
+static inline void kw41zrf_timer_load(kw41zrf_t *dev, uint32_t value)
+{
+    (void) dev;
+    ZLL->EVENT_TMR = ZLL_EVENT_TMR_EVENT_TMR(value) | ZLL_EVENT_TMR_EVENT_TMR_LD_MASK;
+}
+
+static inline uint32_t kw41zrf_timer_get(kw41zrf_t *dev)
+{
+    (void) dev;
+    return (ZLL->EVENT_TMR & ZLL_EVENT_TMR_EVENT_TMR_MASK) >> ZLL_EVENT_TMR_EVENT_TMR_SHIFT;
+}
+
+/** Set a timeout value for the given compare register of the Event Timer */
+static inline void kw41zrf_timer_set(kw41zrf_t *dev, volatile uint32_t *cmp_reg, uint32_t timeout)
+{
+    uint32_t now = kw41zrf_timer_get(dev);
+
+//     DEBUG("[kw41zrf] timer now: %" PRIx32 ", set %" PRIx32 "\n", now, now + timeout);
+    *cmp_reg = now + timeout;
+}
+
+/**
  * @brief   Initialize the Event Timer Block (up counter)
  *
  * The Event Timer Block provides:
@@ -127,47 +150,12 @@ static inline void kw41zrf_abort_sequence(kw41zrf_t *dev)
  * @param[in] dev       kw41zrf device descriptor
  * @param[in] tb        timer base value
  */
-void kw41zrf_timer_init(kw41zrf_t *dev, kw41zrf_timer_timebase_t tb);
-
-/**
- * @brief   Enable start sequence time
- *
- * @attention Use only when the sequence manager is in XCVSEQ_IDLE, or you may
- * get spurious retransmissions or other hard to trace errors.
- *
- * @param[in] dev       kw41zrf device descriptor
- */
-void kw41zrf_timer2_seq_start_on(kw41zrf_t *dev);
-
-/**
- * @brief   Disable start sequence timer
- *
- * @attention Use only when the sequence manager is in XCVSEQ_IDLE, or you may
- * get spurious retransmissions or other hard to trace errors.
- *
- * @param[in] dev       kw41zrf device descriptor
- */
-void kw41zrf_timer2_seq_start_off(kw41zrf_t *dev);
-
-/**
- * @brief   Enable abort sequence timer
- *
- * @attention Use only when the sequence manager is in XCVSEQ_IDLE, or you may
- * get spurious retransmissions or other hard to trace errors.
- *
- * @param[in] dev       kw41zrf device descriptor
- */
-void kw41zrf_timer3_seq_abort_on(kw41zrf_t *dev);
-
-/**
- * @brief   Disable abort sequence timer
- *
- * @attention Use only when the sequence manager is in XCVSEQ_IDLE, or you may
- * get spurious retransmissions or other hard to trace errors.
- *
- * @param[in] dev       kw41zrf device descriptor
- */
-void kw41zrf_timer3_seq_abort_off(kw41zrf_t *dev);
+static inline void kw41zrf_timer_init(kw41zrf_t *dev, kw41zrf_timer_timebase_t tb)
+{
+    ZLL->TMR_PRESCALE = (ZLL->TMR_PRESCALE & ~ZLL_TMR_PRESCALE_TMR_PRESCALE_MASK) |
+    ZLL_TMR_PRESCALE_TMR_PRESCALE(tb);
+    kw41zrf_timer_load(dev, 0);
+}
 
 /**
  * @brief   Use T2CMP or T2PRIMECMP to Trigger Transceiver Operations
@@ -178,7 +166,11 @@ void kw41zrf_timer3_seq_abort_off(kw41zrf_t *dev);
  * @param[in] dev       kw41zrf device descriptor
  * @param[in] timeout   timeout value
  */
-void kw41zrf_trigger_tx_ops_enable(kw41zrf_t *dev, uint32_t timeout);
+static inline void kw41zrf_trigger_tx_ops_enable(kw41zrf_t *dev, uint32_t timeout)
+{
+    kw41zrf_timer_set(dev, &ZLL->T2CMP, timeout);
+    bit_set32(&ZLL->PHY_CTRL, ZLL_PHY_CTRL_TMRTRIGEN_SHIFT);
+}
 
 /**
  * @brief   Disable Trigger for Transceiver Operations
@@ -188,10 +180,14 @@ void kw41zrf_trigger_tx_ops_enable(kw41zrf_t *dev, uint32_t timeout);
  *
  * @param[in] dev       kw41zrf device descriptor
  */
-void kw41zrf_trigger_tx_ops_disable(kw41zrf_t *dev);
+static inline void kw41zrf_trigger_tx_ops_disable(kw41zrf_t *dev)
+{
+    bit_clear32(&ZLL->PHY_CTRL, ZLL_PHY_CTRL_TMRTRIGEN_SHIFT);
+//     DEBUG("[kw41zrf] trigger_tx_ops_disable, now: %" PRIx32 "\n", kw41zrf_timer_get(dev));
+}
 
 /**
- * @brief   Use T3CMP to Abort an RX operation
+ * @brief   Use T3CMP to abort an RX operation
  *
  * @attention Use only when the sequence manager is in XCVSEQ_IDLE, or you may
  * get spurious retransmissions or other hard to trace errors.
@@ -199,17 +195,24 @@ void kw41zrf_trigger_tx_ops_disable(kw41zrf_t *dev);
  * @param[in] dev       kw41zrf device descriptor
  * @param[in] timeout   timeout value
  */
-void kw41zrf_abort_rx_ops_enable(kw41zrf_t *dev, uint32_t timeout);
+static inline void kw41zrf_abort_rx_ops_enable(kw41zrf_t *dev, uint32_t timeout)
+{
+    kw41zrf_timer_set(dev, &ZLL->T3CMP, timeout);
+    bit_set32(&ZLL->PHY_CTRL, ZLL_PHY_CTRL_TC3TMOUT_SHIFT);
+}
 
 /**
- * @brief   Disable Trigger to Abort an RX operation
+ * @brief   Disable trigger to abort an RX operation on T3CMP
  *
  * @attention Use only when the sequence manager is in XCVSEQ_IDLE, or you may
  * get spurious retransmissions or other hard to trace errors.
  *
  * @param[in] dev       kw41zrf device descriptor
  */
-void kw41zrf_abort_rx_ops_disable(kw41zrf_t *dev);
+static inline void kw41zrf_abort_rx_ops_disable(kw41zrf_t *dev)
+{
+    bit_clear32(&ZLL->PHY_CTRL, ZLL_PHY_CTRL_TC3TMOUT_SHIFT);
+}
 
 /**
  * @brief   Returns timestamp of the beginning of the most recently received packet
@@ -222,7 +225,10 @@ void kw41zrf_abort_rx_ops_disable(kw41zrf_t *dev);
  *
  * @return              timestamp value
  */
-uint32_t kw41zrf_get_timestamp(kw41zrf_t *dev);
+static inline uint32_t kw41zrf_get_timestamp(kw41zrf_t *dev)
+{
+    return ZLL->TIMESTAMP;
+}
 
 #ifdef __cplusplus
 }
