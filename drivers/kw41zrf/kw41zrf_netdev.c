@@ -161,6 +161,7 @@ static int kw41zrf_netdev_recv(netdev_t *netdev, void *buf, size_t len, void *in
 {
     /* get size of the received packet */
     uint8_t pkt_len = (ZLL->IRQSTS & ZLL_IRQSTS_RX_FRAME_LENGTH_MASK) >> ZLL_IRQSTS_RX_FRAME_LENGTH_SHIFT;
+    kw41zrf_t *dev = (kw41zrf_t *)netdev;
     if (pkt_len < IEEE802154_FCS_LEN) {
         __asm__ volatile ("BKPT #1\n");
 //         return -EAGAIN;
@@ -171,6 +172,10 @@ static int kw41zrf_netdev_recv(netdev_t *netdev, void *buf, size_t len, void *in
 
     /* just return length when buf == NULL */
     if (buf == NULL) {
+        if (len > 0) {
+            /* discard what we have stored in the buffer, go back to RX mode */
+            kw41zrf_set_sequence(dev, dev->idle_state);
+        }
         return pkt_len;
     }
 
@@ -205,6 +210,9 @@ static int kw41zrf_netdev_recv(netdev_t *netdev, void *buf, size_t len, void *in
         }
         radio_info->rssi = (ZLL->LQI_AND_RSSI & ZLL_LQI_AND_RSSI_RSSI_MASK) >> ZLL_LQI_AND_RSSI_RSSI_SHIFT;
     }
+
+    /* Go back to RX mode */
+    kw41zrf_set_sequence(dev, dev->idle_state);
 
     return pkt_len;
 }
@@ -629,6 +637,9 @@ static uint32_t _isr_event_seq_r(kw41zrf_t *dev, uint32_t irqsts)
             if (dev->netdev.flags & KW41ZRF_OPT_TELL_RX_END) {
                 dev->netdev.netdev.event_callback(&dev->netdev.netdev, NETDEV_EVENT_RX_COMPLETE);
             }
+            /* Wait in SEQ_IDLE until recv has been called */
+            kw41zrf_abort_sequence(dev);
+            return handled_irqs;
         }
         kw41zrf_set_sequence(dev, dev->idle_state);
     }
@@ -701,6 +712,8 @@ static uint32_t _isr_event_seq_tr(kw41zrf_t *dev, uint32_t irqsts)
 
     if (irqsts & ZLL_IRQSTS_SEQIRQ_MASK) {
         uint32_t seq_ctrl_sts = ZLL->SEQ_CTRL_STS;
+        kw41zrf_abort_sequence(dev);
+        kw41zrf_abort_rx_ops_disable(dev);
         DEBUG("[kw41zrf] SEQIRQ (TR)\n");
 
         handled_irqs |= ZLL_IRQSTS_SEQIRQ_MASK;
@@ -727,8 +740,6 @@ static uint32_t _isr_event_seq_tr(kw41zrf_t *dev, uint32_t irqsts)
                 dev->netdev.netdev.event_callback(&dev->netdev.netdev, NETDEV_EVENT_TX_COMPLETE);
             }
         }
-        kw41zrf_abort_sequence(dev);
-        kw41zrf_abort_rx_ops_disable(dev);
         kw41zrf_set_sequence(dev, dev->idle_state);
     }
 
