@@ -120,13 +120,14 @@ static int kw41zrf_netdev_send(netdev_t *netdev, const struct iovec *vector, uns
     /* make sure any ongoing T or TR sequence is finished */
     if (kw41zrf_can_switch_to_idle(dev) == 0) {
         /* TX in progress */
+        LOG_ERROR("[kw41zrf] TX already in progress\n");
         return -EBUSY;
     }
 
     /* load packet data into buffer */
     for (unsigned i = 0; i < count; i++, ptr++) {
         /* current packet data + FCS too long */
-        if ((len + ptr->iov_len + IEEE802154_FCS_LEN) > KW41ZRF_MAX_PKT_LENGTH) {
+        if ((len + ptr->iov_len) > (KW41ZRF_MAX_PKT_LENGTH - IEEE802154_FCS_LEN)) {
             LOG_ERROR("[kw41zrf] packet too large (%u byte) to fit\n",
                   (unsigned)len + IEEE802154_FCS_LEN);
             return -EOVERFLOW;
@@ -199,6 +200,7 @@ static int kw41zrf_netdev_recv(netdev_t *netdev, void *buf, size_t len, void *in
         netdev_ieee802154_rx_info_t *radio_info = info;
         uint8_t hw_lqi = (ZLL->LQI_AND_RSSI & ZLL_LQI_AND_RSSI_LQI_VALUE_MASK) >>
             ZLL_LQI_AND_RSSI_LQI_VALUE_SHIFT;
+        /* TODO Validate, verify or adjust this LQI calculation */
         if (hw_lqi >= 220) {
             radio_info->lqi = 255;
         } else {
