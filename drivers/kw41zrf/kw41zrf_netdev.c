@@ -43,11 +43,15 @@
 #define KW41ZRF_PER_BYTE_TIME          2
 #define KW41ZRF_ACK_WAIT_TIME         54
 
+static void kw41zrf_netdev_isr(netdev_t *netdev);
+
 static void kw41zrf_irq_handler(void *arg)
 {
     netdev_t *dev = (netdev_t *) arg;
 
     kw41zrf_mask_irqs();
+    /* Signal to the thread that an IRQ has arrived, if it is waiting */
+    mutex_unlock(&((kw41zrf_t *)dev)->mtx_wait_tx_irq);
 
     if (dev->event_callback) {
         dev->event_callback(dev, NETDEV_EVENT_ISR);
@@ -116,9 +120,18 @@ static int kw41zrf_netdev_send(netdev_t *netdev, const struct iovec *vector, uns
 
     /* make sure any ongoing T or TR sequence is finished */
     if (kw41zrf_can_switch_to_idle(dev) == 0) {
-        /* TX in progress */
         LOG_ERROR("[kw41zrf] TX already in progress\n");
-        return -EBUSY;
+    }
+    mutex_lock(&dev->mtx_wait_tx_irq);
+    while (kw41zrf_can_switch_to_idle(dev) == 0) {
+        /* TX in progress */
+        LOG_ERROR("[kw41zrf] waited ISR\n");
+        /* Handle any outstanding IRQ first */
+        kw41zrf_netdev_isr(netdev);
+        /* Block until the current transmission is finished */
+        mutex_lock(&dev->mtx_wait_tx_irq);
+        /* kw41zrf_netdev_isr() will switch the transceiver back to idle after
+         * handling the TX complete IRQ */
     }
 
     /* load packet data into buffer */
@@ -174,7 +187,7 @@ static int kw41zrf_netdev_recv(netdev_t *netdev, void *buf, size_t len, void *in
     if (buf == NULL) {
         if (len > 0) {
             /* discard what we have stored in the buffer, go back to RX mode */
-            kw41zrf_set_sequence(dev, dev->idle_state);
+            kw41zrf_set_idle_sequence(dev, XCVSEQ_RECEIVE);
         }
         return pkt_len;
     }
@@ -212,7 +225,7 @@ static int kw41zrf_netdev_recv(netdev_t *netdev, void *buf, size_t len, void *in
     }
 
     /* Go back to RX mode */
-    kw41zrf_set_sequence(dev, dev->idle_state);
+    kw41zrf_set_idle_sequence(dev, XCVSEQ_RECEIVE);
 
     return pkt_len;
 }
@@ -230,6 +243,7 @@ static int kw41zrf_netdev_set_state(kw41zrf_t *dev, netopt_state_t state)
             break;
         case NETOPT_STATE_TX:
             if (dev->netdev.flags & KW41ZRF_OPT_PRELOADING) {
+                /* TODO: Check that we are not already transmitting */
                 kw41zrf_tx_exec(dev);
             }
             break;
@@ -622,23 +636,26 @@ static uint32_t _isr_event_seq_r(kw41zrf_t *dev, uint32_t irqsts)
         uint32_t seq_ctrl_sts = ZLL->SEQ_CTRL_STS;
         DEBUG("[kw41zrf] SEQIRQ (R)\n");
         handled_irqs |= ZLL_IRQSTS_SEQIRQ_MASK;
-        if (seq_ctrl_sts & ZLL_SEQ_CTRL_STS_TC3_ABORTED_MASK) {
-            DEBUG("[kw41zrf] RX timeout (R)\n");
+        if ((irqsts & ZLL_IRQSTS_CRCVALID_MASK) == 0) {
+            LOG_ERROR("[kw41zrf] CRC failure (R)\n");
+        }
+        else if (seq_ctrl_sts & ZLL_SEQ_CTRL_STS_TC3_ABORTED_MASK) {
+            LOG_ERROR("[kw41zrf] RX timeout (R)\n");
         }
         else if (seq_ctrl_sts & ZLL_SEQ_CTRL_STS_PLL_ABORTED_MASK) {
-            DEBUG("[kw41zrf] PLL unlock (R)\n");
+            LOG_ERROR("[kw41zrf] PLL unlock (R)\n");
         }
         else if (seq_ctrl_sts & ZLL_SEQ_CTRL_STS_SW_ABORTED_MASK) {
-            DEBUG("[kw41zrf] SW abort (R)\n");
+            LOG_ERROR("[kw41zrf] SW abort (R)\n");
         }
         else {
             /* No error reported */
             DEBUG("[kw41zrf] success (R)\n");
+            /* Wait in SEQ_IDLE until recv has been called */
+            kw41zrf_set_idle_sequence(dev, XCVSEQ_IDLE);
             if (dev->netdev.flags & KW41ZRF_OPT_TELL_RX_END) {
                 dev->netdev.netdev.event_callback(&dev->netdev.netdev, NETDEV_EVENT_RX_COMPLETE);
             }
-            /* Wait in SEQ_IDLE until recv has been called */
-            kw41zrf_abort_sequence(dev);
             return handled_irqs;
         }
         kw41zrf_set_sequence(dev, dev->idle_state);
@@ -770,6 +787,10 @@ static void kw41zrf_netdev_isr(netdev_t *netdev)
 {
     kw41zrf_t *dev = (kw41zrf_t *)netdev;
     uint32_t irqsts = ZLL->IRQSTS;
+
+    /* Clear all IRQ flags now */
+    ZLL->IRQSTS = irqsts;
+
     uint32_t handled_irqs = 0;
     DEBUG("[kw41zrf] CTRL %08" PRIx32 ", IRQSTS %08" PRIx32 ", FILTERFAIL %08" PRIx32 "\n",
           ZLL->PHY_CTRL, irqsts, ZLL->FILTERFAIL_CODE);
@@ -811,9 +832,6 @@ static void kw41zrf_netdev_isr(netdev_t *netdev)
             DEBUG("[kw41zrf] undefined seq state in isr\n");
             break;
     }
-
-    /* Clear all IRQ flags now */
-    ZLL->IRQSTS = irqsts;
 
     irqsts &= ~handled_irqs;
 
