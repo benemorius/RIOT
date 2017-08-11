@@ -110,6 +110,7 @@ int kw41zrf_init(kw41zrf_t *dev, kw41zrf_cb_t cb)
     dev->tx_warmup_time = (dev->tx_warmup_time + 15) / 16;
 
     /* Configre Radio IRQ */
+    mutex_init(&dev->mtx_wait_tx_irq);
     kw41zrf_set_irq_callback(cb, dev);
     NVIC_ClearPendingIRQ(Radio_1_IRQn);
     NVIC_EnableIRQ(Radio_1_IRQn);
@@ -176,6 +177,12 @@ void kw41zrf_reset_phy(kw41zrf_t *dev)
     /* Hardware reset default is 102 */
     ZLL->CCA_LQI_CTRL = (ZLL->CCA_LQI_CTRL & ~ZLL_CCA_LQI_CTRL_LQI_OFFSET_COMP_MASK) |
         ZLL_CCA_LQI_CTRL_LQI_OFFSET_COMP(96);
+
+    /* set defaults, minus EVENT_TMR_DO_NOT_LATCH */
+    /* Enable IRQ on CRC failures and RX frame filter failures (NO_RX_RECYCLE) */
+    /* Using NO_RX_RECYCLE lets us defer mode switching until ongoing RX has
+     * finished */
+    ZLL->SEQ_CTRL_STS = ZLL_SEQ_CTRL_STS_NO_RX_RECYCLE_MASK;
 
     dev->tx_power = KW41ZRF_DEFAULT_TX_POWER;
     kw41zrf_set_tx_power(dev, dev->tx_power);

@@ -80,6 +80,14 @@ uint8_t kw41zrf_get_channel(kw41zrf_t *dev);
 void kw41zrf_set_sequence(kw41zrf_t *dev, uint8_t seq);
 
 /**
+ * @brief   Set sequence state used for idle, and switch to it if possible
+ *
+ * @param[in] dev       kw41zrf device descriptor
+ * @param[in] seq       sequence
+ */
+void kw41zrf_set_idle_sequence(kw41zrf_t *dev, uint8_t seq);
+
+/**
  * @brief   Set PAN ID of a given device
  *
  * @param[in] dev       kw41zrf device descriptor

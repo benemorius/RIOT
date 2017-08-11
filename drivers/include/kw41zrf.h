@@ -23,6 +23,7 @@
 
 #include <stdint.h>
 
+#include "mutex.h"
 #include "board.h"
 #include "net/netdev.h"
 #include "net/netdev/ieee802154.h"
@@ -120,6 +121,8 @@ typedef struct {
     uint32_t tx_warmup_time;    /**< TX warmup time, in event timer ticks */
     uint32_t rx_warmup_time;    /**< RX warmup time, in event timer ticks */
     int16_t tx_power;           /**< The current tx-power setting of the device */
+    mutex_t mtx_wait_tx_irq;    /**< Used to block the driver thread until the
+                                 *   next IRQ while waiting for TX to finish */
     uint8_t state;              /**< current state of the radio */
     uint8_t idle_state;         /**< state to return to after sending */
     /** @} */

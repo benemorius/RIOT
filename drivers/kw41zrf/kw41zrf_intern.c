@@ -94,26 +94,32 @@ void kw41zrf_set_power_mode(kw41zrf_t *dev, kw41zrf_powermode_t pm)
 int kw41zrf_can_switch_to_idle(kw41zrf_t *dev)
 {
     uint8_t seq = (ZLL->PHY_CTRL & ZLL_PHY_CTRL_XCVSEQ_MASK) >> ZLL_PHY_CTRL_XCVSEQ_SHIFT;
-    uint8_t actual = (ZLL->SEQ_CTRL_STS & ZLL_SEQ_CTRL_STS_XCVSEQ_ACTUAL_MASK) >> ZLL_SEQ_CTRL_STS_XCVSEQ_ACTUAL_SHIFT;
 
-    DEBUG("[kw41zrf] XCVSEQ_ACTUAL=0x%x, XCVSEQ=0x%x, SEQ_STATE=0x%" PRIx32 "\n", actual, seq,
-        (ZLL->SEQ_STATE & ZLL_SEQ_STATE_SEQ_STATE_MASK) >> ZLL_SEQ_STATE_SEQ_STATE_SHIFT);
+    DEBUG("[kw41zrf] XCVSEQ=0x%x, SEQ_STATE=0x%" PRIx32 ", SEQ_CTRL_STS=0x%" PRIx32 "\n", seq,
+        ZLL->SEQ_STATE, ZLL->SEQ_CTRL_STS);
 
     switch (seq)
     {
         case XCVSEQ_TRANSMIT:
         case XCVSEQ_TX_RX:
+        case XCVSEQ_CCA:
+            /* We should wait until TX or CCA has finished before moving to
+             * another mode */
             return 0;
 
-        default:
-            break;
-    }
-    switch (actual)
-    {
-        case XCVSEQ_TRANSMIT:
-        case XCVSEQ_TX_RX:
-            return 0;
-
+        case XCVSEQ_RECEIVE:
+            {
+                uint32_t seq_state = ZLL->SEQ_STATE;
+                if (seq_state & ZLL_SEQ_STATE_SFD_DET_MASK) {
+                    if (seq_state & ZLL_SEQ_STATE_RX_BYTE_COUNT_MASK) {
+                        /* A packet is currently being received, we won't be able to
+                        * transmit until the channel is free anyway, so we might as well just
+                        * wait until the RX has finished */
+                        DEBUG("[kw41zrf] RX in p\n");
+                        return 0;
+                    }
+                }
+            }
         default:
             break;
     }

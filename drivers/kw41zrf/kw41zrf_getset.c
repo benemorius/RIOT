@@ -112,6 +112,15 @@ void kw41zrf_set_sequence(kw41zrf_t *dev, uint8_t seq)
     ZLL->PHY_CTRL = (ZLL->PHY_CTRL & ~ZLL_PHY_CTRL_XCVSEQ_MASK) | ZLL_PHY_CTRL_XCVSEQ(seq);
 }
 
+void kw41zrf_set_idle_sequence(kw41zrf_t *dev, uint8_t seq)
+{
+    dev->idle_state = seq;
+
+    if (kw41zrf_can_switch_to_idle(dev)) {
+        kw41zrf_set_sequence(dev, seq);
+    }
+}
+
 void kw41zrf_set_pan(kw41zrf_t *dev, uint16_t pan)
 {
     dev->netdev.pan = pan;
