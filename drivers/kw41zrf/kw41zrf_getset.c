@@ -30,28 +30,39 @@
 #define KW41ZRF_NUM_CHANNEL      (KW41ZRF_MAX_CHANNEL - KW41ZRF_MIN_CHANNEL + 1)
 
 /* Lookup table for PA_PWR register */
-static const uint8_t pa_pwr_lt[22] = {
-    2, 2, 2, 2, 2, 2,  /* -19:-14 dBm */
-    4, 4, 4,           /* -13:-11 dBm */
-    6, 6, 6,           /* -10:-8 dBm */
-    8, 8,              /* -7:-6 dBm */
-    10, 10,            /* -5:-4 dBm */
-    12,                /* -3 dBm */
-    14, 14,            /* -2:-1 dBm */
-    18, 18,            /* 0:1 dBm */
-    24                 /* 2 dBm */
+/* Source: KW41Z data sheet, 5.3 Transmit and PLL Feature Summary,
+ * Table 8. Transmit Output Power as a function of PA_POWER[5:0] */
+static const uint8_t tx_power_dbm_to_pa_pwr[29] = {
+    4, 4, 4, 4,        /* -19:-16 dBm */
+    6, 6,              /* -15:-14 dBm */
+    8, 8,              /* -13:-12 dBm */
+    10, 10,            /* -11:-10 dBm */
+    12,                /* -9 dBm */
+    14,                /* -8 dBm */
+    16,                /* -7 dBm */
+    18,                /* -6 dBm */
+    20,                /* -5 dBm */
+    22,                /* -4 dBm */
+    26,                /* -3 dBm */
+    28,                /* -2 dBm */
+    34,                /* -1 dBm */
+    38,                /* 0 dBm */
+    42,                /* 1 dBm */
+    48,                /* 2 dBm */
+    56,                /* 3 dBm */
+    62,                /* 4 dBm */
 };
 
 void kw41zrf_set_tx_power(kw41zrf_t *dev, int16_t txpower_dbm)
 {
     if (txpower_dbm < KW41ZRF_OUTPUT_POWER_MIN) {
-        ZLL->PA_PWR = 0;
+        ZLL->PA_PWR = 1;
     }
     else if (txpower_dbm > KW41ZRF_OUTPUT_POWER_MAX) {
-        ZLL->PA_PWR = 30;
+        ZLL->PA_PWR = 62;
     }
     else {
-        ZLL->PA_PWR = pa_pwr_lt[txpower_dbm - KW41ZRF_OUTPUT_POWER_MIN];
+        ZLL->PA_PWR = tx_power_dbm_to_pa_pwr[txpower_dbm - KW41ZRF_OUTPUT_POWER_MIN];
     }
 
     LOG_DEBUG("[kw41zrf] set txpower to: %d\n", txpower_dbm);
