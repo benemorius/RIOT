@@ -70,7 +70,7 @@ extern "C" {
 /**
  * @brief   Maximum output power of the kw41z device in dBm
  */
-#define KW41ZRF_OUTPUT_POWER_MAX       (2)
+#define KW41ZRF_OUTPUT_POWER_MAX       (4)
 
 /**
  * @brief   Minimum output power of the kw41z device in dBm
