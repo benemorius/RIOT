@@ -96,6 +96,8 @@ int kw41zrf_set_channel(kw41zrf_t *dev, uint8_t channel)
 void kw41zrf_set_sequence(kw41zrf_t *dev, uint8_t seq)
 {
     kw41zrf_abort_sequence(dev);
+    /* Clear interrupt flags */
+    ZLL->IRQSTS = ZLL->IRQSTS;
 
     switch (seq) {
         case XCVSEQ_IDLE:

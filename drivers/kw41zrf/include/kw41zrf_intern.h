@@ -57,7 +57,6 @@ typedef enum kw41zrf_timer_timebase {
 static inline void kw41zrf_mask_irqs(void)
 {
     NVIC_DisableIRQ(Radio_1_IRQn);
-    NVIC_ClearPendingIRQ(Radio_1_IRQn);
 }
 
 /**
@@ -112,8 +111,6 @@ static inline void kw41zrf_abort_sequence(kw41zrf_t *dev)
 {
     /* Writing IDLE to XCVSEQ aborts any ongoing sequence */
     ZLL->PHY_CTRL = (ZLL->PHY_CTRL & ~ZLL_PHY_CTRL_XCVSEQ_MASK) | ZLL_PHY_CTRL_XCVSEQ(XCVSEQ_IDLE);
-    /* Clear interrupt flags */
-    ZLL->IRQSTS = ZLL->IRQSTS;
 }
 
 /**
