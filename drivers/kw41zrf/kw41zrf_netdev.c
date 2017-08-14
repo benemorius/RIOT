@@ -16,6 +16,7 @@
  * @author      Joakim Nohlgård <joakim.nohlgard@eistec.se>
  */
 
+#include <stdint.h>
 #include <string.h>
 #include <assert.h>
 #include <errno.h>
@@ -45,6 +46,10 @@
 
 static void kw41zrf_netdev_isr(netdev_t *netdev);
 
+static volatile unsigned int num_irqs_queued = 0;
+static volatile unsigned int num_irqs_handled = 0;
+static unsigned int spinning_for_irq = 0;
+
 static void kw41zrf_irq_handler(void *arg)
 {
     netdev_t *dev = (netdev_t *) arg;
@@ -53,8 +58,12 @@ static void kw41zrf_irq_handler(void *arg)
     /* Signal to the thread that an IRQ has arrived, if it is waiting */
     mutex_unlock(&((kw41zrf_t *)dev)->mtx_wait_tx_irq);
 
-    if (dev->event_callback) {
-        dev->event_callback(dev, NETDEV_EVENT_ISR);
+    /* We use this counter to avoid filling the message queue with redundant ISR events */
+    if (num_irqs_queued == num_irqs_handled) {
+        ++num_irqs_queued;
+        if (dev->event_callback) {
+            dev->event_callback(dev, NETDEV_EVENT_ISR);
+        }
     }
 }
 
@@ -118,20 +127,26 @@ static int kw41zrf_netdev_send(netdev_t *netdev, const struct iovec *vector, uns
     const struct iovec *ptr = vector;
     size_t len = 0;
 
+    mutex_lock(&dev->mtx_wait_tx_irq);
     /* make sure any ongoing T or TR sequence is finished */
     if (kw41zrf_can_switch_to_idle(dev) == 0) {
-        LOG_ERROR("[kw41zrf] TX already in progress\n");
-    }
-    mutex_lock(&dev->mtx_wait_tx_irq);
-    while (kw41zrf_can_switch_to_idle(dev) == 0) {
-        /* TX in progress */
-        LOG_ERROR("[kw41zrf] waited ISR\n");
-        /* Handle any outstanding IRQ first */
-        kw41zrf_netdev_isr(netdev);
-        /* Block until the current transmission is finished */
-        mutex_lock(&dev->mtx_wait_tx_irq);
-        /* kw41zrf_netdev_isr() will switch the transceiver back to idle after
-         * handling the TX complete IRQ */
+        DEBUG("[kw41zrf] TX already in progress\n");
+        spinning_for_irq = 1;
+        while (1) {
+            /* TX in progress */
+            /* Handle any outstanding IRQ first */
+            kw41zrf_netdev_isr(netdev);
+            /* kw41zrf_netdev_isr() will switch the transceiver back to idle after
+             * handling the TX complete IRQ */
+            if (kw41zrf_can_switch_to_idle(dev)) {
+                break;
+            }
+            /* Block until we get another IRQ */
+            mutex_lock(&dev->mtx_wait_tx_irq);
+            DEBUG("[kw41zrf] waited ISR\n");
+        }
+        spinning_for_irq = 0;
+        DEBUG("[kw41zrf] previous TX done\n");
     }
 
     /* load packet data into buffer */
@@ -176,8 +191,7 @@ static int kw41zrf_netdev_recv(netdev_t *netdev, void *buf, size_t len, void *in
     uint8_t pkt_len = (ZLL->IRQSTS & ZLL_IRQSTS_RX_FRAME_LENGTH_MASK) >> ZLL_IRQSTS_RX_FRAME_LENGTH_SHIFT;
     kw41zrf_t *dev = (kw41zrf_t *)netdev;
     if (pkt_len < IEEE802154_FCS_LEN) {
-        __asm__ volatile ("BKPT #1\n");
-//         return -EAGAIN;
+        return -EAGAIN;
     }
     /* skip FCS */
     pkt_len -= IEEE802154_FCS_LEN;
@@ -192,7 +206,6 @@ static int kw41zrf_netdev_recv(netdev_t *netdev, void *buf, size_t len, void *in
         return pkt_len;
     }
 
-//     DEBUG("[kw41zrf] buf len: %3u\n", (unsigned int)pkt_len);
 #if defined(MODULE_OD) && ENABLE_DEBUG
     DEBUG("[kw41zrf] recv:\n");
     od_hex_dump((const uint8_t *)ZLL->PKT_BUFFER_RX, pkt_len, OD_WIDTH_DEFAULT);
@@ -786,10 +799,15 @@ static uint32_t _isr_event_seq_ccca(kw41zrf_t *dev, uint32_t irqsts)
 static void kw41zrf_netdev_isr(netdev_t *netdev)
 {
     kw41zrf_t *dev = (kw41zrf_t *)netdev;
+    if (!spinning_for_irq) {
+        num_irqs_handled = num_irqs_queued;
+    }
     uint32_t irqsts = ZLL->IRQSTS;
 
     /* Clear all IRQ flags now */
     ZLL->IRQSTS = irqsts;
+
+    kw41zrf_unmask_irqs();
 
     uint32_t handled_irqs = 0;
     DEBUG("[kw41zrf] CTRL %08" PRIx32 ", IRQSTS %08" PRIx32 ", FILTERFAIL %08" PRIx32 "\n",
@@ -839,8 +857,6 @@ static void kw41zrf_netdev_isr(netdev_t *netdev)
         DEBUG("[kw41zrf] Unhandled IRQs: 0x%08"PRIx32"\n",
               (irqsts & 0x000f017f));
     }
-
-    kw41zrf_unmask_irqs();
 }
 
 const netdev_driver_t kw41zrf_driver = {
