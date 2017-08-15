@@ -72,14 +72,6 @@ int kw41zrf_set_channel(kw41zrf_t *dev, uint8_t val);
 uint8_t kw41zrf_get_channel(kw41zrf_t *dev);
 
 /**
- * @brief   Set sequence state of device
- *
- * @param[in] dev       kw41zrf device descriptor
- * @param[in] seq       sequence
- */
-void kw41zrf_set_sequence(kw41zrf_t *dev, uint32_t seq);
-
-/**
  * @brief   Set PAN ID of a given device
  *
  * @param[in] dev       kw41zrf device descriptor
