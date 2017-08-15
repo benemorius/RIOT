@@ -178,8 +178,8 @@ void kw41zrf_reset_phy(kw41zrf_t *dev)
     ZLL->CCA_LQI_CTRL = (ZLL->CCA_LQI_CTRL & ~ZLL_CCA_LQI_CTRL_LQI_OFFSET_COMP_MASK) |
         ZLL_CCA_LQI_CTRL_LQI_OFFSET_COMP(96);
 
-    /* set defaults, minus EVENT_TMR_DO_NOT_LATCH */
-    ZLL->SEQ_CTRL_STS = 0;
+    /* set defaults */
+    ZLL->SEQ_CTRL_STS = ZLL_SEQ_CTRL_STS_EVENT_TMR_DO_NOT_LATCH_MASK;
 
     dev->tx_power = KW41ZRF_DEFAULT_TX_POWER;
     kw41zrf_set_tx_power(dev, dev->tx_power);

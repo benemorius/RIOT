@@ -108,11 +108,12 @@ static void kw41zrf_tx_exec(kw41zrf_t *dev)
         uint8_t payload_len = len_fcf & 0xff;
         uint32_t tx_timeout = dev->tx_warmup_time + KW41ZRF_SHR_PHY_TIME +
             payload_len * KW41ZRF_PER_BYTE_TIME + KW41ZRF_ACK_WAIT_TIME;
-        /* Set timeout for RX ACK */
-        kw41zrf_timer_set(dev, &ZLL->T3CMP, tx_timeout);
-        /* Initiate transmission, with timeout */
         DEBUG("[kw41zrf] Start TR\n");
-        kw41zrf_set_sequence(dev, XCVSEQ_TX_RX | ZLL_PHY_CTRL_TC3TMOUT_MASK);
+        /* Set timeout for RX ACK */
+        kw41zrf_timer_set(dev, &ZLL->T3CMP, tx_timeout+62000);
+        /* Initiate transmission, with timeout */
+        bit_set32(&ZLL->PHY_CTRL, ZLL_PHY_CTRL_TC3TMOUT_SHIFT);
+        kw41zrf_set_sequence(dev, XCVSEQ_TX_RX);
     }
     else {
         /* Initiate transmission */
@@ -253,6 +254,7 @@ static int kw41zrf_netdev_set_state(kw41zrf_t *dev, netopt_state_t state)
             break;
         case NETOPT_STATE_IDLE:
             kw41zrf_set_power_mode(dev, KW41ZRF_POWER_IDLE);
+            kw41zrf_abort_sequence(dev);
             kw41zrf_set_sequence(dev, dev->idle_state);
             break;
         case NETOPT_STATE_TX:
@@ -648,6 +650,7 @@ static uint32_t _isr_event_seq_r(kw41zrf_t *dev, uint32_t irqsts)
 
     if (irqsts & ZLL_IRQSTS_SEQIRQ_MASK) {
         uint32_t seq_ctrl_sts = ZLL->SEQ_CTRL_STS;
+        kw41zrf_abort_sequence(dev);
         DEBUG("[kw41zrf] SEQIRQ (R)\n");
         handled_irqs |= ZLL_IRQSTS_SEQIRQ_MASK;
         if ((irqsts & ZLL_IRQSTS_CRCVALID_MASK) == 0) {
@@ -687,6 +690,7 @@ static uint32_t _isr_event_seq_t(kw41zrf_t *dev, uint32_t irqsts)
     }
     if (irqsts & ZLL_IRQSTS_SEQIRQ_MASK) {
         /* Finished T sequence */
+        kw41zrf_abort_sequence(dev);
         DEBUG("[kw41zrf] SEQIRQ (T)\n");
         handled_irqs |= ZLL_IRQSTS_SEQIRQ_MASK;
         if (dev->netdev.flags & KW41ZRF_OPT_TELL_TX_END) {
@@ -706,6 +710,7 @@ static uint32_t _isr_event_seq_cca(kw41zrf_t *dev, uint32_t irqsts)
 
     if (irqsts & ZLL_IRQSTS_SEQIRQ_MASK) {
         /* Finished CCA sequence */
+        kw41zrf_abort_sequence(dev);
         DEBUG("[kw41zrf] SEQIRQ (C)\n");
         handled_irqs |= ZLL_IRQSTS_SEQIRQ_MASK;
         if (irqsts & ZLL_IRQSTS_CCA_MASK) {

@@ -91,11 +91,22 @@ void kw41zrf_set_power_mode(kw41zrf_t *dev, kw41zrf_powermode_t pm)
     }
 }
 
+void kw41zrf_set_sequence(kw41zrf_t *dev, uint32_t seq)
+{
+    DEBUG("[kw41zrf] set sequence to %u\n", (unsigned int)seq);
+    /* Clear interrupt flags, sometimes the sequence complete flag is immediately set */
+    ZLL->IRQSTS = ZLL->IRQSTS;
+    ZLL->PHY_CTRL = (ZLL->PHY_CTRL & ~(ZLL_PHY_CTRL_XCVSEQ_MASK | ZLL_PHY_CTRL_SEQMSK_MASK)) | seq;
+    while (((ZLL->SEQ_CTRL_STS & ZLL_SEQ_CTRL_STS_XCVSEQ_ACTUAL_MASK) >>
+        ZLL_SEQ_CTRL_STS_XCVSEQ_ACTUAL_SHIFT) != (ZLL_PHY_CTRL_XCVSEQ_MASK & seq)) {}
+}
+
 void kw41zrf_set_idle_sequence(kw41zrf_t *dev, uint32_t seq)
 {
     dev->idle_state = seq;
 
     if (kw41zrf_can_switch_to_idle(dev)) {
+        kw41zrf_abort_sequence(dev);
         kw41zrf_set_sequence(dev, seq);
     }
 }

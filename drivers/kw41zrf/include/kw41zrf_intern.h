@@ -103,6 +103,14 @@ void kw41zrf_set_power_mode(kw41zrf_t *dev, kw41zrf_powermode_t pm);
 int kw41zrf_can_switch_to_idle(kw41zrf_t *dev);
 
 /**
+ * @brief   Set sequence state of device
+ *
+ * @param[in] dev       kw41zrf device descriptor
+ * @param[in] seq       sequence
+ */
+void kw41zrf_set_sequence(kw41zrf_t *dev, uint32_t seq);
+
+/**
  * @brief   Set sequence state used for idle, and switch to it if possible
  *
  * @param[in] dev       kw41zrf device descriptor
@@ -120,7 +128,14 @@ static inline void kw41zrf_abort_sequence(kw41zrf_t *dev)
     /* Writing IDLE to XCVSEQ aborts any ongoing sequence */
     ZLL->PHY_CTRL = (ZLL->PHY_CTRL &
         ~(ZLL_PHY_CTRL_XCVSEQ_MASK | ZLL_PHY_CTRL_TC3TMOUT_MASK)) |
-        ZLL_PHY_CTRL_XCVSEQ(XCVSEQ_IDLE);
+        ZLL_PHY_CTRL_XCVSEQ(XCVSEQ_IDLE) | ZLL_PHY_CTRL_SEQMSK_MASK;
+    /* Spin until the sequence manager has acknowledged the sequence abort, this
+     * should not take many cycles */
+    while (((ZLL->SEQ_CTRL_STS & ZLL_SEQ_CTRL_STS_XCVSEQ_ACTUAL_MASK) >>
+        ZLL_SEQ_CTRL_STS_XCVSEQ_ACTUAL_SHIFT) != XCVSEQ_IDLE) {}
+
+    /* Clear interrupt flags */
+    ZLL->IRQSTS = ZLL->IRQSTS;
 }
 
 /**
