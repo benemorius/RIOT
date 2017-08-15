@@ -31,7 +31,9 @@
  * @brief   Define stack parameters for the MAC layer thread
  * @{
  */
-#define KW41ZRF_MAC_STACKSIZE     (2*THREAD_STACKSIZE_DEFAULT)
+#ifndef KW41ZRF_MAC_STACKSIZE
+#define KW41ZRF_MAC_STACKSIZE     (THREAD_STACKSIZE_DEFAULT)
+#endif
 #ifndef KW41ZRF_MAC_PRIO
 #define KW41ZRF_MAC_PRIO          (GNRC_NETDEV_MAC_PRIO)
 #endif
