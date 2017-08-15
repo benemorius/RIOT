@@ -93,45 +93,15 @@ int kw41zrf_set_channel(kw41zrf_t *dev, uint8_t channel)
     return 0;
 }
 
-void kw41zrf_set_sequence(kw41zrf_t *dev, uint8_t seq)
+void kw41zrf_set_sequence(kw41zrf_t *dev, uint32_t seq)
 {
     kw41zrf_abort_sequence(dev);
+
     /* Clear interrupt flags */
     ZLL->IRQSTS = ZLL->IRQSTS;
 
-    switch (seq) {
-        case XCVSEQ_IDLE:
-        case XCVSEQ_RECEIVE:
-            /* TODO why is RX == IDLE??? */
-            dev->state = NETOPT_STATE_IDLE;
-            break;
-
-        case XCVSEQ_CONTINUOUS_CCA:
-        case XCVSEQ_CCA:
-            dev->state = NETOPT_STATE_RX;
-            break;
-
-        case XCVSEQ_TRANSMIT:
-        case XCVSEQ_TX_RX:
-            dev->state = NETOPT_STATE_TX;
-            break;
-
-        default:
-            DEBUG("[kw41zrf] undefined state assigned to phy\n");
-            dev->state = NETOPT_STATE_IDLE;
-    }
-
     DEBUG("[kw41zrf] set sequence to %u\n", (unsigned int)seq);
-    ZLL->PHY_CTRL = (ZLL->PHY_CTRL & ~ZLL_PHY_CTRL_XCVSEQ_MASK) | ZLL_PHY_CTRL_XCVSEQ(seq);
-}
-
-void kw41zrf_set_idle_sequence(kw41zrf_t *dev, uint8_t seq)
-{
-    dev->idle_state = seq;
-
-    if (kw41zrf_can_switch_to_idle(dev)) {
-        kw41zrf_set_sequence(dev, seq);
-    }
+    ZLL->PHY_CTRL = (ZLL->PHY_CTRL & ~ZLL_PHY_CTRL_XCVSEQ_MASK) | seq;
 }
 
 void kw41zrf_set_pan(kw41zrf_t *dev, uint16_t pan)

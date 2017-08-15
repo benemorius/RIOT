@@ -109,10 +109,10 @@ static void kw41zrf_tx_exec(kw41zrf_t *dev)
         uint32_t tx_timeout = dev->tx_warmup_time + KW41ZRF_SHR_PHY_TIME +
             payload_len * KW41ZRF_PER_BYTE_TIME + KW41ZRF_ACK_WAIT_TIME;
         /* Set timeout for RX ACK */
-        kw41zrf_abort_rx_ops_enable(dev, tx_timeout);
-        /* Initiate transmission */
+        kw41zrf_timer_set(dev, &ZLL->T3CMP, tx_timeout);
+        /* Initiate transmission, with timeout */
         DEBUG("[kw41zrf] Start TR\n");
-        kw41zrf_set_sequence(dev, XCVSEQ_TX_RX);
+        kw41zrf_set_sequence(dev, XCVSEQ_TX_RX | ZLL_PHY_CTRL_TC3TMOUT_MASK);
     }
     else {
         /* Initiate transmission */
@@ -744,7 +744,6 @@ static uint32_t _isr_event_seq_tr(kw41zrf_t *dev, uint32_t irqsts)
     if (irqsts & ZLL_IRQSTS_SEQIRQ_MASK) {
         uint32_t seq_ctrl_sts = ZLL->SEQ_CTRL_STS;
         kw41zrf_abort_sequence(dev);
-        kw41zrf_abort_rx_ops_disable(dev);
         DEBUG("[kw41zrf] SEQIRQ (TR)\n");
 
         handled_irqs |= ZLL_IRQSTS_SEQIRQ_MASK;
@@ -790,7 +789,6 @@ static uint32_t _isr_event_seq_ccca(kw41zrf_t *dev, uint32_t irqsts)
             DEBUG("[kw41zrf] CCCA ch idle\n");
         }
         kw41zrf_abort_sequence(dev);
-        kw41zrf_abort_rx_ops_disable(dev);
         kw41zrf_set_sequence(dev, dev->idle_state);
     }
 

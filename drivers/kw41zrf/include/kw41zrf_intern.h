@@ -103,6 +103,14 @@ void kw41zrf_set_power_mode(kw41zrf_t *dev, kw41zrf_powermode_t pm);
 int kw41zrf_can_switch_to_idle(kw41zrf_t *dev);
 
 /**
+ * @brief   Set sequence state used for idle, and switch to it if possible
+ *
+ * @param[in] dev       kw41zrf device descriptor
+ * @param[in] seq       sequence
+ */
+void kw41zrf_set_idle_sequence(kw41zrf_t *dev, uint32_t seq);
+
+/**
  * @brief Abort the current autosequence
  *
  * @param[in] dev       kw41zrf device descriptor
@@ -110,7 +118,9 @@ int kw41zrf_can_switch_to_idle(kw41zrf_t *dev);
 static inline void kw41zrf_abort_sequence(kw41zrf_t *dev)
 {
     /* Writing IDLE to XCVSEQ aborts any ongoing sequence */
-    ZLL->PHY_CTRL = (ZLL->PHY_CTRL & ~ZLL_PHY_CTRL_XCVSEQ_MASK) | ZLL_PHY_CTRL_XCVSEQ(XCVSEQ_IDLE);
+    ZLL->PHY_CTRL = (ZLL->PHY_CTRL &
+        ~(ZLL_PHY_CTRL_XCVSEQ_MASK | ZLL_PHY_CTRL_TC3TMOUT_MASK)) |
+        ZLL_PHY_CTRL_XCVSEQ(XCVSEQ_IDLE);
 }
 
 /**
@@ -151,62 +161,6 @@ static inline void kw41zrf_timer_init(kw41zrf_t *dev, kw41zrf_timer_timebase_t t
     ZLL->TMR_PRESCALE = (ZLL->TMR_PRESCALE & ~ZLL_TMR_PRESCALE_TMR_PRESCALE_MASK) |
     ZLL_TMR_PRESCALE_TMR_PRESCALE(tb);
     kw41zrf_timer_load(dev, 0);
-}
-
-/**
- * @brief   Use T2CMP or T2PRIMECMP to Trigger Transceiver Operations
- *
- * @attention Use only when the sequence manager is in XCVSEQ_IDLE, or you may
- * get spurious retransmissions or other hard to trace errors.
- *
- * @param[in] dev       kw41zrf device descriptor
- * @param[in] timeout   timeout value
- */
-static inline void kw41zrf_trigger_tx_ops_enable(kw41zrf_t *dev, uint32_t timeout)
-{
-    kw41zrf_timer_set(dev, &ZLL->T2CMP, timeout);
-    bit_set32(&ZLL->PHY_CTRL, ZLL_PHY_CTRL_TMRTRIGEN_SHIFT);
-}
-
-/**
- * @brief   Disable Trigger for Transceiver Operations
- *
- * @attention Use only when the sequence manager is in XCVSEQ_IDLE, or you may
- * get spurious retransmissions or other hard to trace errors.
- *
- * @param[in] dev       kw41zrf device descriptor
- */
-static inline void kw41zrf_trigger_tx_ops_disable(kw41zrf_t *dev)
-{
-    bit_clear32(&ZLL->PHY_CTRL, ZLL_PHY_CTRL_TMRTRIGEN_SHIFT);
-}
-
-/**
- * @brief   Use T3CMP to abort an RX operation
- *
- * @attention Use only when the sequence manager is in XCVSEQ_IDLE, or you may
- * get spurious retransmissions or other hard to trace errors.
- *
- * @param[in] dev       kw41zrf device descriptor
- * @param[in] timeout   timeout value
- */
-static inline void kw41zrf_abort_rx_ops_enable(kw41zrf_t *dev, uint32_t timeout)
-{
-    kw41zrf_timer_set(dev, &ZLL->T3CMP, timeout);
-    bit_set32(&ZLL->PHY_CTRL, ZLL_PHY_CTRL_TC3TMOUT_SHIFT);
-}
-
-/**
- * @brief   Disable trigger to abort an RX operation on T3CMP
- *
- * @attention Use only when the sequence manager is in XCVSEQ_IDLE, or you may
- * get spurious retransmissions or other hard to trace errors.
- *
- * @param[in] dev       kw41zrf device descriptor
- */
-static inline void kw41zrf_abort_rx_ops_disable(kw41zrf_t *dev)
-{
-    bit_clear32(&ZLL->PHY_CTRL, ZLL_PHY_CTRL_TC3TMOUT_SHIFT);
 }
 
 /**
