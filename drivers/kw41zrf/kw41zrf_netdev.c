@@ -22,7 +22,6 @@
 #include <errno.h>
 
 #include "log.h"
-#include "od.h"
 #include "net/eui64.h"
 #include "net/ieee802154.h"
 #include "net/netdev.h"
@@ -32,6 +31,10 @@
 #include "kw41zrf_netdev.h"
 #include "kw41zrf_intern.h"
 #include "kw41zrf_getset.h"
+
+#if MODULE_OD
+#include "od.h"
+#endif
 
 #define ENABLE_DEBUG (0)
 #include "debug.h"
