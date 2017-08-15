@@ -131,6 +131,7 @@ static int kw41zrf_netdev_send(netdev_t *netdev, const struct iovec *vector, uns
     /* make sure any ongoing T or TR sequence is finished */
     if (kw41zrf_can_switch_to_idle(dev) == 0) {
         DEBUG("[kw41zrf] TX already in progress\n");
+        num_irqs_handled = num_irqs_queued;
         spinning_for_irq = 1;
         while (1) {
             /* TX in progress */
