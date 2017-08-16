@@ -275,6 +275,40 @@ static int kw41zrf_netdev_set_state(kw41zrf_t *dev, netopt_state_t state)
     return sizeof(netopt_state_t);
 }
 
+static netopt_state_t kw41zrf_netdev_get_state(kw41zrf_t *dev)
+{
+    if (ZLL->DSM_CTRL & ZLL_DSM_CTRL_ZIGBEE_SLEEP_EN_MASK) {
+        return NETOPT_STATE_SLEEP;
+    }
+    uint32_t seq = (ZLL->PHY_CTRL & ZLL_PHY_CTRL_XCVSEQ_MASK) >> ZLL_PHY_CTRL_XCVSEQ_SHIFT;
+
+    switch (seq) {
+        case XCVSEQ_TRANSMIT:
+        case XCVSEQ_TX_RX:
+            return NETOPT_STATE_TX;
+        case XCVSEQ_CCA:
+        case XCVSEQ_CONTINUOUS_CCA:
+            return NETOPT_STATE_RX;
+        case XCVSEQ_RECEIVE:
+        {
+            uint32_t seq_state = ZLL->SEQ_STATE;
+            if (seq_state & ZLL_SEQ_STATE_SFD_DET_MASK) {
+                if (seq_state & ZLL_SEQ_STATE_RX_BYTE_COUNT_MASK) {
+                    return NETOPT_STATE_RX;
+                }
+            }
+            /* IDLE in netopt means on, and listening for incoming packets */
+            return NETOPT_STATE_IDLE;
+        }
+        case XCVSEQ_IDLE:
+            /* SEQ_IDLE in kw41z means on, but not listening for incoming traffic */
+            return NETOPT_STATE_STANDBY;
+        default:
+            /* Unknown state */
+            return NETOPT_STATE_OFF;
+    }
+}
+
 int kw41zrf_netdev_get(netdev_t *netdev, netopt_t opt, void *value, size_t len)
 {
     kw41zrf_t *dev = (kw41zrf_t *)netdev;
@@ -296,7 +330,7 @@ int kw41zrf_netdev_get(netdev_t *netdev, netopt_t opt, void *value, size_t len)
             if (len < sizeof(netopt_state_t)) {
                 return -EOVERFLOW;
             }
-            *((netopt_state_t *)value) = dev->state;
+            *((netopt_state_t *)value) = kw41zrf_netdev_get_state(dev);
             return sizeof(netopt_state_t);
 
         case NETOPT_PRELOADING:

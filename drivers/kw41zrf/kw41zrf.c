@@ -71,7 +71,6 @@ void kw41zrf_setup(kw41zrf_t *dev)
     netdev->driver = &kw41zrf_driver;
     /* initialize device descriptor */
     dev->idle_seq = XCVSEQ_RECEIVE;
-    dev->state = 0;
 //     kw41zrf_set_power_mode(dev, KW41ZRF_POWER_IDLE);
     DEBUG("[kw41zrf] setup finished\n");
 }
