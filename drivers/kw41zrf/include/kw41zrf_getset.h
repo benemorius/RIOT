@@ -160,11 +160,12 @@ int8_t kw41zrf_get_ed_level(kw41zrf_t *dev);
 netopt_state_t kw41zrf_get_status(kw41zrf_t *dev);
 
 /**
- * @brief               Enable continous CCA
+ * @brief               Perform one CCA measurement and return the result
  *
  * @param[in] dev       kw41zrf device descriptor
  *
- * @return              CCA value
+ * @return              0 if channel is idle
+ * @return              1 if channel is busy
  */
 int kw41zrf_cca(kw41zrf_t *dev);
 

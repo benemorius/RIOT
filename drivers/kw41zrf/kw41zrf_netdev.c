@@ -59,7 +59,7 @@ static void kw41zrf_irq_handler(void *arg)
 
     kw41zrf_mask_irqs();
     /* Signal to the thread that an IRQ has arrived, if it is waiting */
-    mutex_unlock(&((kw41zrf_t *)dev)->mtx_wait_tx_irq);
+    mutex_unlock(&((kw41zrf_t *)dev)->mtx_wait_irq);
 
     /* We use this counter to avoid filling the message queue with redundant ISR events */
     if (num_irqs_queued == num_irqs_handled) {
@@ -125,13 +125,16 @@ static void kw41zrf_tx_exec(kw41zrf_t *dev)
     }
 }
 
-static int kw41zrf_netdev_send(netdev_t *netdev, const struct iovec *vector, unsigned count)
+/**
+ * @brief Block the current thread until the radio is idle
+ *
+ * Any ongoing TX or CCA sequence will have finished when this function returns.
+ *
+ * @param[in] dev       kw41zrf device descriptor
+ */
+static void kw41zrf_wait_idle(kw41zrf_t *dev)
 {
-    kw41zrf_t *dev = (kw41zrf_t *)netdev;
-    const struct iovec *ptr = vector;
-    size_t len = 0;
-
-    mutex_lock(&dev->mtx_wait_tx_irq);
+    mutex_lock(&dev->mtx_wait_irq);
     /* make sure any ongoing T or TR sequence is finished */
     if (kw41zrf_can_switch_to_idle(dev) == 0) {
         DEBUG("[kw41zrf] TX already in progress\n");
@@ -140,19 +143,40 @@ static int kw41zrf_netdev_send(netdev_t *netdev, const struct iovec *vector, uns
         while (1) {
             /* TX in progress */
             /* Handle any outstanding IRQ first */
-            kw41zrf_netdev_isr(netdev);
+            kw41zrf_netdev_isr((netdev_t *)dev);
             /* kw41zrf_netdev_isr() will switch the transceiver back to idle after
              * handling the TX complete IRQ */
             if (kw41zrf_can_switch_to_idle(dev)) {
                 break;
             }
             /* Block until we get another IRQ */
-            mutex_lock(&dev->mtx_wait_tx_irq);
+            mutex_lock(&dev->mtx_wait_irq);
             DEBUG("[kw41zrf] waited ISR\n");
         }
         spinning_for_irq = 0;
         DEBUG("[kw41zrf] previous TX done\n");
     }
+}
+
+int kw41zrf_cca(kw41zrf_t *dev)
+{
+    kw41zrf_wait_idle(dev);
+    kw41zrf_abort_sequence(dev);
+    kw41zrf_set_sequence(dev, XCVSEQ_CCA);
+    /* Wait for the CCA to finish, it will take exactly RX warmup time + 128 µs */
+    kw41zrf_wait_idle(dev);
+    DEBUG("[kw41zrf] kw41zrf_cca done, result: %u RSSI: %d\n", (unsigned)dev->cca_result,
+          kw41zrf_get_ed_level(dev));
+    return dev->cca_result;
+}
+
+static int kw41zrf_netdev_send(netdev_t *netdev, const struct iovec *vector, unsigned count)
+{
+    kw41zrf_t *dev = (kw41zrf_t *)netdev;
+    const struct iovec *ptr = vector;
+    size_t len = 0;
+
+    kw41zrf_wait_idle(dev);
 
     /* load packet data into buffer */
     for (unsigned i = 0; i < count; i++, ptr++) {
@@ -761,9 +785,11 @@ static uint32_t _isr_event_seq_cca(kw41zrf_t *dev, uint32_t irqsts)
         handled_irqs |= ZLL_IRQSTS_SEQIRQ_MASK;
         if (irqsts & ZLL_IRQSTS_CCA_MASK) {
             DEBUG("[kw41zrf] CCA ch busy\n");
+            dev->cca_result = 1;
         }
         else {
             DEBUG("[kw41zrf] CCA ch idle\n");
+            dev->cca_result = 0;
         }
         kw41zrf_set_sequence(dev, dev->idle_seq);
     }
