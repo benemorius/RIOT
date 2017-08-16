@@ -123,7 +123,6 @@ typedef struct {
     int16_t tx_power;           /**< The current tx-power setting of the device */
     mutex_t mtx_wait_tx_irq;    /**< Used to block the driver thread until the
                                  *   next IRQ while waiting for TX to finish */
-    uint8_t state;              /**< current state of the radio */
     uint8_t idle_seq;           /**< state to return to after sending */
     /** @} */
 } kw41zrf_t;
