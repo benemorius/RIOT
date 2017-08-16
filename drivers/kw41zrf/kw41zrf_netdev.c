@@ -450,13 +450,8 @@ int kw41zrf_netdev_get(netdev_t *netdev, netopt_t opt, void *value, size_t len)
             return sizeof(netopt_enable_t);
 
         case NETOPT_AUTOCCA:
-            if (dev->csma_max_backoffs >= 0) {
-                *((netopt_enable_t *)value) = !!0;
-            }
-            else {
-                *((netopt_enable_t *)value) =
-                    !!(dev->netdev.flags & KW41ZRF_OPT_AUTOCCA);
-            }
+            *((netopt_enable_t *)value) =
+                !!(dev->netdev.flags & KW41ZRF_OPT_AUTOCCA);
             return sizeof(netopt_enable_t);
 
         case NETOPT_TX_POWER:
@@ -510,35 +505,6 @@ int kw41zrf_netdev_get(netdev_t *netdev, netopt_t opt, void *value, size_t len)
                 *(int8_t *)value = kw41zrf_get_ed_level(dev);
             }
             return sizeof(int8_t);
-
-        case NETOPT_CSMA:
-            if (dev->csma_max_backoffs >= 0) {
-                *((netopt_enable_t *)value) = !!1;
-            }
-            else {
-                *((netopt_enable_t *)value) = !!0;
-            }
-            return sizeof(netopt_enable_t);
-
-        case NETOPT_CSMA_RETRIES:
-            if (len < sizeof(uint8_t)) {
-                return -EOVERFLOW;
-            }
-            if (dev->csma_max_backoffs >= 0) {
-                *((uint8_t *)value) = dev->csma_max_backoffs;
-            }
-            else {
-                return -EINVAL;
-            }
-            return sizeof(uint8_t);
-
-        case NETOPT_RETRANS:
-            if (len < sizeof(uint8_t)) {
-                return -EOVERFLOW;
-            }
-            *((uint8_t *)value) = dev->max_retrans;
-            return sizeof(uint8_t);
-
         case NETOPT_CHANNEL_PAGE:
         default:
             break;
@@ -673,10 +639,6 @@ static int kw41zrf_netdev_set(netdev_t *netdev, netopt_t opt, void *value, size_
             break;
 
         case NETOPT_AUTOCCA:
-            if (dev->csma_max_backoffs >= 0) {
-                /* Ignore AUTOCCA if CSMA is enabled */
-                break;
-            }
             kw41zrf_set_option(dev, KW41ZRF_OPT_AUTOCCA,
                                  ((bool *)value)[0]);
             res = sizeof(netopt_enable_t);
@@ -713,49 +675,17 @@ static int kw41zrf_netdev_set(netdev_t *netdev, netopt_t opt, void *value, size_
             }
             break;
 
-        case NETOPT_CSMA:
-            if (len < sizeof(uint8_t)) {
-                res = -EOVERFLOW;
-            }
-            if (*((bool *)value)) {
-                if (dev->csma_max_backoffs < 0) {
-                    /* keep the value in negative for enabling later */
-                    dev->csma_max_backoffs = -dev->csma_max_backoffs - 1;
-                }
-            }
-            else {
-                if (dev->csma_max_backoffs >= 0) {
-                    dev->csma_max_backoffs = -dev->csma_max_backoffs - 1;
-                }
-            }
-
-        case NETOPT_CSMA_RETRIES:
+        case NETOPT_RF_TESTMODE:
+#ifdef KW41ZRF_TESTMODE
             if (len < sizeof(uint8_t)) {
                 res = -EOVERFLOW;
             }
             else {
-                uint8_t retries = *((uint8_t *)value);
-                if (retries > 5) {
-                    res = -EINVAL;
-                }
-                else {
-                    dev->csma_max_backoffs = retries;
-                }
+                kw41zrf_set_test_mode(dev, *((uint8_t *)value));
+                res = sizeof(uint8_t);
             }
-
-        case NETOPT_RETRANS:
-            if (len < sizeof(uint8_t)) {
-                res = -EOVERFLOW;
-            }
-            else {
-                uint8_t retries = *((uint8_t *)value);
-                if (retries > 7) {
-                    res = -EINVAL;
-                }
-                else {
-                    dev->max_retrans = retries;
-                }
-            }
+#endif
+            break;
 
         default:
             break;
