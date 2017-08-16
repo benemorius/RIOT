@@ -147,8 +147,7 @@ static void kw41zrf_tx_exec(kw41zrf_t *dev)
         /* Set timeout for RX ACK */
         kw41zrf_timer_set(dev, &ZLL->T3CMP, tx_timeout);
         /* Initiate transmission, with timeout */
-        bit_set32(&ZLL->PHY_CTRL, ZLL_PHY_CTRL_TC3TMOUT_SHIFT);
-        kw41zrf_set_sequence(dev, XCVSEQ_TX_RX);
+        kw41zrf_set_sequence(dev, XCVSEQ_TX_RX | ZLL_PHY_CTRL_TC3TMOUT_MASK);
         irq_restore(mask);
     }
     else {
