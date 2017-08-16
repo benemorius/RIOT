@@ -131,20 +131,37 @@ static inline void kw41zrf_abort_sequence(kw41zrf_t *dev)
 }
 
 /**
- * @brief Load the timer value (Setting Current Time) */
+ * @brief Set event timer counter value
+ *
+ * @param[in] dev       kw41zrf device descriptor
+ * @param[in] value     new time
+ */
 static inline void kw41zrf_timer_load(kw41zrf_t *dev, uint32_t value)
 {
     (void) dev;
     ZLL->EVENT_TMR = ZLL_EVENT_TMR_EVENT_TMR(value) | ZLL_EVENT_TMR_EVENT_TMR_LD_MASK;
 }
 
+/**
+ * @brief Get current event timer counter value
+ *
+ * @param[in] dev       kw41zrf device descriptor
+ *
+ * @return  Current timer value
+ */
 static inline uint32_t kw41zrf_timer_get(kw41zrf_t *dev)
 {
     (void) dev;
     return (ZLL->EVENT_TMR & ZLL_EVENT_TMR_EVENT_TMR_MASK) >> ZLL_EVENT_TMR_EVENT_TMR_SHIFT;
 }
 
-/** Set a timeout value for the given compare register of the Event Timer */
+/**
+ * @brief Set a timeout value for the given compare register of the Event Timer
+ *
+ * @param[in]  dev       kw41zrf device descriptor
+ * @param[out] cmp_reg   pointer to timer compare register, &ZLL->TxCMP
+ * @param[in]  timeout   timer offset from current time
+ */
 static inline void kw41zrf_timer_set(kw41zrf_t *dev, volatile uint32_t *cmp_reg, uint32_t timeout)
 {
     uint32_t now = kw41zrf_timer_get(dev);
