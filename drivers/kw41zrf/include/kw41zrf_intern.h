@@ -119,7 +119,8 @@ static inline void kw41zrf_abort_sequence(kw41zrf_t *dev)
 {
     /* Writing IDLE to XCVSEQ aborts any ongoing sequence */
     ZLL->PHY_CTRL = (ZLL->PHY_CTRL &
-        ~(ZLL_PHY_CTRL_XCVSEQ_MASK | ZLL_PHY_CTRL_TC3TMOUT_MASK)) |
+        ~(ZLL_PHY_CTRL_XCVSEQ_MASK |
+        ZLL_PHY_CTRL_TC3TMOUT_MASK | ZLL_PHY_CTRL_TMRTRIGEN_MASK)) |
         ZLL_PHY_CTRL_XCVSEQ(XCVSEQ_IDLE) | ZLL_PHY_CTRL_SEQMSK_MASK;
     /* Spin until the sequence manager has acknowledged the sequence abort, this
      * should not take many cycles */
