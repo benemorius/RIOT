@@ -322,7 +322,7 @@ int kw41zrf_cca(kw41zrf_t *dev)
     DEBUG("[kw41zrf] kw41zrf_cca done, RSSI: %d\n", kw41zrf_get_ed_level(dev));
     uint32_t irqsts = ZLL->IRQSTS;
     kw41zrf_abort_sequence(dev);
-    kw41zrf_set_sequence(dev, dev->idle_state);
+    kw41zrf_set_sequence(dev, dev->idle_seq);
 
     if (irqsts & ZLL_IRQSTS_CCA_MASK) {
         DEBUG("[kw41zrf] Channel busy\n");

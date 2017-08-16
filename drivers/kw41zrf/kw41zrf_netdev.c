@@ -258,7 +258,7 @@ static int kw41zrf_netdev_set_state(kw41zrf_t *dev, netopt_state_t state)
         case NETOPT_STATE_IDLE:
             kw41zrf_set_power_mode(dev, KW41ZRF_POWER_IDLE);
             kw41zrf_abort_sequence(dev);
-            kw41zrf_set_sequence(dev, dev->idle_state);
+            kw41zrf_set_sequence(dev, dev->idle_seq);
             break;
         case NETOPT_STATE_TX:
             if (dev->netdev.flags & KW41ZRF_OPT_PRELOADING) {
@@ -678,7 +678,7 @@ static uint32_t _isr_event_seq_r(kw41zrf_t *dev, uint32_t irqsts)
             }
             return handled_irqs;
         }
-        kw41zrf_set_sequence(dev, dev->idle_state);
+        kw41zrf_set_sequence(dev, dev->idle_seq);
     }
 
     return handled_irqs;
@@ -700,7 +700,7 @@ static uint32_t _isr_event_seq_t(kw41zrf_t *dev, uint32_t irqsts)
             dev->netdev.netdev.event_callback(&dev->netdev.netdev, NETDEV_EVENT_TX_COMPLETE);
         }
         /* Go back to being idle */
-        kw41zrf_set_sequence(dev, dev->idle_state);
+        kw41zrf_set_sequence(dev, dev->idle_seq);
     }
 
     return handled_irqs;
@@ -722,7 +722,7 @@ static uint32_t _isr_event_seq_cca(kw41zrf_t *dev, uint32_t irqsts)
         else {
             DEBUG("[kw41zrf] CCA ch idle\n");
         }
-        kw41zrf_set_sequence(dev, dev->idle_state);
+        kw41zrf_set_sequence(dev, dev->idle_seq);
     }
 
     return handled_irqs;
@@ -778,7 +778,7 @@ static uint32_t _isr_event_seq_tr(kw41zrf_t *dev, uint32_t irqsts)
                 dev->netdev.netdev.event_callback(&dev->netdev.netdev, NETDEV_EVENT_TX_COMPLETE);
             }
         }
-        kw41zrf_set_sequence(dev, dev->idle_state);
+        kw41zrf_set_sequence(dev, dev->idle_seq);
     }
 
     return handled_irqs;
@@ -797,7 +797,7 @@ static uint32_t _isr_event_seq_ccca(kw41zrf_t *dev, uint32_t irqsts)
             DEBUG("[kw41zrf] CCCA ch idle\n");
         }
         kw41zrf_abort_sequence(dev);
-        kw41zrf_set_sequence(dev, dev->idle_state);
+        kw41zrf_set_sequence(dev, dev->idle_seq);
     }
 
     return handled_irqs;

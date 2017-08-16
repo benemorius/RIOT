@@ -103,7 +103,7 @@ void kw41zrf_set_sequence(kw41zrf_t *dev, uint32_t seq)
 
 void kw41zrf_set_idle_sequence(kw41zrf_t *dev, uint32_t seq)
 {
-    dev->idle_state = seq;
+    dev->idle_seq = seq;
 
     if (kw41zrf_can_switch_to_idle(dev)) {
         kw41zrf_abort_sequence(dev);
