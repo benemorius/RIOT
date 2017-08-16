@@ -93,7 +93,7 @@ void kw41zrf_disable_interrupts(kw41zrf_t *dev);
 void kw41zrf_set_power_mode(kw41zrf_t *dev, kw41zrf_powermode_t pm);
 
 /**
- * @brief Determine if the transceiver may switch to idle mode
+ * @brief Determine if the transceiver is busy doing TX or RX
  *
  * @param[in] dev       kw41zrf device descriptor
  *
@@ -109,14 +109,6 @@ int kw41zrf_can_switch_to_idle(kw41zrf_t *dev);
  * @param[in] seq       sequence
  */
 void kw41zrf_set_sequence(kw41zrf_t *dev, uint32_t seq);
-
-/**
- * @brief   Set sequence state used for idle, and switch to it if possible
- *
- * @param[in] dev       kw41zrf device descriptor
- * @param[in] seq       sequence
- */
-void kw41zrf_set_idle_sequence(kw41zrf_t *dev, uint32_t seq);
 
 /**
  * @brief Abort the current autosequence

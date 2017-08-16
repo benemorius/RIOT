@@ -206,7 +206,11 @@ static int kw41zrf_netdev_recv(netdev_t *netdev, void *buf, size_t len, void *in
     if (buf == NULL) {
         if (len > 0) {
             /* discard what we have stored in the buffer, go back to RX mode */
-            kw41zrf_set_idle_sequence(dev, XCVSEQ_RECEIVE);
+            dev->idle_seq = XCVSEQ_RECEIVE;
+            if (kw41zrf_can_switch_to_idle(dev)) {
+                kw41zrf_abort_sequence(dev);
+                kw41zrf_set_sequence(dev, dev->idle_seq);
+            }
         }
         return pkt_len;
     }
@@ -243,7 +247,11 @@ static int kw41zrf_netdev_recv(netdev_t *netdev, void *buf, size_t len, void *in
     }
 
     /* Go back to RX mode */
-    kw41zrf_set_idle_sequence(dev, XCVSEQ_RECEIVE);
+    dev->idle_seq = XCVSEQ_RECEIVE;
+    if (kw41zrf_can_switch_to_idle(dev)) {
+        kw41zrf_abort_sequence(dev);
+        kw41zrf_set_sequence(dev, dev->idle_seq);
+    }
 
     return pkt_len;
 }
@@ -706,7 +714,8 @@ static uint32_t _isr_event_seq_r(kw41zrf_t *dev, uint32_t irqsts)
             /* No error reported */
             DEBUG("[kw41zrf] success (R)\n");
             /* Wait in SEQ_IDLE until recv has been called */
-            kw41zrf_set_idle_sequence(dev, XCVSEQ_IDLE);
+            dev->idle_seq = XCVSEQ_IDLE;
+            kw41zrf_set_sequence(dev, dev->idle_seq);
             if (dev->netdev.flags & KW41ZRF_OPT_TELL_RX_END) {
                 dev->netdev.netdev.event_callback(&dev->netdev.netdev, NETDEV_EVENT_RX_COMPLETE);
             }
