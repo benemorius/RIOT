@@ -101,16 +101,6 @@ void kw41zrf_set_sequence(kw41zrf_t *dev, uint32_t seq)
         ZLL_SEQ_CTRL_STS_XCVSEQ_ACTUAL_SHIFT) != (ZLL_PHY_CTRL_XCVSEQ_MASK & seq)) {}
 }
 
-void kw41zrf_set_idle_sequence(kw41zrf_t *dev, uint32_t seq)
-{
-    dev->idle_seq = seq;
-
-    if (kw41zrf_can_switch_to_idle(dev)) {
-        kw41zrf_abort_sequence(dev);
-        kw41zrf_set_sequence(dev, seq);
-    }
-}
-
 int kw41zrf_can_switch_to_idle(kw41zrf_t *dev)
 {
     uint8_t seq = (ZLL->PHY_CTRL & ZLL_PHY_CTRL_XCVSEQ_MASK) >> ZLL_PHY_CTRL_XCVSEQ_SHIFT;
