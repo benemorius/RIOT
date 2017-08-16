@@ -22,6 +22,7 @@
 #include <errno.h>
 
 #include "log.h"
+#include "random.h"
 #include "net/eui64.h"
 #include "net/ieee802154.h"
 #include "net/netdev.h"
@@ -46,6 +47,7 @@
 #define KW41ZRF_SHR_PHY_TIME          12
 #define KW41ZRF_PER_BYTE_TIME          2
 #define KW41ZRF_ACK_WAIT_TIME         54
+#define KW41ZRF_CSMA_UNIT_TIME        20
 
 static void kw41zrf_netdev_isr(netdev_t *netdev);
 
@@ -90,6 +92,16 @@ static int kw41zrf_netdev_init(netdev_t *netdev)
     return 0;
 }
 
+/**
+ * @brief Generate a random number for using as a CSMA delay value
+ */
+static inline uint32_t kw41zrf_csma_random_delay(kw41zrf_t *dev)
+{
+    /* Use topmost csma_be bits of the random number */
+    uint32_t rnd = random_uint32() >> (32 - dev->csma_be);
+    return rnd * KW41ZRF_CSMA_UNIT_TIME;
+}
+
 static inline size_t kw41zrf_tx_load(const void *buf, size_t len, size_t offset)
 {
     /* Array bounds are checked in the kw41zrf_netdev_send loop */
@@ -106,22 +118,51 @@ static void kw41zrf_tx_exec(kw41zrf_t *dev)
     /* Check FCF field in the TX buffer to see if the ACK_REQ flag was set in
      * the packet that is queued for transmission */
     uint8_t fcf = (len_fcf >> 8) & 0xff;
+    uint32_t backoff_delay;
+    if (dev->csma_max_backoffs >= 0) {
+        /* Use CSMA/CA random delay in the interval [0, 2**dev->csma_be) */
+        backoff_delay = kw41zrf_csma_random_delay(dev);
+    }
+    else {
+        /* No CSMA */
+        backoff_delay = 0;
+    }
     if ((dev->netdev.flags & KW41ZRF_OPT_ACK_REQ) &&
         (fcf & IEEE802154_FCF_ACK_REQ)) {
         uint8_t payload_len = len_fcf & 0xff;
-        uint32_t tx_timeout = dev->tx_warmup_time + KW41ZRF_SHR_PHY_TIME +
-            payload_len * KW41ZRF_PER_BYTE_TIME + KW41ZRF_ACK_WAIT_TIME;
+        uint32_t tx_timeout = backoff_delay + dev->tx_warmup_time +
+            KW41ZRF_SHR_PHY_TIME + payload_len * KW41ZRF_PER_BYTE_TIME +
+            KW41ZRF_ACK_WAIT_TIME;
         DEBUG("[kw41zrf] Start TR\n");
+        /* This is quite timing sensitive, as interrupts may lead to delays
+         * causing the timeout or trigger timers to expire before we have had a
+         * chance to write the new autosequence to the PHY_CTRL register. */
+        unsigned mask = irq_disable();
+        if (backoff_delay > 0) {
+            /* Avoid risk of setting a timer in the past */
+            /* Set trigger time for CSMA */
+            kw41zrf_timer_set(dev, &ZLL->T2CMP, backoff_delay);
+            bit_set32(&ZLL->PHY_CTRL, ZLL_PHY_CTRL_TMRTRIGEN_SHIFT);
+        }
         /* Set timeout for RX ACK */
-        kw41zrf_timer_set(dev, &ZLL->T3CMP, tx_timeout+62000);
+        kw41zrf_timer_set(dev, &ZLL->T3CMP, tx_timeout);
         /* Initiate transmission, with timeout */
         bit_set32(&ZLL->PHY_CTRL, ZLL_PHY_CTRL_TC3TMOUT_SHIFT);
         kw41zrf_set_sequence(dev, XCVSEQ_TX_RX);
+        irq_restore(mask);
     }
     else {
-        /* Initiate transmission */
         DEBUG("[kw41zrf] Start T\n");
+        unsigned mask = irq_disable();
+        if (backoff_delay > 0) {
+            /* Avoid risk of setting a timer in the past */
+            /* Set trigger time for CSMA */
+            kw41zrf_timer_set(dev, &ZLL->T2CMP, backoff_delay);
+            bit_set32(&ZLL->PHY_CTRL, ZLL_PHY_CTRL_TMRTRIGEN_SHIFT);
+        }
+        /* Initiate transmission */
         kw41zrf_set_sequence(dev, XCVSEQ_TRANSMIT);
+        irq_restore(mask);
     }
 }
 
@@ -208,6 +249,9 @@ static int kw41zrf_netdev_send(netdev_t *netdev, const struct iovec *vector, uns
 
     /* send data out directly if pre-loading is disabled */
     if (!(dev->netdev.flags & KW41ZRF_OPT_PRELOADING)) {
+        dev->csma_be = dev->csma_min_be;
+        dev->csma_num_backoffs = 0;
+        dev->num_retrans = 0;
         kw41zrf_tx_exec(dev);
     }
 
@@ -294,7 +338,10 @@ static int kw41zrf_netdev_set_state(kw41zrf_t *dev, netopt_state_t state)
             break;
         case NETOPT_STATE_TX:
             if (dev->netdev.flags & KW41ZRF_OPT_PRELOADING) {
-                /* TODO: Check that we are not already transmitting */
+                kw41zrf_wait_idle(dev);
+                dev->csma_be = dev->csma_min_be;
+                dev->csma_num_backoffs = 0;
+                dev->num_retrans = 0;
                 kw41zrf_tx_exec(dev);
             }
             break;
@@ -665,7 +712,15 @@ static uint32_t _isr_event_seq_t_ccairq(kw41zrf_t *dev, uint32_t irqsts)
             DEBUG("[kw41zrf] CCA ch busy (RSSI: %d)\n",
                   (int8_t)((ZLL->LQI_AND_RSSI & ZLL_LQI_AND_RSSI_CCA1_ED_FNL_MASK) >>
                 ZLL_LQI_AND_RSSI_CCA1_ED_FNL_SHIFT));
-
+            if ((int)dev->csma_num_backoffs < (int)dev->csma_max_backoffs) {
+                /* Perform CSMA/CA backoff algorithm */
+                ++dev->csma_num_backoffs;
+                if (dev->csma_be < dev->csma_max_be) {
+                    ++dev->csma_be;
+                }
+                kw41zrf_tx_exec(dev);
+                return handled_irqs;
+            }
             if (dev->netdev.flags & KW41ZRF_OPT_TELL_TX_END) {
                 dev->netdev.netdev.event_callback(&dev->netdev.netdev, NETDEV_EVENT_TX_MEDIUM_BUSY);
             }
@@ -827,9 +882,18 @@ static uint32_t _isr_event_seq_tr(kw41zrf_t *dev, uint32_t irqsts)
         if (dev->netdev.flags & KW41ZRF_OPT_TELL_TX_END) {
             if (seq_ctrl_sts & ZLL_SEQ_CTRL_STS_TC3_ABORTED_MASK) {
                 DEBUG("[kw41zrf] RXACK timeout (TR)\n");
+                if (dev->num_retrans < dev->max_retrans) {
+                    /* Perform frame retransmission */
+                    ++dev->num_retrans;
+                    DEBUG("[kw41zrf] retry %u\n", (unsigned)dev->num_retrans);
+                    /* Reset CSMA counters for backoff handling */
+                    dev->csma_be = dev->csma_min_be;
+                    dev->csma_num_backoffs = 0;
+                    /* Resubmit the frame for transmission */
+                    kw41zrf_tx_exec(dev);
+                    return handled_irqs;
+                }
                 dev->netdev.netdev.event_callback(&dev->netdev.netdev, NETDEV_EVENT_TX_NOACK);
-                /* Clear TMR3 IRQ flag */
-                handled_irqs |= ZLL_IRQSTS_TMR3IRQ_MASK;
             }
             else if (seq_ctrl_sts & ZLL_SEQ_CTRL_STS_PLL_ABORTED_MASK) {
                 DEBUG("[kw41zrf] PLL unlock (TR)\n");

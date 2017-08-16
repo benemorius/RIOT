@@ -132,6 +132,9 @@ typedef struct {
     int16_t tx_power;          /**< The current tx-power setting of the device */
     uint8_t idle_seq;          /**< state to return to after sending */
     uint8_t cca_result;        /**< Used for passing CCA result from ISR to user */
+    uint8_t csma_be;           /**< Counter used internally by send implementation */
+    uint8_t csma_num_backoffs; /**< Counter used internally by send implementation */
+    uint8_t num_retrans;       /**< Counter used internally by send implementation */
     /** @} */
 } kw41zrf_t;
 
