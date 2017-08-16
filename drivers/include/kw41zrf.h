@@ -118,13 +118,20 @@ typedef struct {
      * @brief   device specific fields
      * @{
      */
-    uint32_t tx_warmup_time;    /**< TX warmup time, in event timer ticks */
-    uint32_t rx_warmup_time;    /**< RX warmup time, in event timer ticks */
-    mutex_t mtx_wait_irq;       /**< Used to block the driver thread until the
-                                 *   next IRQ while waiting for TX to finish */
-    int16_t tx_power;           /**< The current tx-power setting of the device */
-    uint8_t idle_seq;           /**< state to return to after sending */
-    uint8_t cca_result;         /**< Used for passing CCA result from ISR to user */
+    uint32_t tx_warmup_time;   /**< TX warmup time, in event timer ticks */
+    uint32_t rx_warmup_time;   /**< RX warmup time, in event timer ticks */
+    uint8_t max_retrans;       /**< Maximum number of frame retransmissions
+                                *   when no Ack frame is received (macMaxFrameRetries) */
+    int8_t csma_max_backoffs;  /**< Maximum number of CSMA backoffs when
+                                *   waiting for channel clear (macMaxCsmaBackoffs)
+                                *   Set to <0 to disable CSMA */
+    uint8_t csma_min_be;       /**< Minimum backoff exponent (macMinBe) */
+    uint8_t csma_max_be;       /**< Maximum backoff exponent (macMaxBe) */
+    mutex_t mtx_wait_irq;      /**< Used to block the driver thread until the
+                                *   next IRQ while waiting for TX to finish */
+    int16_t tx_power;          /**< The current tx-power setting of the device */
+    uint8_t idle_seq;          /**< state to return to after sending */
+    uint8_t cca_result;        /**< Used for passing CCA result from ISR to user */
     /** @} */
 } kw41zrf_t;
 
