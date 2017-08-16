@@ -109,7 +109,7 @@ int kw41zrf_init(kw41zrf_t *dev, kw41zrf_cb_t cb)
     dev->tx_warmup_time = (dev->tx_warmup_time + 15) / 16;
 
     /* Configre Radio IRQ */
-    mutex_init(&dev->mtx_wait_tx_irq);
+    mutex_init(&dev->mtx_wait_irq);
     kw41zrf_set_irq_callback(cb, dev);
     NVIC_ClearPendingIRQ(Radio_1_IRQn);
     NVIC_EnableIRQ(Radio_1_IRQn);

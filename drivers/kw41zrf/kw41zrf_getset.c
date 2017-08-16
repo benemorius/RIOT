@@ -310,28 +310,6 @@ netopt_state_t kw41zrf_get_status(kw41zrf_t *dev)
     return NETOPT_STATE_IDLE;
 }
 
-int kw41zrf_cca(kw41zrf_t *dev)
-{
-    kw41zrf_abort_sequence(dev);
-    kw41zrf_set_sequence(dev, XCVSEQ_CCA);
-    /* TODO mutex */
-    /* using CCA mode 1, this takes exactly RX warmup time + 128 µs, which is
-     * short enough to just spin */
-    while ((((ZLL->PHY_CTRL & ZLL_PHY_CTRL_XCVSEQ_MASK) >> ZLL_PHY_CTRL_XCVSEQ_SHIFT) == XCVSEQ_CCA)
-        && ((ZLL->SEQ_CTRL_STS & ZLL_SEQ_CTRL_STS_SEQ_IDLE_MASK) == 0)) {}
-    DEBUG("[kw41zrf] kw41zrf_cca done, RSSI: %d\n", kw41zrf_get_ed_level(dev));
-    uint32_t irqsts = ZLL->IRQSTS;
-    kw41zrf_abort_sequence(dev);
-    kw41zrf_set_sequence(dev, dev->idle_seq);
-
-    if (irqsts & ZLL_IRQSTS_CCA_MASK) {
-        DEBUG("[kw41zrf] Channel busy\n");
-        return 1;
-    }
-    DEBUG("[kw41zrf] Channel free\n");
-    return 0;
-}
-
 void kw41zrf_set_rx_watermark(kw41zrf_t *dev, uint8_t value)
 {
     ZLL->RX_WTR_MARK = ZLL_RX_WTR_MARK_RX_WTR_MARK(value);
