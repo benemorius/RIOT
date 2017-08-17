@@ -191,8 +191,8 @@ void kw41zrf_set_option(kw41zrf_t *dev, uint16_t option, bool state)
 
         /* trigger option specific actions */
         switch (option) {
-            case KW41ZRF_OPT_AUTOCCA:
-                LOG_DEBUG("[kw41zrf] enable: AUTOCCA\n");
+            case KW41ZRF_OPT_CSMA:
+                LOG_DEBUG("[kw41zrf] enable: CSMA\n");
                 bit_set32(&ZLL->PHY_CTRL, ZLL_PHY_CTRL_CCABFRTX_SHIFT);
                 break;
 
@@ -237,8 +237,8 @@ void kw41zrf_set_option(kw41zrf_t *dev, uint16_t option, bool state)
         dev->netdev.flags &= ~(option);
         /* trigger option specific actions */
         switch (option) {
-            case KW41ZRF_OPT_AUTOCCA:
-                LOG_DEBUG("[kw41zrf] disable: AUTOCCA\n");
+            case KW41ZRF_OPT_CSMA:
+                LOG_DEBUG("[kw41zrf] disable: CSMA\n");
                 bit_clear32(&ZLL->PHY_CTRL, ZLL_PHY_CTRL_CCABFRTX_SHIFT);
                 break;
 

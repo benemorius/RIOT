@@ -200,7 +200,7 @@ void kw41zrf_reset_phy(kw41zrf_t *dev)
 
     kw41zrf_set_option(dev, KW41ZRF_OPT_AUTOACK, true);
     kw41zrf_set_option(dev, KW41ZRF_OPT_ACK_REQ, true);
-    kw41zrf_set_option(dev, KW41ZRF_OPT_AUTOCCA, true);
+    kw41zrf_set_option(dev, KW41ZRF_OPT_CSMA, true);
 
     kw41zrf_set_power_mode(dev, KW41ZRF_POWER_IDLE);
     kw41zrf_set_sequence(dev, dev->idle_seq);

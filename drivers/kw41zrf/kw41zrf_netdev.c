@@ -99,7 +99,7 @@ static inline uint32_t kw41zrf_csma_random_delay(kw41zrf_t *dev)
 {
     /* Use topmost csma_be bits of the random number */
     uint32_t rnd = random_uint32() >> (32 - dev->csma_be);
-    return rnd * KW41ZRF_CSMA_UNIT_TIME;
+    return (rnd * KW41ZRF_CSMA_UNIT_TIME);
 }
 
 static inline size_t kw41zrf_tx_load(const void *buf, size_t len, size_t offset)
@@ -119,7 +119,7 @@ static void kw41zrf_tx_exec(kw41zrf_t *dev)
      * the packet that is queued for transmission */
     uint8_t fcf = (len_fcf >> 8) & 0xff;
     uint32_t backoff_delay;
-    if (dev->csma_max_backoffs >= 0) {
+    if (dev->netdev.flags & KW41ZRF_OPT_CSMA) {
         /* Use CSMA/CA random delay in the interval [0, 2**dev->csma_be) */
         backoff_delay = kw41zrf_csma_random_delay(dev);
     }
@@ -449,10 +449,24 @@ int kw41zrf_netdev_get(netdev_t *netdev, netopt_t opt, void *value, size_t len)
                 !!(dev->netdev.flags & KW41ZRF_OPT_TELL_TX_END);
             return sizeof(netopt_enable_t);
 
-        case NETOPT_AUTOCCA:
+        case NETOPT_CSMA:
             *((netopt_enable_t *)value) =
-                !!(dev->netdev.flags & KW41ZRF_OPT_AUTOCCA);
+                !!(dev->netdev.flags & KW41ZRF_OPT_CSMA);
             return sizeof(netopt_enable_t);
+
+        case NETOPT_CSMA_RETRIES:
+            if (len < sizeof(uint8_t)) {
+                return -EOVERFLOW;
+            }
+            *((uint8_t *)value) = dev->csma_max_backoffs;
+            return sizeof(uint8_t);
+
+        case NETOPT_RETRANS:
+            if (len < sizeof(uint8_t)) {
+                return -EOVERFLOW;
+            }
+            *((uint8_t *)value) = dev->max_retrans;
+            return sizeof(uint8_t);
 
         case NETOPT_TX_POWER:
             if (len < sizeof(int16_t)) {
@@ -638,8 +652,8 @@ static int kw41zrf_netdev_set(netdev_t *netdev, netopt_t opt, void *value, size_
             res = sizeof(netopt_enable_t);
             break;
 
-        case NETOPT_AUTOCCA:
-            kw41zrf_set_option(dev, KW41ZRF_OPT_AUTOCCA,
+        case NETOPT_CSMA:
+            kw41zrf_set_option(dev, KW41ZRF_OPT_CSMA,
                                  ((bool *)value)[0]);
             res = sizeof(netopt_enable_t);
             break;
@@ -711,12 +725,14 @@ static uint32_t _isr_event_seq_t_ccairq(kw41zrf_t *dev, uint32_t irqsts)
             DEBUG("[kw41zrf] CCA ch busy (RSSI: %d)\n",
                   (int8_t)((ZLL->LQI_AND_RSSI & ZLL_LQI_AND_RSSI_CCA1_ED_FNL_MASK) >>
                 ZLL_LQI_AND_RSSI_CCA1_ED_FNL_SHIFT));
-            if ((int)dev->csma_num_backoffs < (int)dev->csma_max_backoffs) {
+            if (dev->csma_num_backoffs < dev->csma_max_backoffs) {
                 /* Perform CSMA/CA backoff algorithm */
                 ++dev->csma_num_backoffs;
                 if (dev->csma_be < dev->csma_max_be) {
+                    /* Increase delay exponent */
                     ++dev->csma_be;
                 }
+                /* Resubmit the frame for transmission */
                 kw41zrf_tx_exec(dev);
                 return handled_irqs;
             }

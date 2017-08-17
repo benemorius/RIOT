@@ -90,7 +90,7 @@ enum kw41zrf_opt {
     KW41ZRF_OPT_RAWDUMP = NETDEV_IEEE802154_RAW,                 /**< legacy define */
     KW41ZRF_OPT_ACK_REQ = NETDEV_IEEE802154_ACK_REQ,             /**< legacy define */
 
-    KW41ZRF_OPT_AUTOCCA       = (0x0100), /**< CCA before TX active */
+    KW41ZRF_OPT_CSMA          = (0x0100), /**< use CSMA/CA algorithm for sending */
     KW41ZRF_OPT_PROMISCUOUS   = (0x0200), /**< promiscuous mode active */
     KW41ZRF_OPT_PRELOADING    = (0x0400), /**< preloading enabled */
     KW41ZRF_OPT_TELL_TX_START = (0x0800), /**< notify MAC layer on TX start */
@@ -122,9 +122,8 @@ typedef struct {
     uint32_t rx_warmup_time;   /**< RX warmup time, in event timer ticks */
     uint8_t max_retrans;       /**< Maximum number of frame retransmissions
                                 *   when no Ack frame is received (macMaxFrameRetries) */
-    int8_t csma_max_backoffs;  /**< Maximum number of CSMA backoffs when
-                                *   waiting for channel clear (macMaxCsmaBackoffs)
-                                *   Set to <0 to disable CSMA */
+    uint8_t csma_max_backoffs; /**< Maximum number of CSMA backoffs when
+                                *   waiting for channel clear (macMaxCsmaBackoffs) */
     uint8_t csma_min_be;       /**< Minimum backoff exponent (macMinBe) */
     uint8_t csma_max_be;       /**< Maximum backoff exponent (macMaxBe) */
     mutex_t mtx_wait_irq;      /**< Used to block the driver thread until the
