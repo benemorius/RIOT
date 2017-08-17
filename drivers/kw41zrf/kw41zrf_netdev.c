@@ -461,6 +461,20 @@ int kw41zrf_netdev_get(netdev_t *netdev, netopt_t opt, void *value, size_t len)
             *((uint8_t *)value) = dev->csma_max_backoffs;
             return sizeof(uint8_t);
 
+        case NETOPT_CSMA_MAXBE:
+            if (len < sizeof(uint8_t)) {
+                return -EOVERFLOW;
+            }
+            *((uint8_t *)value) = dev->csma_max_be;
+            return sizeof(uint8_t);
+
+        case NETOPT_CSMA_MINBE:
+            if (len < sizeof(uint8_t)) {
+                return -EOVERFLOW;
+            }
+            *((uint8_t *)value) = dev->csma_min_be;
+            return sizeof(uint8_t);
+
         case NETOPT_RETRANS:
             if (len < sizeof(uint8_t)) {
                 return -EOVERFLOW;
@@ -658,12 +672,42 @@ static int kw41zrf_netdev_set(netdev_t *netdev, netopt_t opt, void *value, size_
             res = sizeof(netopt_enable_t);
             break;
 
+        case NETOPT_CSMA_RETRIES:
+            if (len < sizeof(uint8_t)) {
+                res = -EOVERFLOW;
+            }
+            else {
+                dev->csma_max_backoffs = *((uint8_t*)value);
+                res = sizeof(uint8_t);
+            }
+            break;
+
+        case NETOPT_CSMA_MAXBE:
+            if (len < sizeof(uint8_t)) {
+                res = -EOVERFLOW;
+            }
+            else {
+                dev->csma_max_be = *((uint8_t*)value);
+                res = sizeof(uint8_t);
+            }
+            break;
+
+        case NETOPT_CSMA_MINBE:
+            if (len < sizeof(uint8_t)) {
+                res = -EOVERFLOW;
+            }
+            else {
+                dev->csma_min_be = *((uint8_t*)value);
+                res = sizeof(uint8_t);
+            }
+            break;
+
         case NETOPT_CCA_THRESHOLD:
             if (len < sizeof(uint8_t)) {
                 res = -EOVERFLOW;
             }
             else {
-                kw41zrf_set_cca_threshold(dev, *((int8_t*)value));
+                kw41zrf_set_cca_threshold(dev, *((uint8_t*)value));
                 res = sizeof(uint8_t);
             }
             break;
