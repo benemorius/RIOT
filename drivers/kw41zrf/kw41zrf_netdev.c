@@ -533,7 +533,25 @@ int kw41zrf_netdev_get(netdev_t *netdev, netopt_t opt, void *value, size_t len)
                 *(int8_t *)value = kw41zrf_get_ed_level(dev);
             }
             return sizeof(int8_t);
+
+        case NETOPT_TX_RETRIES_NEEDED:
+            if (len < sizeof(uint8_t)) {
+                return -EOVERFLOW;
+            }
+            else {
+                *(uint8_t *)value = dev->num_retrans;
+            }
+            return sizeof(uint8_t);
+
         case NETOPT_CHANNEL_PAGE:
+            if (len < sizeof(uint8_t)) {
+                return -EOVERFLOW;
+            }
+            else {
+                *(uint8_t *)value = 0;
+            }
+            return sizeof(uint8_t);
+
         default:
             break;
     }
