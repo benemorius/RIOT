@@ -24,7 +24,7 @@
 
 static inline void set_lpuart_clock_source(void)
 {
-    /* Use OSCERCLK (external 32 MHz clock) */
+    /* Use MCGIRCLK (internal reference 4 MHz clock) */
     SIM->SOPT2 = (SIM->SOPT2 & ~SIM_SOPT2_LPUART0SRC_MASK) | SIM_SOPT2_LPUART0SRC(3);
 }
 
