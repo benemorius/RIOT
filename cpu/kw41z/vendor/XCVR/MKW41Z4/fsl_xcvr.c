@@ -1204,13 +1204,13 @@ void XCVR_RegisterPanicCb ( panic_fptr fptr ) /* Allow upper layers to provide P
 
 void XcvrPanic(XCVR_PANIC_ID_T panic_id, uint32_t panic_address)
 {
-    if ( s_PanicFunctionPtr != NULL)
+    if (s_PanicFunctionPtr != NULL)
     {
         s_PanicFunctionPtr(panic_id, panic_address, 0, 0);
     }
     else
     {
-        uint8_t dummy;
+        volatile uint8_t dummy = 0;
 
         while(1)
         {
