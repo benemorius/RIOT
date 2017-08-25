@@ -559,7 +559,7 @@ int kw41zrf_netdev_get(netdev_t *netdev, netopt_t opt, void *value, size_t len)
     return netdev_ieee802154_get((netdev_ieee802154_t *)netdev, opt, value, len);
 }
 
-static int kw41zrf_netdev_set(netdev_t *netdev, netopt_t opt, void *value, size_t len)
+static int kw41zrf_netdev_set(netdev_t *netdev, netopt_t opt, const void *value, size_t len)
 {
     kw41zrf_t *dev = (kw41zrf_t *)netdev;
     int res = -ENOTSUP;
