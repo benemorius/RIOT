@@ -327,12 +327,21 @@ static int kw41zrf_netdev_set_state(kw41zrf_t *dev, netopt_state_t state)
 {
     switch (state) {
         case NETOPT_STATE_OFF:
+            /* There is no deeper 'off' mode than deep sleep mode */
+            /* fall through */
         case NETOPT_STATE_SLEEP:
             kw41zrf_set_power_mode(dev, KW41ZRF_POWER_DSM);
+            break;
+        case NETOPT_STATE_STANDBY:
+            kw41zrf_set_power_mode(dev, KW41ZRF_POWER_IDLE);
+            kw41zrf_abort_sequence(dev);
+            dev->idle_seq = XCVSEQ_IDLE;
+            kw41zrf_set_sequence(dev, dev->idle_seq);
             break;
         case NETOPT_STATE_IDLE:
             kw41zrf_set_power_mode(dev, KW41ZRF_POWER_IDLE);
             kw41zrf_abort_sequence(dev);
+            dev->idle_seq = XCVSEQ_RECEIVE;
             kw41zrf_set_sequence(dev, dev->idle_seq);
             break;
         case NETOPT_STATE_TX:
