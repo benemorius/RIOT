@@ -202,6 +202,7 @@ int kw41zrf_cca(kw41zrf_t *dev)
 {
     kw41zrf_wait_idle(dev);
     kw41zrf_abort_sequence(dev);
+    kw41zrf_unmask_irqs();
     kw41zrf_set_sequence(dev, XCVSEQ_CCA);
     /* Wait for the CCA to finish, it will take exactly RX warmup time + 128 µs */
     kw41zrf_wait_idle(dev);
@@ -499,7 +500,7 @@ int kw41zrf_netdev_get(netdev_t *netdev, netopt_t opt, void *value, size_t len)
             return sizeof(uint16_t);
 
         case NETOPT_IS_CHANNEL_CLR:
-            if (kw41zrf_cca(dev)) {
+            if (kw41zrf_cca(dev) == 0) {
                 *((netopt_enable_t *)value) = NETOPT_ENABLE;
             }
             else {
