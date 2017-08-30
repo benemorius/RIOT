@@ -137,6 +137,7 @@ ifneq (,$(filter kw2xrf,$(USEMODULE)))
 endif
 
 ifneq (,$(filter kw41zrf,$(USEMODULE)))
+    USEMODULE += core_thread_flags
     USEMODULE += luid
     USEMODULE += netif
     USEMODULE += ieee802154

@@ -115,9 +115,10 @@ typedef void (*kw41zrf_cb_t)(void *arg);
 typedef struct {
     netdev_ieee802154_t netdev; /**< netdev parent struct */
     /**
-     * @brief   device specific fields
+     * @name   device specific fields
      * @{
      */
+    thread_t *thread;          /**< Network driver thread, for providing feedback from IRQ handler */
     uint32_t tx_warmup_time;   /**< TX warmup time, in event timer ticks */
     uint32_t rx_warmup_time;   /**< RX warmup time, in event timer ticks */
     uint8_t max_retrans;       /**< Maximum number of frame retransmissions
@@ -126,8 +127,6 @@ typedef struct {
                                 *   waiting for channel clear (macMaxCsmaBackoffs) */
     uint8_t csma_min_be;       /**< Minimum backoff exponent (macMinBe) */
     uint8_t csma_max_be;       /**< Maximum backoff exponent (macMaxBe) */
-    mutex_t mtx_wait_irq;      /**< Used to block the driver thread until the
-                                *   next IRQ while waiting for TX to finish */
     int16_t tx_power;          /**< The current tx-power setting of the device */
     uint8_t idle_seq;          /**< state to return to after sending */
     uint8_t cca_result;        /**< Used for passing CCA result from ISR to user */
