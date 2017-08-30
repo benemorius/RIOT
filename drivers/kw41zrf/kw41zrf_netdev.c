@@ -206,7 +206,7 @@ int kw41zrf_cca(kw41zrf_t *dev)
     kw41zrf_set_sequence(dev, XCVSEQ_CCA);
     /* Wait for the CCA to finish, it will take exactly RX warmup time + 128 µs */
     kw41zrf_wait_idle(dev);
-    DEBUG("[kw41zrf] kw41zrf_cca done, result: %u RSSI: %d\n", (unsigned)dev->cca_result,
+    DEBUG("[kw41zrf] CCA: %u RSSI: %d\n", (unsigned)dev->cca_result,
           kw41zrf_get_ed_level(dev));
     return dev->cca_result;
 }
@@ -331,6 +331,7 @@ static int kw41zrf_netdev_set_state(kw41zrf_t *dev, netopt_state_t state)
             /* There is no deeper 'off' mode than deep sleep mode */
             /* fall through */
         case NETOPT_STATE_SLEEP:
+            kw41zrf_abort_sequence(dev);
             kw41zrf_set_power_mode(dev, KW41ZRF_POWER_DSM);
             break;
         case NETOPT_STATE_STANDBY:
