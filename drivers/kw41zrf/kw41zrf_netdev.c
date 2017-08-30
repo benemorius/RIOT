@@ -23,6 +23,7 @@
 
 #include "log.h"
 #include "random.h"
+#include "thread_flags.h"
 #include "net/eui64.h"
 #include "net/ieee802154.h"
 #include "net/netdev.h"
@@ -55,19 +56,23 @@ static volatile unsigned int num_irqs_queued = 0;
 static volatile unsigned int num_irqs_handled = 0;
 static unsigned int spinning_for_irq = 0;
 
+/* Set this to a flag bit that is not used by the MAC implementation */
+#define KW41ZRF_THREAD_FLAG_ISR (1 << 8)
+
 static void kw41zrf_irq_handler(void *arg)
 {
-    netdev_t *dev = (netdev_t *) arg;
+    netdev_t *netdev = arg;
+    kw41zrf_t *dev = (kw41zrf_t *)netdev;
 
     kw41zrf_mask_irqs();
     /* Signal to the thread that an IRQ has arrived, if it is waiting */
-    mutex_unlock(&((kw41zrf_t *)dev)->mtx_wait_irq);
+    thread_flags_set(dev->thread, KW41ZRF_THREAD_FLAG_ISR);
 
     /* We use this counter to avoid filling the message queue with redundant ISR events */
     if (num_irqs_queued == num_irqs_handled) {
         ++num_irqs_queued;
-        if (dev->event_callback) {
-            dev->event_callback(dev, NETDEV_EVENT_ISR);
+        if (netdev->event_callback) {
+            netdev->event_callback(netdev, NETDEV_EVENT_ISR);
         }
     }
 }
@@ -75,6 +80,7 @@ static void kw41zrf_irq_handler(void *arg)
 static int kw41zrf_netdev_init(netdev_t *netdev)
 {
     kw41zrf_t *dev = (kw41zrf_t *)netdev;
+    dev->thread = (thread_t *)thread_get(thread_getpid());
 
     /* initialise SPI and GPIOs */
     if (kw41zrf_init(dev, kw41zrf_irq_handler)) {
@@ -174,12 +180,12 @@ static void kw41zrf_tx_exec(kw41zrf_t *dev)
  */
 static void kw41zrf_wait_idle(kw41zrf_t *dev)
 {
-    mutex_lock(&dev->mtx_wait_irq);
     /* make sure any ongoing T or TR sequence is finished */
     if (kw41zrf_can_switch_to_idle(dev) == 0) {
         DEBUG("[kw41zrf] TX already in progress\n");
         num_irqs_handled = num_irqs_queued;
         spinning_for_irq = 1;
+        thread_flags_clear(KW41ZRF_THREAD_FLAG_ISR);
         while (1) {
             /* TX in progress */
             /* Handle any outstanding IRQ first */
@@ -190,7 +196,7 @@ static void kw41zrf_wait_idle(kw41zrf_t *dev)
                 break;
             }
             /* Block until we get another IRQ */
-            mutex_lock(&dev->mtx_wait_irq);
+            thread_flags_wait_any(KW41ZRF_THREAD_FLAG_ISR);
             DEBUG("[kw41zrf] waited ISR\n");
         }
         spinning_for_irq = 0;
