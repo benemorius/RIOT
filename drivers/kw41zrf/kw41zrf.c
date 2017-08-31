@@ -19,7 +19,6 @@
 #include <string.h>
 
 #include "log.h"
-#include "mutex.h"
 #include "msg.h"
 #include "net/gnrc.h"
 #include "net/ieee802154.h"
