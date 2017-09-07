@@ -94,6 +94,10 @@ void kw41zrf_set_power_mode(kw41zrf_t *dev, kw41zrf_powermode_t pm)
 void kw41zrf_set_sequence(kw41zrf_t *dev, uint32_t seq)
 {
     DEBUG("[kw41zrf] set sequence to %u\n", (unsigned int)seq);
+    assert((ZLL->PHY_CTRL & ZLL_PHY_CTRL_XCVSEQ_MASK) == XCVSEQ_IDLE);
+    while ((ZLL->SEQ_CTRL_STS & ZLL_SEQ_CTRL_STS_SEQ_IDLE_MASK) == 0) {
+        kw41zrf_abort_sequence(dev);
+    }
     /* Clear interrupt flags, sometimes the sequence complete flag is immediately set */
     ZLL->IRQSTS = ZLL->IRQSTS;
     ZLL->PHY_CTRL = (ZLL->PHY_CTRL & ~(ZLL_PHY_CTRL_XCVSEQ_MASK | ZLL_PHY_CTRL_SEQMSK_MASK)) | seq;
