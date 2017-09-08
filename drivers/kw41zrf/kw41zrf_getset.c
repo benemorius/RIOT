@@ -151,7 +151,8 @@ uint64_t kw41zrf_get_addr_long(kw41zrf_t *dev)
 int8_t kw41zrf_get_cca_threshold(kw41zrf_t *dev)
 {
     (void) dev;
-    uint8_t tmp = (ZLL->CCA_LQI_CTRL & ZLL_CCA_LQI_CTRL_CCA1_THRESH_MASK);
+    uint8_t tmp = (ZLL->CCA_LQI_CTRL & ZLL_CCA_LQI_CTRL_CCA1_THRESH_MASK) >>
+        ZLL_CCA_LQI_CTRL_CCA1_THRESH_SHIFT;
     return (int8_t)tmp;
 }
 
