@@ -120,20 +120,6 @@ int kw41zrf_can_switch_to_idle(kw41zrf_t *dev)
             /* We should wait until TX or CCA has finished before moving to
              * another mode */
             return 0;
-
-        case XCVSEQ_RECEIVE:
-            {
-                uint32_t seq_state = ZLL->SEQ_STATE;
-                if (seq_state & ZLL_SEQ_STATE_SFD_DET_MASK) {
-                    if (seq_state & ZLL_SEQ_STATE_RX_BYTE_COUNT_MASK) {
-                        /* A packet is currently being received, we won't be able to
-                        * transmit until the channel is free anyway, so we might as well just
-                        * wait until the RX has finished */
-                        DEBUG("[kw41zrf] RX in p\n");
-                        return 0;
-                    }
-                }
-            }
         default:
             break;
     }
