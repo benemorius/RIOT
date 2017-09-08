@@ -591,7 +591,7 @@ static int kw41zrf_netdev_set(netdev_t *netdev, netopt_t opt, const void *value,
                 res = -EOVERFLOW;
             }
             else {
-                kw41zrf_set_addr_short(dev, *((uint16_t *)value));
+                kw41zrf_set_addr_short(dev, *((const uint16_t *)value));
                 /* don't set res to set netdev_ieee802154_t::short_addr */
             }
             break;
@@ -601,7 +601,7 @@ static int kw41zrf_netdev_set(netdev_t *netdev, netopt_t opt, const void *value,
                 return -EOVERFLOW;
             }
             else {
-                kw41zrf_set_addr_long(dev, *((uint64_t *)value));
+                kw41zrf_set_addr_long(dev, *((const uint64_t *)value));
                 /* don't set res to set netdev_ieee802154_t::short_addr */
             }
             break;
@@ -612,17 +612,17 @@ static int kw41zrf_netdev_set(netdev_t *netdev, netopt_t opt, const void *value,
             }
 
             else {
-                kw41zrf_set_pan(dev, *((uint16_t *)value));
+                kw41zrf_set_pan(dev, *((const uint16_t *)value));
                 /* don't set res to set netdev_ieee802154_t::pan */
             }
             break;
 
         case NETOPT_CHANNEL:
-            if (len != sizeof(uint16_t)) {
+            if (len < sizeof(uint8_t)) {
                 res = -EINVAL;
             }
             else {
-                uint8_t chan = ((uint8_t *)value)[0];
+                uint8_t chan = ((const uint8_t *)value)[0];
                 if (kw41zrf_set_channel(dev, chan)) {
                     res = -EINVAL;
                     break;
@@ -636,12 +636,12 @@ static int kw41zrf_netdev_set(netdev_t *netdev, netopt_t opt, const void *value,
             break;
 
         case NETOPT_TX_POWER:
-            if (len < sizeof(uint16_t)) {
+            if (len < sizeof(int16_t)) {
                 res = -EOVERFLOW;
             }
             else {
-                kw41zrf_set_tx_power(dev, *(int16_t *)value);
-                res = sizeof(uint16_t);
+                kw41zrf_set_tx_power(dev, *(const int16_t *)value);
+                res = sizeof(int16_t);
             }
             break;
 
@@ -650,60 +650,62 @@ static int kw41zrf_netdev_set(netdev_t *netdev, netopt_t opt, const void *value,
                 res = -EOVERFLOW;
             }
             else {
-                res = kw41zrf_netdev_set_state(dev, *((netopt_state_t *)value));
+                res = kw41zrf_netdev_set_state(dev, *((const netopt_state_t *)value));
             }
             break;
 
         case NETOPT_AUTOACK:
             /* Set up HW generated automatic ACK after Receive */
             kw41zrf_set_option(dev, KW41ZRF_OPT_AUTOACK,
-                              ((bool *)value)[0]);
+                               ((const netopt_enable_t *)value)[0]);
+            res = sizeof(netopt_enable_t);
             break;
 
         case NETOPT_ACK_REQ:
             kw41zrf_set_option(dev, KW41ZRF_OPT_ACK_REQ,
-                              ((bool *)value)[0]);
+                               ((const netopt_enable_t *)value)[0]);
+            /* don't set res to set netdev_ieee802154_t::flags */
             break;
 
         case NETOPT_PRELOADING:
             kw41zrf_set_option(dev, KW41ZRF_OPT_PRELOADING,
-                              ((bool *)value)[0]);
+                               ((const netopt_enable_t *)value)[0]);
             res = sizeof(netopt_enable_t);
             break;
 
         case NETOPT_PROMISCUOUSMODE:
             kw41zrf_set_option(dev, KW41ZRF_OPT_PROMISCUOUS,
-                              ((bool *)value)[0]);
+                               ((const netopt_enable_t *)value)[0]);
             res = sizeof(netopt_enable_t);
             break;
 
         case NETOPT_RX_START_IRQ:
             kw41zrf_set_option(dev, KW41ZRF_OPT_TELL_RX_START,
-                                 ((bool *)value)[0]);
+                               ((const netopt_enable_t *)value)[0]);
             res = sizeof(netopt_enable_t);
             break;
 
         case NETOPT_RX_END_IRQ:
             kw41zrf_set_option(dev, KW41ZRF_OPT_TELL_RX_END,
-                                 ((bool *)value)[0]);
+                               ((const netopt_enable_t *)value)[0]);
             res = sizeof(netopt_enable_t);
             break;
 
         case NETOPT_TX_START_IRQ:
             kw41zrf_set_option(dev, KW41ZRF_OPT_TELL_TX_START,
-                                 ((bool *)value)[0]);
+                               ((const netopt_enable_t *)value)[0]);
             res = sizeof(netopt_enable_t);
             break;
 
         case NETOPT_TX_END_IRQ:
             kw41zrf_set_option(dev, KW41ZRF_OPT_TELL_TX_END,
-                                 ((bool *)value)[0]);
+                               ((const netopt_enable_t *)value)[0]);
             res = sizeof(netopt_enable_t);
             break;
 
         case NETOPT_CSMA:
             kw41zrf_set_option(dev, KW41ZRF_OPT_CSMA,
-                                 ((bool *)value)[0]);
+                               ((const netopt_enable_t *)value)[0]);
             res = sizeof(netopt_enable_t);
             break;
 
@@ -712,7 +714,7 @@ static int kw41zrf_netdev_set(netdev_t *netdev, netopt_t opt, const void *value,
                 res = -EOVERFLOW;
             }
             else {
-                dev->csma_max_backoffs = *((uint8_t*)value);
+                dev->csma_max_backoffs = *((const uint8_t*)value);
                 res = sizeof(uint8_t);
             }
             break;
@@ -722,7 +724,7 @@ static int kw41zrf_netdev_set(netdev_t *netdev, netopt_t opt, const void *value,
                 res = -EOVERFLOW;
             }
             else {
-                dev->csma_max_be = *((uint8_t*)value);
+                dev->csma_max_be = *((const uint8_t*)value);
                 res = sizeof(uint8_t);
             }
             break;
@@ -732,7 +734,7 @@ static int kw41zrf_netdev_set(netdev_t *netdev, netopt_t opt, const void *value,
                 res = -EOVERFLOW;
             }
             else {
-                dev->csma_min_be = *((uint8_t*)value);
+                dev->csma_min_be = *((const uint8_t*)value);
                 res = sizeof(uint8_t);
             }
             break;
@@ -742,7 +744,7 @@ static int kw41zrf_netdev_set(netdev_t *netdev, netopt_t opt, const void *value,
                 res = -EOVERFLOW;
             }
             else {
-                kw41zrf_set_cca_threshold(dev, *((uint8_t*)value));
+                kw41zrf_set_cca_threshold(dev, *((const uint8_t*)value));
                 res = sizeof(uint8_t);
             }
             break;
@@ -752,11 +754,11 @@ static int kw41zrf_netdev_set(netdev_t *netdev, netopt_t opt, const void *value,
                 res = -EOVERFLOW;
             }
             else {
-                switch (*((int8_t*)value)) {
+                switch (*((const uint8_t*)value)) {
                     case NETDEV_IEEE802154_CCA_MODE_1:
                     case NETDEV_IEEE802154_CCA_MODE_2:
                     case NETDEV_IEEE802154_CCA_MODE_3:
-                        kw41zrf_set_cca_mode(dev, *((int8_t*)value));
+                        kw41zrf_set_cca_mode(dev, *((const uint8_t*)value));
                         res = sizeof(uint8_t);
                         break;
                     case NETDEV_IEEE802154_CCA_MODE_4:
@@ -766,18 +768,6 @@ static int kw41zrf_netdev_set(netdev_t *netdev, netopt_t opt, const void *value,
                         break;
                 }
             }
-            break;
-
-        case NETOPT_RF_TESTMODE:
-#ifdef KW41ZRF_TESTMODE
-            if (len < sizeof(uint8_t)) {
-                res = -EOVERFLOW;
-            }
-            else {
-                kw41zrf_set_test_mode(dev, *((uint8_t *)value));
-                res = sizeof(uint8_t);
-            }
-#endif
             break;
 
         default:
