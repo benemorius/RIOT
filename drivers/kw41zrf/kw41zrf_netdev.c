@@ -739,6 +739,14 @@ static int kw41zrf_netdev_set(netdev_t *netdev, netopt_t opt, const void *value,
             }
             break;
 
+        case NETOPT_RETRANS:
+            if (len < sizeof(uint8_t)) {
+                return -EOVERFLOW;
+            }
+            dev->max_retrans = *((const uint8_t *)value);
+            res = sizeof(uint8_t);
+            break;
+
         case NETOPT_CCA_THRESHOLD:
             if (len < sizeof(uint8_t)) {
                 res = -EOVERFLOW;
