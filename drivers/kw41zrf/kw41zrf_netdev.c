@@ -561,13 +561,13 @@ int kw41zrf_netdev_get(netdev_t *netdev, netopt_t opt, void *value, size_t len)
             return sizeof(uint8_t);
 
         case NETOPT_CHANNEL_PAGE:
-            if (len < sizeof(uint8_t)) {
+            if (len < sizeof(uint16_t)) {
                 return -EOVERFLOW;
             }
             else {
-                *(uint8_t *)value = 0;
+                *(uint16_t *)value = 0;
             }
-            return sizeof(uint8_t);
+            return sizeof(uint16_t);
 
         default:
             break;
