@@ -372,7 +372,7 @@ static int kw41zrf_netdev_set_state(kw41zrf_t *dev, netopt_state_t state)
 
 static netopt_state_t kw41zrf_netdev_get_state(kw41zrf_t *dev)
 {
-    if (ZLL->DSM_CTRL & ZLL_DSM_CTRL_ZIGBEE_SLEEP_EN_MASK) {
+    if (RSIM->DSM_CONTROL & RSIM_DSM_CONTROL_ZIG_DEEP_SLEEP_STATUS_MASK) {
         return NETOPT_STATE_SLEEP;
     }
     uint32_t seq = (ZLL->PHY_CTRL & ZLL_PHY_CTRL_XCVSEQ_MASK) >> ZLL_PHY_CTRL_XCVSEQ_SHIFT;
