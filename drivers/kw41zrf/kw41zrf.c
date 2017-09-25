@@ -139,6 +139,15 @@ void kw41zrf_reset_phy(kw41zrf_t *dev)
     dev->netdev.proto = GNRC_NETTYPE_UNDEF;
 #endif
 
+    /* Configure DSM exit oscillator stabilization delay */
+    uint32_t tmp = (RSIM->RF_OSC_CTRL & RSIM_RF_OSC_CTRL_BB_XTAL_READY_COUNT_SEL_MASK) >>
+        RSIM_RF_OSC_CTRL_BB_XTAL_READY_COUNT_SEL_SHIFT;
+    /* Stabilization time is 1024 * 2^x core clocks, 0 <= x <= 3 */
+    RSIM->DSM_OSC_OFFSET = (1024ul << tmp) / (CLOCK_CORECLOCK / 32768) + 1; /* round up */
+
+    /* Bring the device out of low power mode */
+    kw41zrf_set_power_mode(dev, KW41ZRF_POWER_IDLE);
+
     /* Reset PHY_CTRL to the default value of mask all interrupts and all other
      * settings disabled */
     ZLL->PHY_CTRL =

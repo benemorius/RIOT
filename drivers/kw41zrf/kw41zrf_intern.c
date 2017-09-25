@@ -25,6 +25,20 @@
 #define ENABLE_DEBUG (0)
 #include "debug.h"
 
+/**
+ * @brief Delay before entering deep sleep mode, in DSM_TIMER ticks (32.768 kHz)
+ *
+ * @attention must be >= 4 according to SoC ref. manual
+ */
+#define KW41ZRF_DSM_ENTER_DELAY 5
+
+/**
+ * @brief Delay before leaving deep sleep mode, in DSM_TIMER ticks (32.768 kHz)
+ *
+ * @attention must be >= 4 according to SoC ref. manual
+ */
+#define KW41ZRF_DSM_EXIT_DELAY 5
+
 struct {
     void (*cb)(void *arg); /**< Callback function called from radio ISR */
     void *arg;             /**< Argument to callback */
@@ -77,18 +91,64 @@ void kw41zrf_disable_interrupts(kw41zrf_t *dev)
 void kw41zrf_set_power_mode(kw41zrf_t *dev, kw41zrf_powermode_t pm)
 {
     DEBUG("[kw41zrf] set power mode to %u\n", pm);
-    /* TODO handle event timer */
+    unsigned state = irq_disable();
     switch (pm) {
         case KW41ZRF_POWER_IDLE:
-            bit_clear32(&ZLL->DSM_CTRL, ZLL_DSM_CTRL_ZIGBEE_SLEEP_EN_SHIFT);
+        {
+            if (!(RSIM->DSM_CONTROL & RSIM_DSM_CONTROL_ZIG_DEEP_SLEEP_STATUS_MASK)) {
+                /* Already awake */
+                break;
+            }
+            /* Assume DSM timer has been running since we entered sleep mode */
+            /* In case it was not already running, however, we still set the
+             * enable flag here. */
+            RSIM->DSM_CONTROL = (RSIM_DSM_CONTROL_DSM_TIMER_EN_MASK |
+                                RSIM_DSM_CONTROL_ZIG_SYSCLK_REQUEST_EN_MASK |
+                                RSIM_DSM_CONTROL_ZIG_SYSCLK_INTERRUPT_EN_MASK);
+            /* The wake target must be at least (4 + RSIM_DSM_OSC_OFFSET) ticks
+             * into the future, to let the oscillator stabilize before switching
+             * on the clocks */
+            RSIM->ZIG_WAKE = KW41ZRF_DSM_EXIT_DELAY + RSIM->DSM_TIMER + RSIM->DSM_OSC_OFFSET;
+            while (RSIM->DSM_CONTROL & RSIM_DSM_CONTROL_ZIG_DEEP_SLEEP_STATUS_MASK) {}
+            /* Convert DSM ticks (32.768 kHz) to event timer ticks (1 MHz) */
+            uint64_t tmp = (uint64_t)(RSIM->ZIG_WAKE - RSIM->ZIG_SLEEP) * 15625ul;
+            uint32_t usec = (tmp >> 9); /* equivalent to (usec / 512) */
+            ZLL->EVENT_TMR = ZLL_EVENT_TMR_EVENT_TMR_ADD_MASK |
+                ZLL_EVENT_TMR_EVENT_TMR(usec);
             break;
+        }
         case KW41ZRF_POWER_DSM:
-            bit_set32(&ZLL->DSM_CTRL, ZLL_DSM_CTRL_ZIGBEE_SLEEP_EN_SHIFT);
+        {
+            if (RSIM->DSM_CONTROL & RSIM_DSM_CONTROL_ZIG_DEEP_SLEEP_STATUS_MASK) {
+                /* Already asleep */
+                break;
+            }
+            /* Clear IRQ flags */
+            RSIM->DSM_CONTROL = RSIM->DSM_CONTROL;
+            /* Enable timer triggered sleep */
+            ZLL->DSM_CTRL = ZLL_DSM_CTRL_ZIGBEE_SLEEP_EN_MASK;
+            /* Set sleep start time */
+            /* The target time must be at least 4 DSM_TIMER ticks into the future */
+            RSIM->ZIG_SLEEP = RSIM->DSM_TIMER + KW41ZRF_DSM_ENTER_DELAY;
+            /* The device will automatically wake up 8.5 minutes from now if not
+             * awoken sooner by software */
+            /* TODO handle automatic wake in the ISR if it becomes an issue */
+            RSIM->ZIG_WAKE = RSIM->DSM_TIMER - 1;
+            /* Start the 32.768 kHz DSM timer in case it was not already running */
+            /* If ZIG_SYSCLK_REQUEST_EN is not set then the hardware will not
+             * enter DSM and we get stuck in the while() below */
+            RSIM->DSM_CONTROL = (RSIM_DSM_CONTROL_DSM_TIMER_EN_MASK |
+                                RSIM_DSM_CONTROL_ZIG_SYSCLK_REQUEST_EN_MASK |
+                                RSIM_DSM_CONTROL_ZIG_SYSCLK_INTERRUPT_EN_MASK);
+            while (!(RSIM->DSM_CONTROL & RSIM_DSM_CONTROL_ZIG_DEEP_SLEEP_STATUS_MASK)) {}
+            /* Let the DSM timer run until we exit deep sleep mode */
             break;
+        }
         default:
             DEBUG("[kw41zrf] Unknown power mode %u\n", pm);
-            return;
+            break;
     }
+    irq_restore(state);
 }
 
 void kw41zrf_set_sequence(kw41zrf_t *dev, uint32_t seq)
