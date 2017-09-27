@@ -103,8 +103,7 @@ void kw41zrf_set_power_mode(kw41zrf_t *dev, kw41zrf_powermode_t pm)
             /* In case it was not already running, however, we still set the
              * enable flag here. */
             RSIM->DSM_CONTROL = (RSIM_DSM_CONTROL_DSM_TIMER_EN_MASK |
-                                RSIM_DSM_CONTROL_ZIG_SYSCLK_REQUEST_EN_MASK |
-                                RSIM_DSM_CONTROL_ZIG_SYSCLK_INTERRUPT_EN_MASK);
+                                RSIM_DSM_CONTROL_ZIG_SYSCLK_REQUEST_EN_MASK);
             /* The wake target must be at least (4 + RSIM_DSM_OSC_OFFSET) ticks
              * into the future, to let the oscillator stabilize before switching
              * on the clocks */
@@ -138,8 +137,7 @@ void kw41zrf_set_power_mode(kw41zrf_t *dev, kw41zrf_powermode_t pm)
             /* If ZIG_SYSCLK_REQUEST_EN is not set then the hardware will not
              * enter DSM and we get stuck in the while() below */
             RSIM->DSM_CONTROL = (RSIM_DSM_CONTROL_DSM_TIMER_EN_MASK |
-                                RSIM_DSM_CONTROL_ZIG_SYSCLK_REQUEST_EN_MASK |
-                                RSIM_DSM_CONTROL_ZIG_SYSCLK_INTERRUPT_EN_MASK);
+                                RSIM_DSM_CONTROL_ZIG_SYSCLK_REQUEST_EN_MASK);
             while (!(RSIM->DSM_CONTROL & RSIM_DSM_CONTROL_ZIG_DEEP_SLEEP_STATUS_MASK)) {}
             /* Let the DSM timer run until we exit deep sleep mode */
             break;
