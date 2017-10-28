@@ -73,8 +73,10 @@ extern "C"
 typedef enum llwu_wakeup_module {
     LLWU_WAKEUP_MODULE_LPTMR0      = 0,
     LLWU_WAKEUP_MODULE_CMP0        = 1,
-    LLWU_WAKEUP_MODULE_CMP1        = 2,
-    LLWU_WAKEUP_MODULE_CMP2        = 3,
+    LLWU_WAKEUP_MODULE_RADIO       = 2, /* KWx1Z devices */
+    LLWU_WAKEUP_MODULE_CMP1        = 2, /* others */
+    LLWU_WAKEUP_MODULE_DCDC        = 3, /* KWx1Z devices */
+    LLWU_WAKEUP_MODULE_CMP2        = 3, /* others */
     LLWU_WAKEUP_MODULE_TSI         = 4,
     LLWU_WAKEUP_MODULE_RTC_ALARM   = 5,
     LLWU_WAKEUP_MODULE_RESERVED    = 6,
@@ -91,7 +93,29 @@ typedef enum llwu_wakeup_module {
  * The numbers are hardware specific, but have the same values across all the
  * supported Kinetis CPUs.
  */
-/* TODO KW41Z has different pins, and some newer (not yet supported) CPUs have >16 pins */
+#if defined(KINETIS_SERIES_W) && defined(KINETIS_CORE_Z) && (KINETIS_SUBFAMILY == 1)
+/* KW41Z has different LLWU pins */
+typedef enum llwu_wakeup_pin {
+    LLWU_WAKEUP_PIN_PTC16 =  0,
+    LLWU_WAKEUP_PIN_PTC17 =  1,
+    LLWU_WAKEUP_PIN_PTC18 =  2,
+    LLWU_WAKEUP_PIN_PTC19 =  3,
+    LLWU_WAKEUP_PIN_PTA16 =  4,
+    LLWU_WAKEUP_PIN_PTA17 =  5,
+    LLWU_WAKEUP_PIN_PTA18 =  6,
+    LLWU_WAKEUP_PIN_PTA19 =  7,
+    LLWU_WAKEUP_PIN_PTB0  =  8,
+    LLWU_WAKEUP_PIN_PTC0  =  9,
+    LLWU_WAKEUP_PIN_PTC2  = 10,
+    LLWU_WAKEUP_PIN_PTC3  = 11,
+    LLWU_WAKEUP_PIN_PTC4  = 12,
+    LLWU_WAKEUP_PIN_PTC5  = 13,
+    LLWU_WAKEUP_PIN_PTC6  = 14,
+    LLWU_WAKEUP_PIN_PTC7  = 15,
+    LLWU_WAKEUP_PIN_NUMOF,
+    LLWU_WAKEUP_PIN_UNDEF
+} llwu_wakeup_pin_t;
+#else
 typedef enum llwu_wakeup_pin {
     LLWU_WAKEUP_PIN_PTE1  =  0,
     LLWU_WAKEUP_PIN_PTE2  =  1,
@@ -112,6 +136,7 @@ typedef enum llwu_wakeup_pin {
     LLWU_WAKEUP_PIN_NUMOF,
     LLWU_WAKEUP_PIN_UNDEF
 } llwu_wakeup_pin_t;
+#endif
 
 /**
  * @brief LLWU wakeup pin edge settings
