@@ -291,14 +291,27 @@ void gpio_write(gpio_t pin, int value)
 
 static inline void irq_handler(PORT_Type *port, int port_num)
 {
-    /* take interrupt flags only from pins which interrupt is enabled */
     uint32_t status = port->ISFR;
+    /* Clear interrupt flags */
+    port->ISFR = status;
 
-    for (int i = 0; i < 32; i++) {
-        if ((status & (1 << i)) && (port->PCR[i] & PORT_PCR_IRQC_MASK)) {
-            port->ISFR = (1 << i);
-            int ctx = get_ctx(port_num, i);
-            isr_ctx[ctx].cb(isr_ctx[ctx].arg);
+    /* Split the flags into eight pin chunks, in order to quicker skip past the
+     * unflagged pins. This could eventually be sped up using the CLZ instruction */
+    unsigned pin = 0;
+    while (status) {
+        uint8_t eight_pins = status & 0xff;
+        status >>= 8;
+        if (eight_pins == 0) {
+            pin += 8;
+            continue;
+        }
+        for (int i = 0; i < 8; i++) {
+            ++pin;
+            eight_pins >>= 1;
+            if (eight_pins & 1) {
+                int ctx = get_ctx(port_num, i);
+                isr_ctx[ctx].cb(isr_ctx[ctx].arg);
+            }
         }
     }
     cortexm_isr_end();
