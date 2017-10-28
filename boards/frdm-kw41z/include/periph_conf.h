@@ -40,7 +40,7 @@ static const clock_config_t clock_config = {
      */
     .clkdiv1 = SIM_CLKDIV1_OUTDIV1(0) | SIM_CLKDIV1_OUTDIV4(1),
     /* Select BLPE to use the 32 MHz crystal clock signal without the FLL */
-    .default_mode = KINETIS_MCG_MODE_BLPE,
+    .default_mode = KINETIS_MCG_MODE_FEI,
     /* The crystal connected to RSIM OSC is 32 MHz */
     .erc_range = KINETIS_MCG_ERC_RANGE_VERY_HIGH,
     .fcrdiv = 0, /* Fast IRC divide by 1 => 4 MHz */
@@ -56,7 +56,7 @@ static const clock_config_t clock_config = {
 /* Radio xtal frequency, either 32 MHz or 26 MHz */
 #define CLOCK_RADIOXTAL              (32000000ul)
 /* CPU core clock, the MCG clock output frequency */
-#define CLOCK_CORECLOCK              (CLOCK_RADIOXTAL)
+#define CLOCK_CORECLOCK              (48000000ul)
 #define CLOCK_BUSCLOCK               (CLOCK_CORECLOCK / 2)
 #define CLOCK_MCGIRCLK               (4000000ul)
 /** @} */
@@ -95,6 +95,7 @@ static const uart_conf_t uart_config[] = {
         .dev    = LPUART0,
         .freq   = CLOCK_MCGIRCLK,
         .pin_rx = GPIO_PIN(PORT_C,  6),
+        .llwu_rx = LLWU_WAKEUP_PIN_PTC6,
         .pin_tx = GPIO_PIN(PORT_C,  7),
         .pcr_rx = PORT_PCR_MUX(4),
         .pcr_tx = PORT_PCR_MUX(4),
