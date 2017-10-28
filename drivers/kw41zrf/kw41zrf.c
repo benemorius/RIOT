@@ -29,6 +29,7 @@
 #include "kw41zrf_getset.h"
 #include "kw41zrf_intern.h"
 #include "vendor/XCVR/MKW41Z4/fsl_xcvr.h"
+#include "llwu.h"
 
 #define ENABLE_DEBUG    (0)
 #include "debug.h"
@@ -117,6 +118,7 @@ int kw41zrf_init(kw41zrf_t *dev, kw41zrf_cb_t cb)
     kw41zrf_set_irq_callback(cb, dev);
     NVIC_ClearPendingIRQ(Radio_1_IRQn);
     NVIC_EnableIRQ(Radio_1_IRQn);
+    llwu_wakeup_module_enable(LLWU_WAKEUP_MODULE_RADIO);
 
     kw41zrf_abort_sequence(dev);
     kw41zrf_unmask_irqs();
