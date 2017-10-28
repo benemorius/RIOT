@@ -77,6 +77,9 @@ void isr_llwu(void)
 
     for (unsigned reg = 0; reg < ((LLWU_WAKEUP_PIN_NUMOF + 7) / 8); ++reg) {
         uint8_t flags = *(&LLWU->F1 + reg);
+        if (flags == 0) {
+            continue;
+        }
         /* Clear pin interrupt flags */
         *(&LLWU->F1 + reg) = flags;
         DEBUG("llwu: F%u = %02x\n", reg + 1, (unsigned) flags);
@@ -90,6 +93,7 @@ void isr_llwu(void)
             flags >>= 1;
         }
     }
+    DEBUG("llwu: F3 = %02x\n", LLWU->F3);
     /* Read only register F3, the flag will need to be cleared in the peripheral
      * instead of writing a 1 to the MWUFx bit. */
 
