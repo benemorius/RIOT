@@ -74,6 +74,13 @@
 #define LPUART_OVERSAMPLING_RATE (16)
 #endif
 
+#ifndef LPUART_IDLECFG
+/* See IDLECFG in the reference manual. Longer idle configurations give more
+ * robust LPUART RX from low power modes, but will also keep the CPU awake for
+ * longer periods. */
+#define LPUART_IDLECFG      (0b001)
+#endif
+
 typedef struct {
     uart_rx_cb_t rx_cb;     /**< data received interrupt callback */
     void *arg;              /**< argument to both callback routines */
@@ -370,11 +377,13 @@ static inline void uart_init_lpuart(uart_t uart, uint32_t baudrate)
     /* calculate baud rate divisor */
     uint32_t div = clk / (baudrate * LPUART_OVERSAMPLING_RATE);
 
-    /* set baud rate */
-    dev->BAUD = LPUART_BAUD_OSR(LPUART_OVERSAMPLING_RATE - 1) | LPUART_BAUD_SBR(div);
+    /* set baud rate, enable RX active edge interrupt */
+    dev->BAUD = LPUART_BAUD_OSR(LPUART_OVERSAMPLING_RATE - 1) | LPUART_BAUD_SBR(div) | LPUART_BAUD_RXEDGIE_MASK;
 
     /* enable transmitter and receiver + RX interrupt */
-    dev->CTRL |= LPUART_CTRL_TE_MASK | LPUART_CTRL_RE_MASK | LPUART_CTRL_RIE_MASK;
+    dev->CTRL |= LPUART_CTRL_TE_MASK | LPUART_CTRL_RE_MASK |
+        LPUART_CTRL_RIE_MASK | LPUART_CTRL_IDLECFG(LPUART_IDLECFG) |
+        LPUART_CTRL_ILIE_MASK;
 
     /* enable receive interrupt */
     NVIC_EnableIRQ(uart_config[uart].irqn);
@@ -399,6 +408,14 @@ static inline void irq_handler_lpuart(uart_t uart)
     /* Clear all IRQ flags */
     dev->STAT = stat;
 
+    if (stat & LPUART_STAT_RXEDGIF_MASK) {
+        if (!config[uart].active) {
+            config[uart].active = 1;
+            /* Keep CPU on until we are finished with RX */
+            DEBUG("LPUART ACTIVE\n");
+            PM_BLOCK(KINETIS_PM_LLS);
+        }
+    }
     if (stat & LPUART_STAT_RDRF_MASK) {
         /* RDRF flag will be cleared when LPUART_DATA is read */
         uint8_t data = dev->DATA;
@@ -424,6 +441,14 @@ static inline void irq_handler_lpuart(uart_t uart)
         /* Input buffer overflow, means that the software was too slow to
          * receive the data */
         DEBUG("LPUART overrun %08" PRIx32 "\n", stat);
+    }
+    if (stat & LPUART_STAT_IDLE_MASK) {
+        if (config[uart].active) {
+            config[uart].active = 0;
+            /* Let the CPU sleep when idle */
+            PM_UNBLOCK(KINETIS_PM_LLS);
+            DEBUG("LPUART IDLE\n");
+        }
     }
 
     cortexm_isr_end();
