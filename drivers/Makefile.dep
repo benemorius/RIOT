@@ -143,6 +143,7 @@ ifneq (,$(filter kw41zrf,$(USEMODULE)))
     USEMODULE += ieee802154
     USEMODULE += netdev_ieee802154
     USEMODULE += random
+    USEMODULE += mcux_xcvr_mkw41z
     ifneq (,$(filter gnrc_netdev_default,$(USEMODULE)))
       # XXX: this can be modeled as a dependency for gnrc_netdev_default as soon
       # as all drivers are ported to netdev

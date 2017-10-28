@@ -28,7 +28,7 @@
 #include "kw41zrf_netdev.h"
 #include "kw41zrf_getset.h"
 #include "kw41zrf_intern.h"
-#include "fsl_xcvr.h"
+#include "vendor/XCVR/MKW41Z4/fsl_xcvr.h"
 
 #define ENABLE_DEBUG    (0)
 #include "debug.h"

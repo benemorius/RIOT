@@ -185,7 +185,7 @@ int kw41zrf_can_switch_to_idle(kw41zrf_t *dev)
     return 1;
 }
 
-void isr_radio_int1(void)
+void isr_radio_1(void)
 {
     DEBUG("[kw41zrf] INT1\n");
     if (isr_config.cb != NULL) {
