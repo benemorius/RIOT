@@ -32,7 +32,7 @@ static gnrc_netreg_entry_t server = GNRC_NETREG_ENTRY_INIT_PID(GNRC_NETREG_DEMUX
                                                                KERNEL_PID_UNDEF);
 
 
-static void send(char *addr_str, char *port_str, char *data, unsigned int num,
+void send(char *addr_str, char *port_str, char *data, unsigned int num,
                  unsigned int delay)
 {
     uint16_t port;
