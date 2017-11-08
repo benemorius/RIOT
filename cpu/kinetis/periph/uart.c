@@ -28,8 +28,17 @@
 #include "bit.h"
 #include "periph_conf.h"
 #include "periph/uart.h"
+#if MODULE_PERIPH_LLWU
 #include "llwu.h"
+#endif
+#if MODULE_PM_LAYERED
 #include "pm_layered.h"
+#define PM_BLOCK(x) pm_block(x)
+#define PM_UNBLOCK(x) pm_unblock(x)
+#else
+#define PM_BLOCK(x)
+#define PM_UNBLOCK(x)
+#endif
 
 #define ENABLE_DEBUG (0)
 #include "debug.h"
@@ -105,7 +114,7 @@ int uart_init(uart_t uart, uint32_t baudrate, uart_rx_cb_t rx_cb, void *arg)
     assert(uart < UART_NUMOF);
 
     if (config[uart].rx_cb) {
-        pm_unblock(KINETIS_PM_LLS);
+        PM_UNBLOCK(KINETIS_PM_LLS);
     }
 
     /* remember callback addresses */
@@ -134,15 +143,18 @@ int uart_init(uart_t uart, uint32_t baudrate, uart_rx_cb_t rx_cb, void *arg)
     }
 
     if (config[uart].rx_cb) {
+#if MODULE_PERIPH_LLWU
         if (uart_config[uart].llwu_rx != LLWU_WAKEUP_PIN_UNDEF) {
             /* Configure the RX pin for LLWU wakeup to be able to use RX in LLS mode */
             llwu_wakeup_pin_set(uart_config[uart].llwu_rx, LLWU_WAKEUP_EDGE_FALLING, NULL, NULL);
         }
-        else {
+        else
+#endif
+        {
             /* UART and LPUART receivers are stopped in LLS, prevent LLS when there
              * is a configured RX callback and no LLWU wakeup pin configured */
             DEBUG("uart: Blocking LLS\n");
-            pm_block(KINETIS_PM_LLS);
+            PM_BLOCK(KINETIS_PM_LLS);
         }
     }
     return UART_OK;
@@ -264,7 +276,7 @@ static inline void irq_handler_uart(uart_t uart)
             config[uart].active = 1;
             /* Keep CPU on until we are finished with RX */
             DEBUG("UART ACTIVE\n");
-            pm_block(KINETIS_PM_STOP);
+            PM_BLOCK(KINETIS_PM_STOP);
         }
     }
     /* The IRQ flags in S1 are cleared by reading the D register */
@@ -299,7 +311,7 @@ static inline void irq_handler_uart(uart_t uart)
         if (config[uart].active) {
             config[uart].active = 0;
             /* Let the CPU sleep when idle */
-            pm_unblock(KINETIS_PM_STOP);
+            PM_UNBLOCK(KINETIS_PM_STOP);
             DEBUG("UART IDLE\n");
         }
     }

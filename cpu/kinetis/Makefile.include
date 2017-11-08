@@ -36,7 +36,8 @@ export UNDEF += $(BINDIR)/cpu/fcfield.o
 # include common periph drivers
 USEMODULE += periph_common
 
-# select kinetis periph drivers
+# select Kinetis periph drivers
+USEMODULE += periph_llwu
 USEMODULE += periph_mcg
 USEMODULE += periph_wdog
 
