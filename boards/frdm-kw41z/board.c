@@ -34,8 +34,10 @@ void board_init(void)
     cpu_init();
 
     set_lpuart_clock_source();
+#if MODULE_XTIMER
     /* Start the RTT, used as time base for xtimer */
     rtt_init();
+#endif
 
     /* initialize and turn off LEDs */
     gpio_init(LED0_PIN, GPIO_OUT);
