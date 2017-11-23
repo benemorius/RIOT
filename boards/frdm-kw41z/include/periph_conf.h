@@ -117,11 +117,13 @@ static const uart_conf_t uart_config[] = {
 static const adc_conf_t adc_config[] = {
     /* dev, pin, channel */
     [ 0] = { ADC0, GPIO_UNDEF, 26 },       /* internal: temperature sensor */
+    /* Note: the band gap buffer uses a bit of current and is turned off by default,
+     * Set PMC->REGSC |= PMC_REGSC_BGBE_MASK before reading or the input will be floating */
     [ 1] = { ADC0, GPIO_UNDEF, 27 },       /* internal: band gap */
-    [ 2] = { ADC0, GPIO_UNDEF, 29 },       /* internal: V_REFSH */
-    [ 3] = { ADC0, GPIO_UNDEF, 30 },       /* internal: V_REFSL */
+    [ 2] = { ADC0, GPIO_UNDEF, 29 },       /* internal: V_REFH */
+    [ 3] = { ADC0, GPIO_UNDEF, 30 },       /* internal: V_REFL */
     [ 4] = { ADC0, GPIO_UNDEF, 23 },       /* internal: DCDC divided battery level */
-    [ 5] = { ADC0, GPIO_UNDEF,  0 | ADC_SC1_DIFF_MASK }, /* ADC0_DP/ADC0_DM differential */
+    [ 5] = { ADC0, GPIO_UNDEF,  0 | ADC_SC1_DIFF_MASK }, /* ADC0_DP-ADC0_DM differential reading */
     [ 6] = { ADC0, GPIO_PIN(PORT_B,  3),  2 }, /* ADC0_SE2 */
     [ 7] = { ADC0, GPIO_PIN(PORT_B,  2),  3 }, /* ADC0_SE3 */
 };

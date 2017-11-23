@@ -42,12 +42,12 @@ static const  saul_adc_params_t saul_adc_params[] =
         .res  = ADC_RES_16BIT,
     },
     {
-        .name = "corevrefsh",
+        .name = "corevrefh",
         .line = ADC_LINE(2),
         .res  = ADC_RES_16BIT,
     },
     {
-        .name = "corevrefsl",
+        .name = "corevrefl",
         .line = ADC_LINE(3),
         .res  = ADC_RES_16BIT,
     },
