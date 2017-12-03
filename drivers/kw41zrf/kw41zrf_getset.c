@@ -281,36 +281,6 @@ void kw41zrf_set_option(kw41zrf_t *dev, uint16_t option, bool state)
     }
 }
 
-netopt_state_t kw41zrf_get_status(kw41zrf_t *dev)
-{
-    uint32_t seq = (ZLL->PHY_CTRL & ZLL_PHY_CTRL_XCVSEQ_MASK) >> ZLL_PHY_CTRL_XCVSEQ_SHIFT;
-
-    switch (seq) {
-        case XCVSEQ_IDLE:
-            return NETOPT_STATE_IDLE;
-
-        case XCVSEQ_RECEIVE:
-            return NETOPT_STATE_RX;
-
-        case XCVSEQ_TRANSMIT:
-            return NETOPT_STATE_TX;
-
-        case XCVSEQ_CCA:
-            return NETOPT_STATE_RX;
-
-        case XCVSEQ_TX_RX:
-            return NETOPT_STATE_TX;
-
-        case XCVSEQ_CONTINUOUS_CCA:
-            return NETOPT_STATE_RX;
-
-        default:
-            LOG_ERROR("[kw41zrf] XCVSEQ = %u is reserved!", (unsigned int) seq);
-            break;
-    }
-    return NETOPT_STATE_IDLE;
-}
-
 void kw41zrf_set_rx_watermark(kw41zrf_t *dev, uint8_t value)
 {
     ZLL->RX_WTR_MARK = ZLL_RX_WTR_MARK_RX_WTR_MARK(value);

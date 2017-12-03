@@ -152,14 +152,6 @@ uint8_t kw41zrf_get_cca_mode(kw41zrf_t *dev);
 int8_t kw41zrf_get_ed_level(kw41zrf_t *dev);
 
 /**
- * @brief   Get state of a given device
- *
- * @param[in] dev       kw41zrf device descriptor
- * @return              current state
- */
-netopt_state_t kw41zrf_get_status(kw41zrf_t *dev);
-
-/**
  * @brief               Perform one CCA measurement and return the result
  *
  * @param[in] dev       kw41zrf device descriptor
