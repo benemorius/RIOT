@@ -6,4 +6,6 @@ MODULE = mcux_xcvr_mkw41z
 INCLUDES += -I../../Common
 INCLUDES += -I../../OSAbstraction/Interface
 
+CFLAGS += -Wno-unused-parameter -Wno-missing-field-initializers
+
 include $(RIOTBASE)/Makefile.base
