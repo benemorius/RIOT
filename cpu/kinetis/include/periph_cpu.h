@@ -46,6 +46,8 @@ typedef uint16_t gpio_t;
  */
 #define GPIO_PIN(x, y)      (((x + 1) << 12) | (x << 6) | y)
 
+#ifdef SIM_UIDH_UID_MASK
+/* Kinetis Cortex-M4 has a 128 bit SIM UID */
 /**
  * @brief   Starting offset of CPU_ID
  */
@@ -54,6 +56,17 @@ typedef uint16_t gpio_t;
  * @brief   Length of the CPU_ID in octets
  */
 #define CPUID_LEN           (16U)
+#else /* defined(SIM_UIDH_UID_MASK) */
+/* Kinetis Cortex-M0+ has a 96 bit SIM UID */
+/**
+ * @brief   Starting offset of CPU_ID
+ */
+#define CPUID_ADDR          (&SIM->UIDMH)
+/**
+ * @brief   Length of the CPU_ID in octets
+ */
+#define CPUID_LEN           (12U)
+#endif /* defined(SIM_UIDH_UID_MASK) */
 
 /**
  * @brief   Generate GPIO mode bitfields
@@ -65,11 +78,6 @@ typedef uint16_t gpio_t;
  * - bit 7: output or input mode
  */
 #define GPIO_MODE(pu, pe, od, out)   (pu | (pe << 1) | (od << 5) | (out << 7))
-
-/**
- * @brief   Define the maximum number of PWM channels that can be configured
- */
-#define PWM_CHAN_MAX        (4U)
 
 /**
  * @brief   Define a CPU specific SPI hardware chip select line macro
@@ -101,7 +109,15 @@ typedef uint16_t gpio_t;
 /**
  * @brief   define number of usable power modes
  */
-#define PM_NUM_MODES    (1U)
+#define PM_NUM_MODES    (4U)
+#define PM_BLOCKER_INITIAL  { .val_u32 = 0 }
+
+enum {
+    KINETIS_PM_LLS  = 0,
+    KINETIS_PM_VLPS = 1,
+    KINETIS_PM_STOP = 2,
+    KINETIS_PM_WAIT = 3,
+};
 
 #ifndef DOXYGEN
 /**
@@ -134,7 +150,9 @@ typedef enum {
     GPIO_AF_5      = PORT_PCR_MUX(5),       /**< use alternate function 5 */
     GPIO_AF_6      = PORT_PCR_MUX(6),       /**< use alternate function 6 */
     GPIO_AF_7      = PORT_PCR_MUX(7),       /**< use alternate function 7 */
+#ifdef PORT_PCR_ODE_MASK
     GPIO_PCR_OD    = (PORT_PCR_ODE_MASK),   /**< open-drain mode */
+#endif
     GPIO_PCR_PD    = (PORT_PCR_PE_MASK),    /**< enable pull-down */
     GPIO_PCR_PU    = (PORT_PCR_PE_MASK | PORT_PCR_PS_MASK)  /**< enable PU */
 } gpio_pcr_t;
@@ -171,7 +189,7 @@ enum {
 
 #ifndef DOXYGEN
 /**
- * @brief   Override default ADC resolution values
+ * @name   ADC resolution values
  * @{
  */
 #define HAVE_ADC_RES_T
@@ -185,8 +203,14 @@ typedef enum {
 } adc_res_t;
 /** @} */
 
+#ifdef FTM_CnSC_MSB_MASK
 /**
- * @brief   Override default PWM mode configuration
+ * @brief   Define the maximum number of PWM channels that can be configured
+ */
+#define PWM_CHAN_MAX        (4U)
+
+/**
+ * @name   PWM mode configuration
  * @{
  */
 #define HAVE_PWM_MODE_T
@@ -196,6 +220,7 @@ typedef enum {
     PWM_CENTER = (FTM_CnSC_MSB_MASK)                        /**< center aligned */
 } pwm_mode_t;
 /** @} */
+#endif /* defined(FTM_CnSC_MSB_MASK) */
 #endif /* ndef DOXYGEN */
 
 /**
@@ -272,12 +297,12 @@ typedef struct {
  * @brief   CPU specific timer LPTMR module configuration
  */
 typedef struct {
-    /** LPTMR device base pointer */
-    LPTMR_Type *dev;
-    /** IRQn interrupt number */
-    uint8_t irqn;
+    LPTMR_Type *dev;           /**< LPTMR device base pointer */
+    llwu_wakeup_module_t llwu; /**< LLWU wakeup module number for this timer */
+    uint8_t irqn;              /**< IRQn interrupt number */
 } lptmr_conf_t;
 
+#ifdef FTM_CnSC_MSB_MASK
 /**
  * @brief   PWM configuration structure
  */
@@ -291,6 +316,7 @@ typedef struct {
     uint8_t chan_numof;     /**< number of actually configured channels */
     uint8_t ftm_num;        /**< FTM number used */
 } pwm_conf_t;
+#endif
 
 /**
  * @brief   SPI module configuration options
@@ -343,8 +369,17 @@ typedef struct {
     volatile uint32_t *scgc_addr; /**< Clock enable register, in SIM module */
     uint8_t scgc_bit;             /**< Clock enable bit, within the register */
     uart_mode_t mode;             /**< UART mode: data bits, parity, stop bits */
-    uart_type_t type;             /**< Hardware module type (KINETIS_UART or KINETIS_LPUART)*/
+    uart_type_t type;             /**< Hardware module type (KINETIS_UART or KINETIS_LPUART) */
+    /**
+     * @brief LLWU wakeup source RX pin to allow RX while in LLS mode
+     *
+     * Set to @c LLWU_WAKEUP_PIN_UNDEF if the chosen RX pin is not available to
+     * the LLWU.
+     */
+    llwu_wakeup_pin_t llwu_rx;
 } uart_conf_t;
+/* We use a custom uart_isr_ctx_t in uart.c */
+#define HAVE_UART_ISR_CTX_T
 
 #if !defined(KINETIS_HAVE_PLL)
 #if defined(MCG_C6_PLLS_MASK) || DOXYGEN
