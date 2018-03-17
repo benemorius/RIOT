@@ -115,12 +115,15 @@ static const uart_conf_t uart_config[] = {
         .scgc_bit = SIM_SCGC5_LPUART0_SHIFT,
         .mode   = UART_MODE_8N1,
         .type   = KINETIS_LPUART,
+        .llwu_rx = LLWU_WAKEUP_PIN_PTC6,
     },
 };
 #define UART_NUMOF          ARRAY_SIZE(uart_config)
 #define LPUART_0_ISR        isr_lpuart0
-/* Use MCGIRCLK (internal reference 4 MHz clock) */
-#define LPUART_0_SRC        3
+/* Use MCGIRCLK (4 MHz internal reference - not available <= KINETIS_PM_LLS) */
+#define LPUART_0_SRC                    3
+#define UART_CLOCK_PM_BLOCKER           KINETIS_PM_LLS
+#define UART_MAX_UNCLOCKED_BAUDRATE     19200ul
 /** @} */
 
 /**
