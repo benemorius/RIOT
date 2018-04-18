@@ -101,6 +101,7 @@ static const uart_conf_t uart_config[] = {
         .freq   = CLOCK_CORECLOCK,
         .pin_rx = GPIO_PIN(PORT_B, 16),
         .pin_tx = GPIO_PIN(PORT_B, 17),
+        .llwu_rx = LLWU_WAKEUP_PIN_UNDEF,
         .pcr_rx = PORT_PCR_MUX(3),
         .pcr_tx = PORT_PCR_MUX(3),
         .irqn   = UART0_RX_TX_IRQn,

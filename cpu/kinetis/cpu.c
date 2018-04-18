@@ -19,7 +19,14 @@
 
 #include "cpu.h"
 #include "periph/init.h"
+#if MODULE_PERIPH_MCG
 #include "mcg.h"
+#endif
+#if MODULE_PERIPH_LLWU
+#include "llwu.h"
+#elif MODULE_PM_LAYERED
+#include "pm_layered.h"
+#endif
 
 /**
  * @brief Initialize the CPU, set IRQ priorities
@@ -33,8 +40,21 @@ void cpu_init(void)
     /* Note: This register can only be written once after each reset, so we must
      * enable all power modes that we wish to use. */
     SMC->PMPROT |= SMC_PMPROT_ALLS_MASK | SMC_PMPROT_AVLP_MASK;
+
+#if MODULE_PERIPH_MCG
     /* initialize the CPU clocking provided by the MCG module */
     kinetis_mcg_init();
+#endif
+
+#if MODULE_PERIPH_LLWU
+    /* initialize the LLWU module for sleep/wakeup management */
+    llwu_init();
+#elif MODULE_PM_LAYERED
+    /* Block LLS mode since we are not using the LLWU module, which is required
+     * to be able to wake up from LLS */
+    pm_block(KINETIS_PM_LLS);
+#endif
+
     /* trigger static peripheral initialization */
     periph_init();
 }

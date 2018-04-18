@@ -107,6 +107,8 @@ static const clock_config_t clock_config = {
         { \
             .dev = LPTMR0, \
             .irqn = LPTMR0_IRQn, \
+            .src = 2, \
+            .base_freq = 32768u, \
         } \
     }
 #define TIMER_NUMOF             ((PIT_NUMOF) + (LPTMR_NUMOF))
@@ -126,8 +128,9 @@ static const uart_conf_t uart_config[] = {
     {
         .dev    = UART0,
         .freq   = CLOCK_CORECLOCK,
-        .pin_rx = GPIO_PIN(PORT_A, 14),
-        .pin_tx = GPIO_PIN(PORT_A, 15),
+        .pin_rx = GPIO_PIN(PORT_A, 15),
+        .pin_tx = GPIO_PIN(PORT_A, 14),
+        .llwu_rx = LLWU_WAKEUP_PIN_UNDEF,
         .pcr_rx = PORT_PCR_MUX(3),
         .pcr_tx = PORT_PCR_MUX(3),
         .irqn   = UART0_RX_TX_IRQn,
@@ -141,6 +144,7 @@ static const uart_conf_t uart_config[] = {
         .freq   = CLOCK_CORECLOCK,
         .pin_rx = GPIO_PIN(PORT_C, 3),
         .pin_tx = GPIO_PIN(PORT_C, 4),
+        .llwu_rx = LLWU_WAKEUP_PIN_PTC3,
         .pcr_rx = PORT_PCR_MUX(3),
         .pcr_tx = PORT_PCR_MUX(3),
         .irqn   = UART1_RX_TX_IRQn,

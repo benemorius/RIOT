@@ -88,6 +88,8 @@ static const clock_config_t clock_config = {
         { \
             .dev = LPTMR0, \
             .irqn = LPTMR0_IRQn, \
+            .src = 2, \
+            .base_freq = 32768u, \
         } \
     }
 #define TIMER_NUMOF             ((PIT_NUMOF) + (LPTMR_NUMOF))
@@ -105,6 +107,9 @@ static const uart_conf_t uart_config[] = {
         .freq   = CLOCK_MCGIRCLK,
         .pin_rx = GPIO_PIN(PORT_C,  6),
         .pin_tx = GPIO_PIN(PORT_C,  7),
+        /* Using LLWU requires using lower baud rates */
+        /* LLWU_WAKEUP_PIN_PTC6 is the correct setting on this dev board if using LLWU */
+        .llwu_rx = LLWU_WAKEUP_PIN_UNDEF,
         .pcr_rx = PORT_PCR_MUX(4),
         .pcr_tx = PORT_PCR_MUX(4),
         .irqn   = LPUART0_IRQn,
