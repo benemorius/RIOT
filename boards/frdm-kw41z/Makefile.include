@@ -9,5 +9,8 @@ export USE_OLD_OPENOCD ?= 0
 # This board comes with OpenSDA configured for JLink compatibility
 export DEBUG_ADAPTER ?= jlink
 
+# We use the RTT for LPTMR clocking
+USEMODULE += periph_rtt
+
 # Include default FRDM board config
 include $(RIOTBOARD)/common/frdm/Makefile.include
