@@ -53,16 +53,19 @@ extern "C"
 #define IO8_PIN            GPIO_PIN(PORT_C,  2)
 #define IO9_PIN            GPIO_PIN(PORT_C,  1)
 #define IO10_PIN           GPIO_PIN(PORT_C,  19)
+#define IO11_PIN           GPIO_PIN(PORT_C,  17)
+#define IO12_PIN           GPIO_PIN(PORT_C,  18)
+#define IO13_PIN           GPIO_PIN(PORT_C,  16)
 
-#define IO_SDA_PIN         GPIO_PIN(PORT_C,  3)
-#define IO_SCL_PIN         GPIO_PIN(PORT_C,  2)
+#define IO_SDA_PIN         IO7_PIN
+#define IO_SCL_PIN         IO8_PIN
 
 #define IO_TXO_PIN         GPIO_PIN(PORT_C,  7)
 #define IO_RXI_PIN         GPIO_PIN(PORT_C,  6)
 
-#define IO_MOSI_PIN        GPIO_PIN(PORT_C,  17)
-#define IO_MISO_PIN        GPIO_PIN(PORT_C,  18)
-#define IO_SCK_PIN         GPIO_PIN(PORT_C,  16)
+#define IO_MOSI_PIN        IO11_PIN
+#define IO_MISO_PIN        IO12_PIN
+#define IO_SCK_PIN         IO13_PIN
 
 #define IO_A0_PIN          GPIO_PIN(PORT_B,  1)
 #define IO_A1_PIN          GPIO_PIN(PORT_B,  2)
