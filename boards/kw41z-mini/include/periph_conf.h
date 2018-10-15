@@ -134,18 +134,18 @@ static const uart_conf_t uart_config[] = {
  * @{
  */
 static const adc_conf_t adc_config[] = {
-    /* dev, pin, channel */
-    [ 0] = { ADC0, GPIO_UNDEF, 26 },       /* internal: temperature sensor */
-    [ 1] = { ADC0, GPIO_UNDEF, 27 },       /* internal: band gap */
-    [ 2] = { ADC0, GPIO_UNDEF, 29 },       /* internal: V_REFH */
-    [ 3] = { ADC0, GPIO_UNDEF, 30 },       /* internal: V_REFL */
-    [ 4] = { ADC0, GPIO_UNDEF, 23 },       /* internal: DCDC divided battery level */
-    [ 5] = { ADC0, GPIO_UNDEF,  0 | ADC_SC1_DIFF_MASK }, /* ADC0_DP/ADC0_DM differential */
+    [ 0] = { .dev = ADC0, .pin = GPIO_UNDEF, .chan = 26, .avg = ADC_AVG_NONE },       /* internal: temperature sensor */
+    [ 1] = { .dev = ADC0, .pin = GPIO_UNDEF, .chan = 27, .avg = ADC_AVG_MAX },       /* internal: band gap */
+    [ 2] = { .dev = ADC0, .pin = GPIO_UNDEF, .chan = 29, .avg = ADC_AVG_MAX },       /* internal: V_REFH */
+    [ 3] = { .dev = ADC0, .pin = GPIO_UNDEF, .chan = 30, .avg = ADC_AVG_MAX },       /* internal: V_REFL */
+    [ 4] = { .dev = ADC0, .pin = GPIO_UNDEF, .chan = 23, .avg = ADC_AVG_MAX },       /* internal: DCDC divided battery level */
+    [ 5] = { .dev = ADC0, .pin = GPIO_UNDEF, .chan = 0 | ADC_SC1_DIFF_MASK, .avg = ADC_AVG_MAX }, /* ADC0_DP/ADC0_DM differential */
 
-    [ 6] = { ADC0, GPIO_PIN(PORT_B,  1),  1 }, /* ADC0_SE1 A0 */
-    [ 7] = { ADC0, GPIO_PIN(PORT_B,  2),  3 }, /* ADC0_SE2 A1 */
-    [ 8] = { ADC0, GPIO_PIN(PORT_B,  3),  2 }, /* ADC0_SE3 A2 */
-    [ 9] = { ADC0, GPIO_PIN(PORT_B,  18), 4 }, /* ADC0_SE4 A3 */
+    [ 6] = { .dev = ADC0, .pin = GPIO_PIN(PORT_B,  1),  .chan = 1, .avg = ADC_AVG_MAX }, /* ADC0_SE1 A0 */
+    [ 7] = { .dev = ADC0, .pin = GPIO_PIN(PORT_B,  2),  .chan = 3, .avg = ADC_AVG_MAX }, /* ADC0_SE2 A1 */
+    [ 8] = { .dev = ADC0, .pin = GPIO_PIN(PORT_B,  3),  .chan = 2, .avg = ADC_AVG_MAX }, /* ADC0_SE3 A2 */
+    [ 9] = { .dev = ADC0, .pin = GPIO_PIN(PORT_B,  18), .chan = 4, .avg = ADC_AVG_MAX }, /* ADC0_SE4 A3 */
+    [10] = { .dev = ADC0, .pin = GPIO_PIN(PORT_A,  19), .chan = 5, .avg = ADC_AVG_MAX }, /* ADC0_SE5 5 */
 };
 
 #define ADC_NUMOF           (sizeof(adc_config) / sizeof(adc_config[0]))
