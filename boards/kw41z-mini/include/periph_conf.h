@@ -126,6 +126,7 @@ static const uart_conf_t uart_config[] = {
 #define LPUART_0_ISR        isr_lpuart0
 /* Use MCGIRCLK (internal reference 4 MHz clock) */
 #define LPUART_0_SRC        3
+// #define UART_STDIO_BAUDRATE 38400 // hsosc has been trimmed properly so 115200 baud works now
 /** @} */
 
 /**
@@ -148,7 +149,7 @@ static const adc_conf_t adc_config[] = {
 };
 
 #define ADC_NUMOF           (sizeof(adc_config) / sizeof(adc_config[0]))
-#define ADC_REF_SETTING     1
+#define ADC_REF_SETTING     0
 /** @} */
 
 /**

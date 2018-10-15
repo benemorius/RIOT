@@ -24,18 +24,22 @@
 
 static inline void set_lpuart_clock_source(void)
 {
-    /* Use MCGIRCLK (internal reference 4 MHz clock) */
-    SIM->SOPT2 = (SIM->SOPT2 & ~SIM_SOPT2_LPUART0SRC_MASK) | SIM_SOPT2_LPUART0SRC(3);
+	/* Use MCGIRCLK (internal reference 4 MHz clock) */
+	SIM->SOPT2 = (SIM->SOPT2 & ~SIM_SOPT2_LPUART0SRC_MASK) | SIM_SOPT2_LPUART0SRC(3);
 }
 
 void board_init(void)
 {
-    /* initialize the CPU core */
-    cpu_init();
+	/* initialize the CPU core */
+	cpu_init();
 
-    set_lpuart_clock_source();
+	/* configure hsosc trim */
+	MCG->C4 = MCG->C4 & ~MCG_C4_FCTRIM_MASK | MCG_C4_FCTRIM(0xc);
+	MCG->C2 = MCG->C2 & ~MCG_C2_FCFTRIM_MASK | MCG_C2_FCFTRIM(0x1);
 
-    /* initialize and turn off LEDs */
-    gpio_init(LED0_PIN, GPIO_OUT);
-    LED0_OFF;
+	set_lpuart_clock_source();
+
+	/* initialize and turn off LEDs */
+	gpio_init(LED0_PIN, GPIO_OUT);
+	LED0_OFF;
 }
