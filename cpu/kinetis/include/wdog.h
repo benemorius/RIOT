@@ -49,6 +49,11 @@ extern "C"
  */
 void wdog_disable(void);
 
+/**
+ * @brief Feed hardware watchdog.
+ */
+void wdog_feed(void);
+
 #ifdef __cplusplus
 }
 #endif
