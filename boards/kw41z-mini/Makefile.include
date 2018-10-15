@@ -1,0 +1,9 @@
+# define the cpu used by the board
+export CPU = kinetis
+export CPU_MODEL = mkw41z256vht4
+
+# We use the RTT for LPTMR clocking
+#USEMODULE += periph_rtt
+
+# Include default FRDM board config
+include $(RIOTBOARD)/common/frdm/Makefile.include

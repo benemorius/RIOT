@@ -34,6 +34,8 @@
  */
 void pm_set(unsigned mode)
 {
+    return;
+    mode = 0;
     switch (mode) {
         case 0:
             cortexm_sleep(0);
