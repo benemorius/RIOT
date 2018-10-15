@@ -85,9 +85,9 @@ static int kw41zrf_netdev_init(netdev_t *netdev)
     dev->thread = (thread_t *)thread_get(thread_getpid());
 
     /* initialise SPI and GPIOs */
-    if (kw41zrf_init(dev, kw41zrf_irq_handler)) {
+    while (kw41zrf_init(dev, kw41zrf_irq_handler)) {
         LOG_ERROR("[kw41zrf] unable to initialize device\n");
-        return -1;
+        // return -1;
     }
 
 #ifdef MODULE_NETSTATS_L2
