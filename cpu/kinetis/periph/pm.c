@@ -53,6 +53,8 @@ static inline void pm_stopm(uint8_t stopm)
 
 void pm_set(unsigned mode)
 {
+    return;
+    mode = 0;
     unsigned deep = 1;
     switch (mode) {
         case KINETIS_PM_WAIT:
