@@ -272,6 +272,9 @@ static int readline(char *buf, size_t size)
             _putchar(c);
 #endif
         }
+#ifdef MODULE_NEWLIB
+        fflush(stdout);
+#endif
     }
 }
 
