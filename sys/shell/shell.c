@@ -255,6 +255,15 @@ static int readline(char *buf, size_t size)
             /* return 1 if line is empty, 0 otherwise */
             return c == ETX || line_buf_ptr == buf;
         }
+        /* ^C */
+        else if (c == 'C' - '@') {
+            _putchar('\r');
+            _putchar('\n');
+#ifdef MODULE_NEWLIB
+            fflush(stdout);
+#endif
+            return 1; // 1 for empty line
+        }
         /* QEMU uses 0x7f (DEL) as backspace, while 0x08 (BS) is for most terminals */
         else if (c == 0x08 || c == 0x7f) {
             if (line_buf_ptr == buf) {
