@@ -21,19 +21,17 @@
 #include <stdio.h>
 #include <fcntl.h>
 #include <sys/types.h>
+#include <string.h>
 
 #include "shell.h"
 #include "msg.h"
 #include "xtimer.h"
-#include "periph/rtc.h"
-#include "periph/adc.h"
 #include "vfs.h"
 #include "log.h"
 #include "stdio_base.h"
 
 #define ENABLE_DEBUG (1)
 #include "debug.h"
-
 
 #define MAIN_QUEUE_SIZE     (8)
 static msg_t _main_msg_queue[MAIN_QUEUE_SIZE];
@@ -46,16 +44,18 @@ static void *term_thread(void *arg);
 
 extern int telnet_start_server(int port);
 
+FILE *fdopen(int fd, const char *mode);
+
 static ssize_t _uart_write(vfs_file_t *filp, const void *src, size_t nbytes)
 {
-    ssize_t ret = stdio_write(src, nbytes);
-    return ret;
+    filp = filp;
+    return stdio_write(src, nbytes);
 }
 
 static ssize_t _uart_read(vfs_file_t *filp, void *dest, size_t nbytes)
 {
-    ssize_t bytes_read = stdio_read(dest, nbytes);
-    return bytes_read;
+    filp = filp;
+    return stdio_read(dest, nbytes);
 }
 
 static vfs_file_ops_t _uart_pipe_ops = {
@@ -65,6 +65,7 @@ static vfs_file_ops_t _uart_pipe_ops = {
 
 int dmesg_print(int argc, char **argv)
 {
+    argc = argc;
 #ifdef MODULE_LOG_DMESG
     bool clear = false;
     if (argv[1]) {
@@ -110,9 +111,12 @@ int dmesg_print(int argc, char **argv)
 
 int uptime(int argc, char **argv)
 {
+    argc = argc;
+    argv = argv;
     timex_t now;
     xtimer_now_timex(&now);
     printf("%lu.%06lu\n", now.seconds, now.microseconds);
+    return 0;
 }
 
 static FILE *uart_out;
@@ -121,6 +125,7 @@ kernel_pid_t term_pid = 0xffff;
 
 void *term_thread(void *arg)
 {
+    arg = arg;
     term_pid = thread_getpid();
     xtimer_usleep(1000*10); // hack to allow scheduler to change our stdin/stdout after setting pid
     while(1) {
@@ -130,23 +135,24 @@ void *term_thread(void *arg)
         putc(c_to_uart, uart_out);
         fflush(uart_out);
     }
+    return NULL;
 }
 
 int term(int argc, char **argv)
 {
+    argc = argc;
+    argv = argv;
     printf("term\n");
 
-    int uart_out_fd = vfs_bind(9, O_WRONLY, &_uart_pipe_ops, (void *)STDOUT_FILENO);
+    int uart_out_fd = vfs_bind(VFS_ANY_FD, O_WRONLY, &_uart_pipe_ops, (void *)STDOUT_FILENO);
+    int uart_in_fd = vfs_bind(VFS_ANY_FD, O_RDONLY, &_uart_pipe_ops, (void *)STDIN_FILENO);
     uart_out = (FILE *)fdopen(uart_out_fd, "w");
-
-    int uart_in_fd = vfs_bind(10, O_RDONLY, &_uart_pipe_ops, (void *)STDIN_FILENO);
     uart_in = (FILE *)fdopen(uart_in_fd, "r");
-
     printf("uart_out fd: %i\n", uart_out_fd);
     printf("uart_in fd: %i\n", uart_in_fd);
     fflush(stdout);
 
-    thread_create(shell_thread_stack, sizeof(shell_thread_stack), 13,
+    thread_create(term_thread_stack, sizeof(term_thread_stack), 13,
                   THREAD_CREATE_STACKTEST,
                   term_thread, NULL, "term");
 

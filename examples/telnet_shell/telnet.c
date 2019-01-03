@@ -77,6 +77,7 @@ void fprintf_hex(FILE *file, const char *string, int length)
 
 static ssize_t _stdout_write(vfs_file_t *filp, const void *src, size_t nbytes)
 {
+    filp = filp;
     // fprintf(stdout_real, "stdout %u bytes: ", nbytes);
     // fprintf_hex(stdout_real, src, nbytes);
     // fprintf(stdout_real, " ... ");
@@ -91,6 +92,7 @@ static ssize_t _stdout_write(vfs_file_t *filp, const void *src, size_t nbytes)
 
 static ssize_t _stdin_read(vfs_file_t *filp, void *dest, size_t nbytes)
 {
+    filp = filp;
     ssize_t bytes_read = (ssize_t)isrpipe_read(&stdin_isrpipe, (char *)dest, nbytes);
     // fprintf(stdout_real, "in %u bytes: ", bytes_read);
     // fprintf_hex(stdout_real, dest, bytes_read);
@@ -184,6 +186,7 @@ static void *_server_thread(void *args)
 
 static void *_sending_thread(void *args)
 {
+    args = args;
     int tid = 0;
     static char buffer[800];
     while (1) {
@@ -294,6 +297,7 @@ static ssize_t _process_outgoing_data(const char *data, size_t data_length)
 
 static void *_telnet_recv_thread(void *args)
 {
+    args = args;
     int ret;
     while (1) {
         char c;
@@ -373,6 +377,8 @@ static void *_telnet_recv_thread(void *args)
         // pass character to stdin if we made it this far
         ret = isrpipe_write_one(&stdin_isrpipe, c);
     }
+    ret = ret;
+    return NULL;
 }
 
 static int _handle_incoming_data(const char *data, int data_length)
@@ -382,6 +388,7 @@ static int _handle_incoming_data(const char *data, int data_length)
     if (ret < 1) {
         // buffer full or something, maybe block
     }
+    return ret;
 }
 
 int telnet_start_server(int port)
@@ -389,14 +396,12 @@ int telnet_start_server(int port)
     stdin_real = stdin;
     stdout_real = stdout;
 
-    int fd;
-    // fd = vfs_bind(VFS_ANY_FD, O_WRONLY, &_stdout_ops, (void *)STDIN_FILENO);
-    fd = vfs_bind(7, O_WRONLY, &_stdout_ops, (void *)STDOUT_FILENO);
-    stdout_telnet = (void*)fdopen(7, "w");
-    DEBUG("out fd: %i\n", fd);
-    fd = vfs_bind(8, O_RDONLY, &_stdin_ops, (void *)STDIN_FILENO);
-    stdin_telnet = (void*)fdopen(8, "r");
-    DEBUG("in fd: %i\n", fd);
+    int out_fd = vfs_bind(VFS_ANY_FD, O_WRONLY, &_stdout_ops, (void *)STDOUT_FILENO);
+    int in_fd = vfs_bind(VFS_ANY_FD, O_RDONLY, &_stdin_ops, (void *)STDIN_FILENO);
+    stdout_telnet = (FILE *)fdopen(out_fd, "w");
+    stdin_telnet = (FILE *)fdopen(in_fd, "r");
+    DEBUG("out fd: %i\n", out_fd);
+    DEBUG("in fd: %i\n", in_fd);
 
     /* start server */
     if (thread_create(server_stack, sizeof(server_stack), THREAD_PRIORITY_MAIN - 1,
@@ -442,5 +447,5 @@ int telnet_start_server(int port)
                   NULL, "telnet shell");
 
     // fprintf(stdout_real, "telnet server started\n");
-    // return 0;
+    return 0;
 }
