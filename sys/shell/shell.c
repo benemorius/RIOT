@@ -309,6 +309,9 @@ static inline void print_prompt(void)
 
 void shell_run(const shell_command_t *shell_commands, char *line_buf, int len)
 {
+    /* begin prompt on a new line */
+    _putchar('\r');
+    _putchar('\n');
     print_prompt();
 
     while (1) {
