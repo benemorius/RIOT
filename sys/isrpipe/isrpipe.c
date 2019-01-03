@@ -40,15 +40,10 @@ int isrpipe_write_one(isrpipe_t *isrpipe, char c)
     return res;
 }
 
-int isrpipe_write(isrpipe_t *isrpipe, const char *buffer, size_t count)
+int isrpipe_write(isrpipe_t *isrpipe, const char *buf, size_t count)
 {
-    int res = tsrb_add(&isrpipe->tsrb, buffer, count);
-
-    /* `res` is either 0 on success or -1 when the buffer is full. Either way,
-     * unlocking the mutex is fine.
-     */
+    int res = tsrb_add(&isrpipe->tsrb, buf, count);
     mutex_unlock(&isrpipe->mutex);
-
     return res;
 }
 
