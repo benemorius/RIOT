@@ -35,11 +35,13 @@
 #include <assert.h>
 #include <errno.h>
 
+#include "log.h"
 #include "shell.h"
 #include "shell_commands.h"
 
 #define ETX '\x03'  /** ASCII "End-of-Text", or ctrl-C */
 #define BS  '\x08'  /** ASCII "Backspace" */
+#define ESC '\x1b'  /** ASCII "Escape" */
 #define DEL '\x7f'  /** ASCII "Delete" */
 
 #ifdef MODULE_NEWLIB
@@ -441,6 +443,22 @@ static int readline(char *buf, size_t size)
                     white_tape();
                 }
                 break;
+
+            case ESC: { /* escape sequence */
+                if (getchar() != '[') {
+                    continue;
+                }
+                c = getchar();
+                /* up down right left */
+                if (c == 'A' || c == 'B' || c == 'C' || c == 'D') {
+                    /* do nothing; mostly just don't echo */
+                }
+                else {
+                    const char msg[] = "[shell] unhandled escape sequence";
+                    LOG_INFO("%s ^[[<0x%02x> (\\033[\\0%o)\n", msg, c, c);
+                }
+                break;
+            }
 
             default:
                 /* Always consume characters, but do not not always store them */
