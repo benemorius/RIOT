@@ -37,6 +37,13 @@ int isrpipe_write_one(isrpipe_t *isrpipe, uint8_t c)
     return res;
 }
 
+int isrpipe_write(isrpipe_t *isrpipe, const uint8_t *buf, size_t count)
+{
+    int res = tsrb_add(&isrpipe->tsrb, buf, count);
+    mutex_unlock(&isrpipe->mutex);
+    return res;
+}
+
 int isrpipe_read(isrpipe_t *isrpipe, uint8_t *buffer, size_t count)
 {
     int res;
