@@ -20,6 +20,7 @@
  */
 
 #include <stdint.h>
+#include <stdio.h>
 
 #include "sched.h"
 #include "clist.h"
@@ -73,6 +74,13 @@ const uint8_t _tcb_name_offset = offsetof(thread_t, name);
 #ifdef MODULE_SCHED_CB
 static void (*sched_cb) (kernel_pid_t active_thread, kernel_pid_t next_thread) = NULL;
 #endif
+
+FILE *stdin_real;
+FILE *stdout_real;
+FILE *stdin_telnet;
+FILE *stdout_telnet;
+kernel_pid_t telnet_shell_pid = KERNEL_PID_UNDEF;
+kernel_pid_t pcom_pid = KERNEL_PID_UNDEF;
 
 int __attribute__((used)) sched_run(void)
 {
@@ -129,6 +137,17 @@ int __attribute__((used)) sched_run(void)
 
     mpu_enable();
 #endif
+
+    if (sched_active_pid == telnet_shell_pid || sched_active_pid == pcom_pid) {
+        stdin = stdin_telnet;
+        stdout = stdout_telnet;
+    }
+    else {
+        if (stdin_real != 0) {
+            stdin = stdin_real;
+            stdout = stdout_real;
+        }
+    }
 
     DEBUG("sched_run: done, changed sched_active_thread.\n");
 
