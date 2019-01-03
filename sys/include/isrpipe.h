@@ -66,6 +66,17 @@ void isrpipe_init(isrpipe_t *isrpipe, uint8_t *buf, size_t bufsize);
 int isrpipe_write_one(isrpipe_t *isrpipe, uint8_t c);
 
 /**
+ * @brief   Write data to isrpipe (blocking)
+ *
+ * @param[in]   isrpipe    isrpipe object to operate on
+ * @param[in]   buf        buffer to read from
+ * @param[in]   count      number of bytes to write
+ *
+ * @returns     number of bytes written
+ */
+int isrpipe_write(isrpipe_t *isrpipe, const uint8_t *buf, size_t count);
+
+/**
  * @brief   Read data from isrpipe (blocking)
  *
  * @param[in]   isrpipe    isrpipe object to operate on
