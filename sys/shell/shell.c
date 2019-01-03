@@ -479,6 +479,8 @@ static int readline(char *buf, size_t size)
 void shell_run_once(const shell_command_t *shell_commands,
                     char *line_buf, int len)
 {
+    _putchar('\r');
+    _putchar('\n');
     print_prompt();
 
     while (1) {
