@@ -29,6 +29,8 @@
 #include <stdio.h>
 #include <stdint.h>
 #include <stdlib.h>
+
+#include "log.h"
 #include "shell.h"
 #include "shell_commands.h"
 
@@ -278,6 +280,21 @@ static int readline(char *buf, size_t size)
             _putchar(' ');
             _putchar('\b');
 #endif
+        }
+        /* escape sequence */
+        else if (c == '[' - '@') {
+            if (getchar() != '[') {
+                continue;
+            }
+            c = getchar();
+            /* up down right left */
+            if (c == 'A' || c == 'B' || c == 'C' || c == 'D') {
+                /* do nothing; mostly just don't echo */
+            }
+            else {
+                const char msg[] = "[shell] unhandled escape sequence";
+                LOG_INFO("%s ^[[<0x%02x> (\\033[\\0%o)\n", msg, c, c);
+            }
         }
         else {
             *line_buf_ptr++ = c;
