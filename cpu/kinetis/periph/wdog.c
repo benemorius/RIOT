@@ -61,9 +61,9 @@
  */
 void wdog_disable(void)
 {
-	/* set timeout to 8192ms */
-	SIM->COPC = SIM_COPC_COPT(1) | SIM_COPC_COPCLKS(1);
-	return;
+	// /* set timeout to 8192ms */
+	// SIM->COPC = SIM_COPC_COPT(1) | SIM_COPC_COPCLKS(1);
+	// return;
 
 #if KINETIS_WDOG_ADVANCED
     /* unlock and disable the WDOG */
