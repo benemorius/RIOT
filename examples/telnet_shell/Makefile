@@ -36,7 +36,10 @@ USEMODULE += netstats_ipv6
 USEMODULE += netstats_rpl
 
 USEMODULE += od
+USEMODULE += od_string
 USEMODULE += netopt
+USEMODULE += sntp
+USEMODULE += gnrc_pktbuf_cmd
 
 USEMODULE += log_dmesg
 

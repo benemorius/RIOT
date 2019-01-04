@@ -62,15 +62,15 @@ kernel_pid_t telnet_shell_pid = 0xffff;
 static ssize_t _process_outgoing_data(const char *data, size_t data_length);
 static int _handle_incoming_data(const char *data, int data_length);
 
-void fprintf_hex(FILE *file, const char *string, int length)
+void fprintf_hex(FILE *file, const char *data, int length)
 {
     fprintf(file, "<");
     for (int i = 0; i < length; i++) {
-        fprintf(file, "%02x ", string[i]);
+        fprintf(file, "%02x ", data[i]);
     }
     fprintf(file, "\b> \"");
     for (int i = 0; i < length; i++) {
-        fprintf(file, "%c ", string[i]);
+        fprintf(file, "%c ", data[i]);
     }
     fprintf(file, "\"");
 }
@@ -134,10 +134,10 @@ static void *_server_thread(void *args)
         printf("client connected to telnet server on port %" PRIu16 "\n", port);
 
         // char dont_echo[] = {255, 254, 1};
-        // ret = gnrc_tcp_send(&tcb, dont_echo, sizeof(dont_echo), TCP_SEND_TIMEOUT_US);
+        // ret = isrpipe_write(&telnet_send_isrpipe, dont_echo, sizeof(dont_echo));
 
         // char will_echo[] = {255, 251, 1};
-        // ret = gnrc_tcp_send(&tcb, will_echo, sizeof(will_echo), TCP_SEND_TIMEOUT_US);
+        // ret = isrpipe_write(&telnet_send_isrpipe, will_echo, sizeof(will_echo));
 
         while (1) {
             char c;
@@ -418,28 +418,12 @@ int telnet_start_server(int port)
         return 1;
     }
 
-
-
-    // if (thread_create(send_stack, sizeof(send_stack), THREAD_PRIORITY_MAIN - 1,
-    //                   THREAD_CREATE_STACKTEST, _telnet_send_thread,
-    //                   &port, "telnet server tx") <= KERNEL_PID_UNDEF) {
-    //     fprintf(stdout_real, "error initializing thread");
-    //     return 1;
-    // }
     if (thread_create(receive_stack, sizeof(receive_stack), THREAD_PRIORITY_MAIN - 1,
                       THREAD_CREATE_STACKTEST, _telnet_recv_thread,
                       &port, "telnet server rx") <= KERNEL_PID_UNDEF) {
         fprintf(stdout_real, "error initializing thread");
         return 1;
     }
-    // if (thread_create(netreg_stack, sizeof(netreg_stack), THREAD_PRIORITY_MAIN - 1,
-    //                   THREAD_CREATE_STACKTEST, _netreg_thread,
-    //                   &port, "telnet server") <= KERNEL_PID_UNDEF) {
-    //     fprintf(stdout_real, "error initializing thread");
-    //     return 1;
-    // }
-
-
 
     /* start shell */
     thread_create(shell_thread_stack, sizeof(shell_thread_stack), 13,

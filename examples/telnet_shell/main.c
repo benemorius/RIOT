@@ -20,14 +20,15 @@
 
 #include <stdio.h>
 #include <fcntl.h>
-#include <sys/types.h>
+#include <stdlib.h>
 #include <string.h>
+#include <sys/types.h>
 
-#include "shell.h"
 #include "msg.h"
-#include "xtimer.h"
 #include "vfs.h"
 #include "log.h"
+#include "shell.h"
+#include "xtimer.h"
 #include "stdio_base.h"
 
 #define ENABLE_DEBUG (1)
@@ -36,7 +37,7 @@
 #define MAIN_QUEUE_SIZE     (8)
 static msg_t _main_msg_queue[MAIN_QUEUE_SIZE];
 
-static char shell_thread_stack [THREAD_STACKSIZE_DEFAULT];
+static char shell_thread_stack [THREAD_STACKSIZE_LARGE];
 static void *shell_thread(void *arg);
 
 static char term_thread_stack [THREAD_STACKSIZE_LARGE];
@@ -62,6 +63,27 @@ static vfs_file_ops_t _uart_pipe_ops = {
     .write = _uart_write,
     .read = _uart_read,
 };
+
+int date(int argc, char **argv)
+{
+    argc = argc;
+    argv = argv;
+    return 0;
+}
+
+int kill(int argc, char **argv)
+{
+    argc = argc;
+    if (!argv[1]){
+        printf("usage: %s <pid>", argv[0]);
+        return 1;
+    }
+    kernel_pid_t pid = atoi(argv[1]);
+
+    /* oh nevermind there's no thread_kill() */
+    pid = pid;
+    return 1;
+}
 
 int dmesg_print(int argc, char **argv)
 {
@@ -221,19 +243,25 @@ int term(int argc, char **argv)
 }
 
 const shell_command_t shell_commands_main[] = {
-    { "dmesg", "print kernel messages to console", dmesg_print },
-    { "uptime", "print system uptime in seconds", uptime },
-    { "term", "like picocom for stdio_uart", term },
+    { "dmesg",  "print kernel messages", dmesg_print },
+    { "uptime", "print system uptime in seconds",   uptime },
+    { "term",   "like picocom for stdio_uart",      term },
+    { "kill",   "oops not implemented",             kill },
+    { "date",   "print system date",                date },
     { NULL, NULL, NULL }
 };
 
 int main(void)
 {
+    /* kw41z sometimes crashes and resets a few times on reset
+       so sleep for a bit and if we're still here after the
+       sleep then we're probably done crashing
+    */
     xtimer_usleep(1000*100);
 
-    /* hack to populate stdin and stdio
-       otherwise they are null until the first printf and
-       we need them sooner
+    /* Hack to populate stdin and stdio - otherwise they are null until
+       the first printf and we need them sooner.
+       This causes stdin, stdout, stderr to all become properly initialized.
     */
     stdin = (FILE *)fdopen(0, "r");
 
@@ -253,7 +281,6 @@ int main(void)
     thread_create(shell_thread_stack, sizeof(shell_thread_stack), 13,
                   THREAD_CREATE_STACKTEST | THREAD_CREATE_WOUT_YIELD, shell_thread,
                   NULL, "shell");
-
 
     telnet_start_server(23);
 
@@ -275,6 +302,6 @@ void *shell_thread(void *arg)
     msg_init_queue(_main_msg_queue, MAIN_QUEUE_SIZE);
 
     char line_buf[SHELL_DEFAULT_BUFSIZE];
-    shell_run(shell_commands_main, line_buf, SHELL_DEFAULT_BUFSIZE);
+    shell_run(shell_commands_main, line_buf, sizeof(line_buf));
     return NULL;
 }
