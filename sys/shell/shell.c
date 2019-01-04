@@ -353,8 +353,7 @@ __attribute__((weak)) void shell_post_command_hook(int ret, int argc,
 static inline void print_prompt(void)
 {
     if (PROMPT_ON) {
-        putchar('>');
-        putchar(' ');
+        fputs("\033[91m>\033[0m ", stdout);
     }
 
     flush_if_needed();
