@@ -468,41 +468,23 @@ static void push_line_history(char *line_history_buf, int size)
         return;
     }
 
-    /* line_history_buf currently looks like "echo 2\0\0...\0echo 1\0"
-     * after this function it will look like "\0...\0echo 1\0echo 2\0"
-     *             for instance perhaps it's "echo 2\0\0oute help\0echo 1\0"
-     * (history is pushed in the back; the current line_buf is at the front)
+    /* shift bytes out the front and into the back of line_history_buf
+     * until the front character is \0
      */
-
-    char *history_end = line_history_buf + size - 1;
-    char *history_ptr = _find_history_front(line_history_buf);
-
-     /* shift bytes out the front and into the back of line_history_buf */
+    char *buf_ptr;
     do {
-        /* take the first character in the current line_buf */
-        char *buf_ptr = line_history_buf;
+        buf_ptr = line_history_buf;
+        /* take the first character to place it at the rear */
         char front_c = *buf_ptr;
 
-        /* shift the rest of line_buf left one position */
-        while (*buf_ptr != '\0') {
+        /* shift the rest of line_history_buf left one position */
+        while (buf_ptr < line_history_buf + size - 1) {
             *buf_ptr = buf_ptr[1];
             ++buf_ptr;
         }
-        /* line_history_buf currently looks like "cho 2\0\0....\0echo 1\0" */
-        /* buf_ptr is now the character after line_buf's \0 */
-
-        /* shift history left one */
-        buf_ptr = --history_ptr;
-        while (buf_ptr < history_end) {
-            *buf_ptr = buf_ptr[1];
-            ++buf_ptr;
-        }
-        /* line_history_buf currently looks like "cho 2\0\0...\0echo 1\0\0" */
         *buf_ptr = front_c;
-        /* line_history_buf currently looks like "cho 2\0\0...\0echo 1\0e" */
-    } while (*history_end != '\0');
 
-    /* line_history_buf finally looks like "\0..\0echo 1\0echo 2\0" */
+    } while (*buf_ptr != '\0');
 }
 
 static char *find_line_history(char *line_history_buf, int size, int *index)
