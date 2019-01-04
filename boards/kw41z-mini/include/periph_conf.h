@@ -74,6 +74,7 @@ static const clock_config_t clock_config = {
     .clkdiv1            = SIM_CLKDIV1_OUTDIV1(0) | SIM_CLKDIV1_OUTDIV4(1),
     /* unsure if this RTC load cap configuration (0) is correct, but it matches the
      * settings used by the example code in the NXP provided SDK */
+    // .rtc_clc            = 0,
     .rtc_clc            = RTC_CR_SC16P_MASK | RTC_CR_SC8P_MASK | RTC_CR_SC4P_MASK | RTC_CR_SC2P_MASK,
     /* Use the 32 kHz oscillator as ERCLK32K. Note that the values here have a
      * different mapping for the KW41Z than the values used in the Kinetis K series */
@@ -92,7 +93,8 @@ static const clock_config_t clock_config = {
     .default_mode       = KINETIS_MCG_MODE_FEI,
     /* The crystal connected to RSIM OSC is 32 MHz */
     .erc_range          = KINETIS_MCG_ERC_RANGE_VERY_HIGH,
-    .osc_clc            = OSC_CR_SC16P_MASK | OSC_CR_SC8P_MASK | OSC_CR_SC4P_MASK | OSC_CR_SC2P_MASK, /* no load cap configuration */
+    // .osc_clc            = 0,
+    .osc_clc            = OSC_CR_SC16P_MASK | OSC_CR_SC8P_MASK | OSC_CR_SC4P_MASK | OSC_CR_SC2P_MASK,
     .oscsel             = MCG_C7_OSCSEL(0), /* Use RSIM for external clock */
     .fcrdiv             = MCG_SC_FCRDIV(0), /* Fast IRC divide by 1 => 4 MHz */
     .fll_frdiv          = MCG_C1_FRDIV(0b101), /* Divide by 1024 */
@@ -125,7 +127,6 @@ static const clock_config_t clock_config = {
             .irqn = LPTMR0_IRQn, \
             .src = 2, \
             .base_freq = 32768u, \
-            .llwu = LLWU_WAKEUP_MODULE_LPTMR0, \
         } \
     }
 #define TIMER_NUMOF             ((PIT_NUMOF) + (LPTMR_NUMOF))
@@ -150,13 +151,6 @@ static const uart_conf_t uart_config[] = {
         .scgc_bit = SIM_SCGC5_LPUART0_SHIFT,
         .mode   = UART_MODE_8N1,
         .type   = KINETIS_LPUART,
-        /* Undocumented behavior: LPUART fails to detect the START bit at wake up
-         * with LLWU sometimes. This seem to be related to using the builtin
-         * DCDC for powering the MCU. */
-        /* LLWU_WAKEUP_PIN_PTC6 is the correct setting on this dev board if you
-         * want to try using LLS mode, or if it does not matter that the UART RX
-         * byte is sometimes is corrupt */
-        .llwu_rx = LLWU_WAKEUP_PIN_UNDEF,
     },
 };
 #define UART_NUMOF          (sizeof(uart_config) / sizeof(uart_config[0]))
