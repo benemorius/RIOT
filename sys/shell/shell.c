@@ -535,8 +535,7 @@ static void load_line_history(char *line_history_buf, int size, int *index)
 static inline void print_prompt(void)
 {
 #ifndef SHELL_NO_PROMPT
-    _putchar('>');
-    _putchar(' ');
+    fputs("\033[91m>\033[0m ", stdout);
 #endif
 
     flush_if_needed();
