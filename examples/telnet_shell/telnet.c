@@ -234,7 +234,6 @@ static void *_sending_thread(void *args)
 static void *shell_thread(void *arg)
 {
     arg = arg;
-    telnet_shell_pid = thread_getpid();
     /* we need a message queue for the thread running the shell in order to
      * receive potentially fast incoming networking packets */
     msg_init_queue(_shell_msg_queue, SERVER_MSG_QUEUE_SIZE);
@@ -425,8 +424,11 @@ int telnet_start_server(int port)
         return 1;
     }
 
-    /* start shell */
-    thread_create(shell_thread_stack, sizeof(shell_thread_stack), 13,
+    /* Create thread without yield so that telnet_shell_pid is populated before
+     * the first time the thread runs or else it will block on the wrong stdin
+     * and not switch to the right stdin until after a character is received.
+     */
+    telnet_shell_pid = thread_create(shell_thread_stack, sizeof(shell_thread_stack), 13,
                   THREAD_CREATE_STACKTEST | THREAD_CREATE_WOUT_YIELD, shell_thread,
                   NULL, "telnet shell");
 

@@ -148,8 +148,6 @@ kernel_pid_t term_pid = 0xffff;
 void *term_thread(void *arg)
 {
     arg = arg;
-    term_pid = thread_getpid();
-    xtimer_usleep(1000*10); // hack to allow scheduler to change our stdin/stdout after setting pid
     while(1) {
         int c_to_uart = getc(stdin);
         // printf("%c", c_to_uart);
@@ -174,10 +172,13 @@ int term(int argc, char **argv)
     printf("uart_in fd: %i\n", uart_in_fd);
     fflush(stdout);
 
-    thread_create(term_thread_stack, sizeof(term_thread_stack), 13,
-                  THREAD_CREATE_STACKTEST,
+    /* Create thread without yield so that term_pid is populated before the
+     * first time the thread runs or else it will block on the wrong stdin
+     * and not switch to the right stdin until after a character is received.
+     */
+    term_pid = thread_create(term_thread_stack, sizeof(term_thread_stack), 13,
+                  THREAD_CREATE_STACKTEST | THREAD_CREATE_WOUT_YIELD,
                   term_thread, NULL, "term");
-
 
     while(1) {
         int c_from_uart = getc(uart_in);
