@@ -382,6 +382,11 @@ static int readline(char *buf, size_t size)
                 LOG_INFO("%s ^[[<0x%02x> (\\033[\\0%o)\n", msg, c, c);
             }
         }
+        /* unhandled control character */
+        else if (c < 0x20) {
+            const char msg[] = "[shell] unhandled control character";
+            LOG_DEBUG("%s ^%c (0x%02x)\n", msg, c + '@', c);
+        }
         /* received new character to add to line buffer */
         else {
             /* can't add another character if line buffer is full */
