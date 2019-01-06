@@ -548,9 +548,15 @@ static int readline(char *buf, size_t size)
                 }
                 break;
             }
-
             /* received new character to add to line buffer */
             default:
+                /* unhandled control character */
+                if (c < 0x20) {
+                    const char msg[] = "[shell] unhandled control character";
+                    LOG_DEBUG("%s ^%c (0x%02x)\n", msg, c + '@', c);
+                    continue;
+                }
+
                 /* can't add another character if line buffer is full */
                 if ((line_buf_ptr - buf) >= ((int) size) - 1) {
                     continue;
