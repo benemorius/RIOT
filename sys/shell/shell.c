@@ -46,6 +46,9 @@ static void _putchar(int c) {
 #endif
 #endif
 
+static inline void print_prompt(void);
+static void refresh_line(const char *line_buf);
+
 static shell_command_handler_t find_handler(const shell_command_t *command_list, char *command)
 {
     const shell_command_t *command_lists[] = {
@@ -222,6 +225,7 @@ static void handle_input_line(const shell_command_t *command_list, char *line)
 static int readline(char *buf, size_t size)
 {
     char *line_buf_ptr = buf;
+    *line_buf_ptr = '\0';
 
     while (1) {
         int c = getchar();
@@ -233,7 +237,6 @@ static int readline(char *buf, size_t size)
         /* QEMU transmits only a single '\r' == 13 on hitting enter ("-serial stdio"). */
         /* DOS newlines are handled like hitting enter twice, but empty lines are ignored. */
         if (c == '\r' || c == '\n') {
-            *line_buf_ptr = '\0';
 #ifndef SHELL_NO_ECHO
             _putchar('\r');
             _putchar('\n');
@@ -251,18 +254,43 @@ static int readline(char *buf, size_t size)
         }
         /* QEMU uses 0x7f (DEL) as backspace, while 0x08 (BS) is for most terminals */
         else if (c == 0x08 || c == 0x7f) {
+            /* perform an insertion-style delete */
+
             if (line_buf_ptr == buf) {
                 /* The line is empty. */
                 continue;
             }
 
-            *--line_buf_ptr = '\0';
-            /* white-tape the character */
+            /* go back to the character to be deleted */
+            --line_buf_ptr;
+            /* this is where we'll leave the cursor when we're done */
+            char *line_buf_ptr_restore = line_buf_ptr;
+
+            /* overwrite the current character with the one following it
+             * and continue doing that for each character until the string ends
+             */
+            while (line_buf_ptr[1] != '\0') {
+                *line_buf_ptr = line_buf_ptr[1];
+                ++line_buf_ptr;
+            }
+            *line_buf_ptr = '\0';
+
+            /* if we deleted a character somewhere other than the end of
+             * the line then we need to refresh the line in the terminal
+             */
+            if (line_buf_ptr != line_buf_ptr_restore) {
+                refresh_line(buf);
+                fputs("\033[D", stdout); /* move cursor left one */
+                line_buf_ptr = line_buf_ptr_restore;
+            }
+            else {
+                /* white-tape the character */
 #ifndef SHELL_NO_ECHO
-            _putchar('\b');
-            _putchar(' ');
-            _putchar('\b');
+                _putchar('\b');
+                _putchar(' ');
+                _putchar('\b');
 #endif
+            }
         }
         /* escape sequence (3 characters - for example ^[[A is up arrow) */
         else if (c == '[' - '@') { /* first character is ^[ */
@@ -270,9 +298,29 @@ static int readline(char *buf, size_t size)
                 continue;
             }
             c = getchar(); /* third/last character is of interest */
-            /* up down right left */
-            if (c == 'A' || c == 'B' || c == 'C' || c == 'D') {
-                /* do nothing; mostly just don't echo */
+            /* up or down */
+            if (c == 'A' || c == 'B') {
+                /* do nothing */
+            }
+            /* left or right */
+            else if (c == 'D' || c == 'C') {
+                /* check that it's ok to move the cursor in that direction */
+                int delta = c == 'D' ? -1 : 1;
+                if (delta > 0 && *line_buf_ptr == '\0') {
+                    continue;
+                }
+                if (delta < 0 && line_buf_ptr == buf) {
+                    continue;
+                }
+
+                /* now move the cursor */
+                line_buf_ptr += delta;
+                if (delta > 0) {
+                    fputs("\033[C", stdout); /* right */
+                }
+                else {
+                    fputs("\033[D", stdout); /* left */
+                }
             }
             else {
                 const char msg[] = "[shell] unhandled escape sequence";
@@ -293,7 +341,31 @@ static int readline(char *buf, size_t size)
                 continue;
             }
 
-            *line_buf_ptr++ = c;
+            /* check if we're inserting somewhere before the end of the string,
+             * and make room for the inserted character if so
+             */
+            if (*line_buf_ptr != '\0') {
+                /* shift right one by one until string ends, inserting
+                 * the new character in the first opening
+                 */
+                char *line_buf_ptr_restore = line_buf_ptr;
+                char tmp_c;
+                while (*line_buf_ptr != '\0') {
+                    tmp_c = c;
+                    c = *line_buf_ptr;
+                    *line_buf_ptr++ = tmp_c;
+                }
+                *line_buf_ptr++ = c; /* while loop misses the last one */
+                *line_buf_ptr = '\0';
+                line_buf_ptr = line_buf_ptr_restore + 1;
+                fputs("\033[C", stdout); /* move cursor right one */
+                refresh_line(buf);
+                continue;
+            }
+            else {
+                *line_buf_ptr++ = c;
+                *line_buf_ptr = '\0';
+            }
 #ifndef SHELL_NO_ECHO
             _putchar(c);
 #endif
@@ -302,6 +374,17 @@ static int readline(char *buf, size_t size)
         fflush(stdout);
 #endif
     }
+}
+
+static void refresh_line(const char *line_buf)
+{
+    fputs("\033[s\033[2K\r", stdout); /* store cursor location and delete line */
+    print_prompt();
+    fputs(line_buf, stdout);
+    fputs("\033[u", stdout); /* restore cursor location */
+#ifdef MODULE_NEWLIB
+    fflush(stdout);
+#endif
 }
 
 static inline void print_prompt(void)
