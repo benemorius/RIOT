@@ -224,10 +224,6 @@ static int readline(char *buf, size_t size)
     char *line_buf_ptr = buf;
 
     while (1) {
-        if ((line_buf_ptr - buf) >= ((int) size) - 1) {
-            return -1;
-        }
-
         int c = getchar();
         if (c < 0) {
             return EOF;
@@ -290,6 +286,13 @@ static int readline(char *buf, size_t size)
         }
         /* otherwise, this is a new character to add to the line buffer */
         else {
+            /* can't add another character if the line buffer is full,
+             * but the user could still backspace so just drop the character
+             */
+            if ((line_buf_ptr - buf) >= ((int) size) - 1) {
+                continue;
+            }
+
             *line_buf_ptr++ = c;
 #ifndef SHELL_NO_ECHO
             _putchar(c);
