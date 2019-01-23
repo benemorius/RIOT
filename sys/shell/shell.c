@@ -55,6 +55,8 @@ static void flush_if_needed(void)
 #endif
 }
 
+static int _last_exit_status;
+
 static inline void print_prompt(void);
 static void replace_line(const char *line_buf);
 static void refresh_line(const char *line_buf);
@@ -225,14 +227,16 @@ static void handle_input_line(const shell_command_t *command_list, char *line)
     /* then we call the appropriate handler */
     shell_command_handler_t handler = find_handler(command_list, argv[0]);
     if (handler != NULL) {
-        handler(argc, argv);
+        _last_exit_status = handler(argc, argv);
     }
     else {
         if (strcmp("help", argv[0]) == 0) {
             print_help(command_list);
+            _last_exit_status = 0;
         }
         else {
             printf("shell: command not found: %s\n", argv[0]);
+            _last_exit_status = 1;
         }
     }
 }
@@ -540,7 +544,12 @@ static void load_line_history(char *line_history_buf, int size, int *index)
 static inline void print_prompt(void)
 {
 #ifndef SHELL_NO_PROMPT
-    fputs("\033[91m>\033[0m ", stdout);
+    if (_last_exit_status) {
+        printf("%i \033[93m>\033[0m ", _last_exit_status); /* error prompt */
+    }
+    else {
+        fputs("\033[91m>\033[0m ", stdout); /* normal prompt */
+    }
 #endif
 
     flush_if_needed();
