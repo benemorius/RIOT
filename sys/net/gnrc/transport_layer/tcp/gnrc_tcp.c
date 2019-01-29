@@ -480,6 +480,13 @@ ssize_t gnrc_tcp_recv(gnrc_tcp_tcb_t *tcb, void *data, const size_t max_len,
         mutex_unlock(&(tcb->function_lock));
         return -ENOTCONN;
     }
+    /* Check if the remote host closed the connection */
+    if (tcb->state == FSM_STATE_CLOSE_WAIT) {
+        /* Collect any remaining data, but don't block waiting for more */
+        ret = _fsm(tcb, FSM_EVENT_CALL_RECV, NULL, data, max_len);
+        mutex_unlock(&(tcb->function_lock));
+        return ret;
+    }
 
     /* If FIN was received (CLOSE_WAIT), no further data can be received. */
     /* Copy received data into given buffer and return number of bytes. Can be zero. */
@@ -530,7 +537,7 @@ ssize_t gnrc_tcp_recv(gnrc_tcp_tcb_t *tcb, void *data, const size_t max_len,
         }
 
         /* If there was no data: Wait for next packet or until the timeout fires */
-        if (ret <= 0) {
+        if (ret <= 0 && tcb->state != FSM_STATE_CLOSE_WAIT) {
             mbox_get(&(tcb->mbox), &msg);
             switch (msg.type) {
                 case MSG_TYPE_CONNECTION_TIMEOUT:
@@ -552,6 +559,11 @@ ssize_t gnrc_tcp_recv(gnrc_tcp_tcb_t *tcb, void *data, const size_t max_len,
                 default:
                     DEBUG("gnrc_tcp.c : gnrc_tcp_recv() : other message type\n");
             }
+        }
+        /* Don't wait for more data if the remote end has closed */
+        else if (ret <= 0) {
+            ret = 0;
+            break;
         }
     }
 
