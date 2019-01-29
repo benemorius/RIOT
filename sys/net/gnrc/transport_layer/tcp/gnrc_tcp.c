@@ -359,7 +359,7 @@ ssize_t gnrc_tcp_send(gnrc_tcp_tcb_t *tcb, const void *data, const size_t len,
     /* Loop until something was sent and acked */
     while (ret == 0 || tcb->pkt_retransmit != NULL) {
         /* Check if the connections state is closed. If so, a reset was received */
-        if (tcb->state == FSM_STATE_CLOSED) {
+        if (tcb->state == FSM_STATE_CLOSED || tcb->state == FSM_STATE_CLOSE_WAIT) {
             ret = -ECONNRESET;
             break;
         }
@@ -489,7 +489,7 @@ ssize_t gnrc_tcp_recv(gnrc_tcp_tcb_t *tcb, void *data, const size_t max_len,
     /* Processing loop */
     while (ret == 0) {
         /* Check if the connections state is closed. If so, a reset was received */
-        if (tcb->state == FSM_STATE_CLOSED) {
+        if (tcb->state == FSM_STATE_CLOSED || tcb->state == FSM_STATE_CLOSE_WAIT) {
             ret = -ECONNRESET;
             break;
         }
