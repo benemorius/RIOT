@@ -40,6 +40,7 @@
 #include <stdbool.h>
 #include <stdint.h>
 #include <time.h>
+#include <stdint.h>
 #include "periph_conf.h"
 
 #ifdef __cplusplus
@@ -107,6 +108,11 @@ int rtc_get_alarm(struct tm *time);
  * @brief Clear any set alarm, do nothing if nothing set
  */
 void rtc_clear_alarm(void);
+
+/**
+ * @brief Set RTC fine tuning
+ */
+void rtc_set_compensation(int8_t adjust, uint8_t interval);
 
 /**
  * @brief Turns the RTC hardware module on
