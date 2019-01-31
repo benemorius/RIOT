@@ -71,7 +71,9 @@ void rtt_init(void)
     }
 
     /* Clear the alarm flag TAF by writing a new alarm target to TAR */
+    uint32_t tar = RTC->TAR;
     RTC->TAR = 0xffffffff;
+    RTC->TAR = tar;
 
     /* Enable RTC interrupts */
     NVIC_EnableIRQ(RTC_IRQn);
