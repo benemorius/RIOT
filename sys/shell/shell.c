@@ -314,7 +314,8 @@ static int readline(char *buf, size_t size)
         }
         /* escape sequence */
         else if (c == '[' - '@') { /* first character is ^[ */
-            if (getchar() != '[') { /* second character is [ */
+            c = getchar();
+            if (c != '[' && c != 'O') { /* second character is [ or O */
                 continue;
             }
             c = getchar(); /* third/last character is of interest */
