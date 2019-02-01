@@ -24,7 +24,7 @@
 #include <unistd.h>
 #include <string.h>
 
-#if defined(__WITH_AVRLIBC__) || defined(__mips__)
+#if defined(__WITH_AVRLIBC__) || defined(__mips__) || defined(MODULE_NEWLIB)
 #include <stdio.h>  /* for fwrite() */
 #else
 /* work around broken sys/posix/unistd.h */
@@ -503,7 +503,11 @@ void print(const char *s, size_t n)
     fwrite(s, n, 1, stdout);
 #else
     while (n > 0) {
+#ifdef MODULE_NEWLIB
+        ssize_t written = fwrite(s, 1, n, stdout);
+#else
         ssize_t written = write(STDOUT_FILENO, s, n);
+#endif
         if (written < 0) {
             break;
         }
