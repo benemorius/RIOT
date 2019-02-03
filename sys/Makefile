@@ -121,6 +121,9 @@ endif
 ifneq (,$(filter sock_dns,$(USEMODULE)))
   DIRS += net/application_layer/dns
 endif
+ifneq (,$(filter telnet_server,$(USEMODULE)))
+  DIRS += net/application_layer/telnet_server
+endif
 ifneq (,$(filter constfs,$(USEMODULE)))
   DIRS += fs/constfs
 endif
