@@ -18,7 +18,12 @@
  * @}
  */
 
+#include <inttypes.h>
 #include "periph/pm.h"
+
+#ifdef MODULE_XTIMER
+#include "xtimer.h"
+#endif
 
 int _reboot_handler(int argc, char **argv)
 {
@@ -29,3 +34,17 @@ int _reboot_handler(int argc, char **argv)
 
     return 0;
 }
+
+#ifdef MODULE_XTIMER
+int _uptime(int argc, char **argv)
+{
+    (void) argc;
+    (void) argv;
+
+    timex_t now;
+    xtimer_now_timex(&now);
+    printf("%" PRIu32 ".%06" PRIu32 "\n", now.seconds, now.microseconds);
+
+    return 0;
+}
+#endif

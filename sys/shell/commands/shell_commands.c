@@ -37,6 +37,10 @@ extern int _heap_handler(int argc, char **argv);
 extern int _ps_handler(int argc, char **argv);
 #endif
 
+#ifdef MODULE_XTIMER
+extern int _uptime(int argc, char **argv);
+#endif
+
 #ifdef MODULE_SHT1X
 extern int _get_temperature_handler(int argc, char **argv);
 extern int _get_humidity_handler(int argc, char **argv);
@@ -184,6 +188,9 @@ const shell_command_t _shell_command_list[] = {
 #endif
 #ifdef MODULE_PS
     {"ps", "Prints information about running threads.", _ps_handler},
+#endif
+#ifdef MODULE_XTIMER
+    { "uptime", "print system uptime in seconds", _uptime },
 #endif
 #ifdef MODULE_SHT1X
     {"temp", "Prints measured temperature.", _get_temperature_handler},
