@@ -83,6 +83,10 @@ extern int _random_init(int argc, char **argv);
 extern int _random_get(int argc, char **argv);
 #endif
 
+#ifdef MODULE_LOG_DMESG
+extern int _dmesg(int argc, char **argv);
+#endif
+
 #ifdef MODULE_GNRC_IPV6_NIB
 extern int _gnrc_ipv6_nib(int argc, char **argv);
 #endif
@@ -220,6 +224,9 @@ const shell_command_t _shell_command_list[] = {
 #ifdef MODULE_RANDOM
     { "random_init", "initializes the PRNG", _random_init },
     { "random_get", "returns 32 bit of pseudo randomness", _random_get },
+#endif
+#ifdef MODULE_LOG_DMESG
+    { "dmesg", "print kernel messages from buffer", _dmesg },
 #endif
 #ifdef MODULE_PERIPH_RTC
     {"rtc", "control RTC peripheral interface",  _rtc_handler},

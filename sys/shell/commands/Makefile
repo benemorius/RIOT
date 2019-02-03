@@ -23,6 +23,9 @@ endif
 ifneq (,$(filter random,$(USEMODULE)))
   SRC += sc_random.c
 endif
+ifneq (,$(filter log_dmesg,$(USEMODULE)))
+  SRC += sc_dmesg.c
+endif
 ifneq (,$(filter at30tse75x,$(USEMODULE)))
     SRC += sc_at30tse75x.c
 endif
