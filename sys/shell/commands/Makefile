@@ -80,6 +80,9 @@ endif
 ifneq (,$(filter periph_rtc,$(USEMODULE)))
   SRC += sc_rtc.c
 endif
+ifneq (,$(filter newlib,$(USEMODULE)))
+  SRC += sc_date.c
+endif
 
 ifneq (,$(filter i2c_scan,$(USEMODULE)))
   SRC += sc_i2c_scan.c
