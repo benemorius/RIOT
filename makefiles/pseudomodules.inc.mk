@@ -64,6 +64,7 @@ PSEUDOMODULES += newlib
 PSEUDOMODULES += newlib_gnu_source
 PSEUDOMODULES += newlib_nano
 PSEUDOMODULES += openthread
+PSEUDOMODULES += pcom
 PSEUDOMODULES += pktqueue
 PSEUDOMODULES += posix_headers
 PSEUDOMODULES += printf_float

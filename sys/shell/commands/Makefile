@@ -76,12 +76,14 @@ endif
 ifneq (,$(filter cord_ep,$(USEMODULE)))
   SRC += sc_cord_ep.c
 endif
-
 ifneq (,$(filter periph_rtc,$(USEMODULE)))
   SRC += sc_rtc.c
 endif
 ifneq (,$(filter newlib,$(USEMODULE)))
   SRC += sc_date.c
+endif
+ifneq (,$(filter pcom,$(USEMODULE)))
+  SRC += sc_pcom.c
 endif
 
 ifneq (,$(filter i2c_scan,$(USEMODULE)))
