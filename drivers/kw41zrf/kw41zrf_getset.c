@@ -193,6 +193,7 @@ void kw41zrf_set_option(kw41zrf_t *dev, uint8_t option, uint8_t state)
             case KW41ZRF_OPT_CSMA:
             case KW41ZRF_OPT_PROMISCUOUS:
             case KW41ZRF_OPT_AUTOACK:
+            case KW41ZRF_OPT_ACK_PENDING:
             case KW41ZRF_OPT_TELL_RX_START:
                 LOG_ERROR("[kw41zrf] Attempt to modify option %04x while radio is sleeping\n", (unsigned) option);
                 return;
@@ -223,6 +224,11 @@ void kw41zrf_set_option(kw41zrf_t *dev, uint8_t option, uint8_t state)
             case KW41ZRF_OPT_AUTOACK:
                 LOG_DEBUG("[kw41zrf] enable: AUTOACK\n");
                 bit_set32(&ZLL->PHY_CTRL, ZLL_PHY_CTRL_AUTOACK_SHIFT);
+                break;
+
+            case KW41ZRF_OPT_ACK_PENDING:
+                LOG_DEBUG("[kw41zrf] enable: PENDING_BIT\n");
+                bit_set32(&ZLL->SAM_TABLE, ZLL_SAM_TABLE_ACK_FRM_PND_SHIFT);
                 break;
 
             case KW41ZRF_OPT_TELL_RX_START:
@@ -264,6 +270,11 @@ void kw41zrf_set_option(kw41zrf_t *dev, uint8_t option, uint8_t state)
             case KW41ZRF_OPT_AUTOACK:
                 LOG_DEBUG("[kw41zrf] disable: AUTOACK\n");
                 bit_clear32(&ZLL->PHY_CTRL, ZLL_PHY_CTRL_AUTOACK_SHIFT);
+                break;
+
+            case KW41ZRF_OPT_ACK_PENDING:
+                LOG_DEBUG("[kw41zrf] disable: PENDING_BIT\n");
+                bit_clear32(&ZLL->SAM_TABLE, ZLL_SAM_TABLE_ACK_FRM_PND_SHIFT);
                 break;
 
             case KW41ZRF_OPT_TELL_RX_START:
