@@ -846,6 +846,17 @@ static int kw41zrf_netdev_set(netdev_t *netdev, netopt_t opt, const void *value,
             res = len;
             break;
 
+        case NETOPT_ACK_PENDING:
+            /* Enable pending bit on automatic hardware ACKs */
+            if (len < sizeof(const netopt_enable_t)) {
+                res = -EOVERFLOW;
+                break;
+            }
+            kw41zrf_set_option(dev, KW41ZRF_OPT_ACK_PENDING,
+                               *((const netopt_enable_t *)value));
+            res = len;
+            break;
+
         case NETOPT_PROMISCUOUSMODE:
             if (len != sizeof(const netopt_enable_t)) {
                 res = -EOVERFLOW;
