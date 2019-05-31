@@ -118,7 +118,7 @@ void kw41zrf_set_addr_short(kw41zrf_t *dev, uint16_t addr)
     addr &= 0x7fff;
 #endif
     ZLL->MACSHORTADDRS0 = (ZLL->MACSHORTADDRS0 & ~ZLL_MACSHORTADDRS0_MACSHORTADDRS0_MASK) |
-        ZLL_MACSHORTADDRS0_MACSHORTADDRS0(addr);
+        ZLL_MACSHORTADDRS0_MACSHORTADDRS0(byteorder_swaps(addr));
 }
 
 void kw41zrf_set_addr_long(kw41zrf_t *dev, uint64_t addr)
@@ -133,8 +133,8 @@ void kw41zrf_set_addr_long(kw41zrf_t *dev, uint64_t addr)
 uint16_t kw41zrf_get_addr_short(kw41zrf_t *dev)
 {
     (void) dev;
-    return (ZLL->MACSHORTADDRS0 & ZLL_MACSHORTADDRS0_MACSHORTADDRS0_MASK) >>
-        ZLL_MACSHORTADDRS0_MACSHORTADDRS0_SHIFT;
+	return byteorder_swaps((ZLL->MACSHORTADDRS0 & ZLL_MACSHORTADDRS0_MACSHORTADDRS0_MASK) >>
+        ZLL_MACSHORTADDRS0_MACSHORTADDRS0_SHIFT);
 }
 
 uint64_t kw41zrf_get_addr_long(kw41zrf_t *dev)
