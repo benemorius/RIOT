@@ -1,0 +1,2 @@
+INCLUDES += -I$(PKGDIRBASE)/zboss/include
+INCLUDES += -I$(PKGDIRBASE)/zboss/osif/include
