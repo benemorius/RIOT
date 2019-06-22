@@ -34,11 +34,14 @@ void kernel_init(void)
         const riotboot_hdr_t *riot_hdr = riotboot_slot_get_hdr(i);
         if (riotboot_slot_validate(i)) {
             /* skip slot if metadata broken */
+            printf("slot %i: metadata broken\n", i);
             continue;
         }
         if (riot_hdr->start_addr != riotboot_slot_get_image_startaddr(i)) {
+            printf("slot %i: start_addr mismatch\n", i);
             continue;
         }
+        printf("slot %i: found valid firmware image with version %lu\n", i, riot_hdr->version);
         if (slot == -1 || riot_hdr->version > version) {
             version = riot_hdr->version;
             slot = i;
@@ -46,10 +49,12 @@ void kernel_init(void)
     }
 
     if (slot != -1) {
+        printf("booting slot %i at 0x%lx\n", slot, riotboot_slot_get_hdr(slot)->start_addr);
         riotboot_slot_jump(slot);
     }
 
     /* serious trouble! nothing to boot */
+    printf("no firmware found in any slot; entering while(1) loop\n");
     while (1) {}
 }
 
