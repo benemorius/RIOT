@@ -253,6 +253,11 @@ static int readline(char *buf, size_t size)
             return EOF;
         }
 
+        /* exit shell on ^D */
+        if (c == ('D' - '@') && line_buf_ptr == buf) {
+            return EOF;
+        }
+
         /* We allow Unix linebreaks (\n), DOS linebreaks (\r\n), and Mac linebreaks (\r). */
         /* QEMU transmits only a single '\r' == 13 on hitting enter ("-serial stdio"). */
         /* DOS newlines are handled like hitting enter twice, but empty lines are ignored. */
