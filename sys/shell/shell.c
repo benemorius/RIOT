@@ -41,6 +41,7 @@
 #include "shell_commands.h"
 
 #define ETX '\x03'  /** ASCII "End-of-Text", or ctrl-C */
+#define EOT '\x04'  /** ASCII "End-of-Transmit" */
 #define BS  '\x08'  /** ASCII "Backspace" */
 #define ESC '\x1b'  /** ASCII "Escape" */
 #define DEL '\x7f'  /** ASCII "Delete" */
@@ -429,6 +430,12 @@ static int readline(char *buf, size_t size)
 
         switch (c) {
 
+            case EOT:
+                /* ignore if line isn't blank */
+                if (line_buf_ptr != buf) {
+                    continue;
+                }
+                /* fall-thru */
             case EOF:
                 return EOF;
 
