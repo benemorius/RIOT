@@ -538,13 +538,29 @@ int _kill(pid_t pid, int sig)
 }
 
 #ifdef MODULE_XTIMER
+struct timeval _unix_time_at_reset;
+
 int _gettimeofday_r(struct _reent *r, struct timeval *restrict tp, void *restrict tzp)
 {
     (void) r;
     (void) tzp;
     uint64_t now = xtimer_now_usec64();
+    now += (uint64_t)_unix_time_at_reset.tv_sec * US_PER_SEC;
+    now += _unix_time_at_reset.tv_usec;
     tp->tv_sec = div_u64_by_1000000(now);
     tp->tv_usec = now - (tp->tv_sec * US_PER_SEC);
+    return 0;
+}
+
+int settimeofday(const struct timeval *restrict tp, const void *restrict tzp)
+{
+    (void) tp;
+    (void) tzp;
+    uint64_t now = xtimer_now_usec64();
+
+    _unix_time_at_reset.tv_sec = tp->tv_sec - div_u64_by_1000000(now);
+    _unix_time_at_reset.tv_usec = tp->tv_usec - (now % US_PER_SEC);
+
     return 0;
 }
 #else
@@ -553,6 +569,12 @@ int _gettimeofday_r(struct _reent *r, struct timeval *restrict tp, void *restric
     (void) tp;
     (void) tzp;
     r->_errno = ENOSYS;
+    return -1;
+}
+int settimeofday(const struct timeval *restrict tp, const void *restrict tzp)
+{
+    (void) tp;
+    (void) tzp;
     return -1;
 }
 #endif
