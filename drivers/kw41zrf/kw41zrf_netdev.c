@@ -614,12 +614,12 @@ int kw41zrf_netdev_get(netdev_t *netdev, netopt_t opt, void *value, size_t len)
             break;
 
         case NETOPT_ADDRESS:
-            if (len != sizeof(uint16_t)) {
+            if (len < sizeof(uint16_t)) {
                 res = -EOVERFLOW;
                 break;
             }
             *((uint16_t *)value) = kw41zrf_get_addr_short(dev);
-            res = len;
+            res = sizeof(uint16_t);
             break;
 
         case NETOPT_ADDRESS_LONG:
