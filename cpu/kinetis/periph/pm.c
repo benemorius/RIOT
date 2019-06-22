@@ -55,6 +55,8 @@ void pm_set(unsigned mode)
 {
     unsigned deep = 1;
     switch (mode) {
+        case PM_NUM_MODES:
+            return;
         case KINETIS_PM_WAIT:
             /* WAIT */
             deep = 0;
