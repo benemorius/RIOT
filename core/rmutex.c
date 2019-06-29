@@ -29,6 +29,7 @@
 #include "assert.h"
 
 #define ENABLE_DEBUG    (0)
+#define DISABLE_DEBUG (1)
 #include "debug.h"
 
 static int _lock(rmutex_t *rmutex, int trylock)
