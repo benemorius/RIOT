@@ -420,6 +420,7 @@ typedef struct {
  * @brief   Number of usable power modes.
  */
 #define PM_NUM_MODES    (2U)
+#define PM_BLOCKER_INITIAL  { .val_u32 = 0 }
 
 #ifdef __cplusplus
 }
