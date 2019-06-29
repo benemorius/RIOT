@@ -1,0 +1,5 @@
+/**
+@defgroup    boards_openlabs-kw41z-slip openlabs.co kw41z-slip radio module
+@ingroup     boards
+@brief       Support for openlabs-kw41z-slip
+ */

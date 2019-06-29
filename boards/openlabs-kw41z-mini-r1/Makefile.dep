@@ -1,0 +1,22 @@
+ifneq (,$(filter saul_default,$(USEMODULE)))
+  USEMODULE += saul_adc
+  USEMODULE += saul_gpio
+endif
+
+ifneq (,$(filter netdev_default gnrc_netdev_default,$(USEMODULE)))
+  USEMODULE += kw41zrf
+endif
+
+# for mini-bmx280 module
+ifneq (,$(filter -DOPENLABS_KW41Z_MINI_BMX280=1,$(CFLAGS)))
+  BMX280DEV ?= bme280
+  USEMODULE += $(BMX280DEV)
+endif
+
+# for mini-eeprom module
+ifneq (,$(filter -DOPENLABS_KW41Z_MINI_EEPROM=1,$(CFLAGS)))
+  AT24CDEV ?= at24c256
+  USEMODULE += $(AT24CDEV)
+endif
+
+include $(RIOTCPU)/kinetis/Makefile.dep

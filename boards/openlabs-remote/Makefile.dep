@@ -1,0 +1,10 @@
+ifneq (,$(filter saul_default,$(USEMODULE)))
+  USEMODULE += saul_gpio
+endif
+
+# openlabs rpi 802.15.4 radio module
+ifneq (,$(filter netdev_default gnrc_netdev_default,$(USEMODULE)))
+  USEMODULE += at86rf233
+endif
+
+include $(RIOTCPU)/efm32/Makefile.dep

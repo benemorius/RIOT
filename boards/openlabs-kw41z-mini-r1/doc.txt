@@ -1,0 +1,5 @@
+/**
+@defgroup    boards_openlabs-kw41z-mini-r1 openlabs.co kw41z-mini board (r1)
+@ingroup     boards
+@brief       Support for openlabs-kw41z-mini-r1
+ */
