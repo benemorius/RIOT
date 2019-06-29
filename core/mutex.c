@@ -31,6 +31,8 @@
 
 #define ENABLE_DEBUG    (0)
 #include "debug.h"
+#undef DEBUG
+#define DEBUG(...)
 
 int _mutex_lock(mutex_t *mutex, int blocking)
 {

@@ -34,6 +34,7 @@
 #include "cib.h"
 
 #define ENABLE_DEBUG    (0)
+#define DISABLE_DEBUG (1)
 #include "debug.h"
 
 static int _msg_receive(msg_t *m, int block);
