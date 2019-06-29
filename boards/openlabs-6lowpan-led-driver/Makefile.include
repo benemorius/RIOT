@@ -1,0 +1,18 @@
+# Configure riotboot bootloader and slot lengths.
+# kw41z has 2 flash banks, and a bank can't be written to while it's being
+# executed from, so the slot boundry needs to be aligned to the bank boundry.
+RIOTBOOT_LEN ?= 0x4000
+NUM_SLOTS ?= 2
+SLOT0_LEN ?= 0x3C000
+SLOT1_LEN ?= $(SLOT0_LEN)
+
+# support SWD and UART via Pi GPIO header
+PORT_LINUX ?= /dev/serial0
+# DEBUG_ADAPTER ?= bcm2835gpio
+DEBUG_ADAPTER ?= sysfs_gpio
+SRST_PIN ?= 2
+SWCLK_PIN ?= 3
+SWDIO_PIN ?= 4
+
+# Include default FRDM board config for openocd configuration
+include $(RIOTBOARD)/common/frdm/Makefile.include

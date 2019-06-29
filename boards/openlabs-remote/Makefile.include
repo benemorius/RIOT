@@ -1,0 +1,9 @@
+FLASHFILE ?= $(ELFFILE)
+
+# support SWD and UART via Pi GPIO header
+PORT_LINUX ?= /dev/serial0
+# DEBUG_ADAPTER ?= bcm2835gpio
+DEBUG_ADAPTER ?= sysfs_gpio
+SRST_PIN ?= 2
+SWCLK_PIN ?= 3
+SWDIO_PIN ?= 4
