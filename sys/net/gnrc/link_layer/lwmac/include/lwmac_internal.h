@@ -23,7 +23,7 @@
 
 #include <stdint.h>
 
-#include "periph/rtt.h"
+#include "xtimer.h"
 #include "net/gnrc/netif.h"
 #include "net/gnrc/mac/types.h"
 #include "net/gnrc/lwmac/types.h"
@@ -95,7 +95,7 @@ typedef struct {
  * When setting an RTT alarm to short in the future it could be possible that
  * the counter already passed the calculated alarm before it could be set.
  */
-#define GNRC_LWMAC_RTT_EVENT_MARGIN_TICKS    (RTT_MS_TO_TICKS(2))
+#define GNRC_LWMAC_RTT_EVENT_MARGIN_US    (US_PER_MS * 2)
 
 /**
  * @brief set the @ref GNRC_LWMAC_TX_CONTINUE flag of the device
@@ -338,11 +338,11 @@ void _gnrc_lwmac_set_netdev_state(gnrc_netif_t *netif, netopt_state_t devstate);
  *
  * @return               device phase
  */
-static inline uint32_t _gnrc_lwmac_ticks_to_phase(uint32_t ticks)
+static inline uint32_t _gnrc_lwmac_ticks_to_phase(uint64_t microseconds)
 {
     assert(CONFIG_GNRC_LWMAC_WAKEUP_INTERVAL_US != 0);
 
-    return (ticks % RTT_US_TO_TICKS(CONFIG_GNRC_LWMAC_WAKEUP_INTERVAL_US));
+    return (microseconds % CONFIG_GNRC_LWMAC_WAKEUP_INTERVAL_US);
 }
 
 /**
@@ -352,7 +352,7 @@ static inline uint32_t _gnrc_lwmac_ticks_to_phase(uint32_t ticks)
  */
 static inline uint32_t _gnrc_lwmac_phase_now(void)
 {
-    return _gnrc_lwmac_ticks_to_phase(rtt_get_counter());
+    return _gnrc_lwmac_ticks_to_phase(xtimer_now_usec64());
 }
 
 /**
@@ -368,7 +368,7 @@ static inline uint32_t _gnrc_lwmac_ticks_until_phase(uint32_t phase)
 
     if (tmp < 0) {
         /* Phase in next interval */
-        tmp += RTT_US_TO_TICKS(CONFIG_GNRC_LWMAC_WAKEUP_INTERVAL_US);
+        tmp += CONFIG_GNRC_LWMAC_WAKEUP_INTERVAL_US;
     }
 
     return (uint32_t)tmp;

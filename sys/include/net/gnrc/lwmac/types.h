@@ -197,17 +197,17 @@ typedef struct {
  */
 typedef struct lwmac {
     gnrc_lwmac_state_t state;                                   /**< Internal state of MAC layer */
-    uint32_t last_wakeup;                                       /**< Used to calculate wakeup times */
+    uint64_t last_wakeup;                                       /**< Last wakeup time in microseconds */
     uint8_t lwmac_info;                                         /**< LWMAC's internal information (flags) */
     gnrc_lwmac_timeout_t timeouts[CONFIG_GNRC_LWMAC_TIMEOUT_COUNT];    /**< Store timeouts used for protocol */
 
 #if (GNRC_MAC_ENABLE_DUTYCYCLE_RECORD == 1)
     /* Parameters for recording duty-cycle */
-    uint32_t last_radio_on_time_ticks;                          /**< The last time in ticks when radio is on */
-    uint32_t radio_off_time_ticks;                              /**< The time in ticks when radio is off */
-    uint32_t system_start_time_ticks;                           /**< The time in ticks when chip is started */
-    uint32_t awake_duration_sum_ticks;                          /**< The sum of time in ticks when radio is on */
-    uint32_t pkt_start_sending_time_ticks;                      /**< The time in ticks when the packet is started
+    uint64_t last_radio_on_time_ticks;                          /**< The last time in ticks when radio is on */
+    uint64_t radio_off_time_ticks;                              /**< The time in ticks when radio is off */
+    uint64_t system_start_time_ticks;                           /**< The time in ticks when chip is started */
+    uint64_t awake_duration_sum_ticks;                          /**< The sum of time in ticks when radio is on */
+    uint64_t pkt_start_sending_time_ticks;                      /**< The time in ticks when the packet is started
                                                                      to be sent */
 #endif
 } gnrc_lwmac_t;

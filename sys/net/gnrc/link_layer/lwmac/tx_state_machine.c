@@ -309,8 +309,7 @@ static uint8_t _packet_process_in_wait_for_wa(gnrc_netif_t *netif)
                                           wa_hdr->current_phase;
             }
             else {
-                netif->mac.tx.timestamp +=
-                    RTT_US_TO_TICKS(CONFIG_GNRC_LWMAC_WAKEUP_INTERVAL_US);
+                netif->mac.tx.timestamp += CONFIG_GNRC_LWMAC_WAKEUP_INTERVAL_US;
                 netif->mac.tx.timestamp -= wa_hdr->current_phase;
             }
 
@@ -324,9 +323,9 @@ static uint8_t _packet_process_in_wait_for_wa(gnrc_netif_t *netif)
                 own_phase = netif->mac.tx.timestamp - own_phase;
             }
 
-            if ((own_phase < RTT_US_TO_TICKS((3 * GNRC_LWMAC_WAKEUP_DURATION_US / 2))) ||
-                (own_phase > RTT_US_TO_TICKS(CONFIG_GNRC_LWMAC_WAKEUP_INTERVAL_US -
-                                             (3 * GNRC_LWMAC_WAKEUP_DURATION_US / 2)))) {
+            if ((own_phase < (3 * GNRC_LWMAC_WAKEUP_DURATION_US / 2)) ||
+                (own_phase > CONFIG_GNRC_LWMAC_WAKEUP_INTERVAL_US -
+                                             (3 * GNRC_LWMAC_WAKEUP_DURATION_US / 2))) {
                 gnrc_lwmac_set_phase_backoff(netif, true);
                 LOG_WARNING("WARNING: [LWMAC-tx] phase close\n");
             }
@@ -465,9 +464,9 @@ static bool _send_data(gnrc_netif_t *netif)
 
 #if (LWMAC_ENABLE_DUTYCYLE_RECORD == 1)
     netif->mac.prot.lwmac.pkt_start_sending_time_ticks =
-        rtt_get_counter() - netif->mac.prot.lwmac.pkt_start_sending_time_ticks;
+        xtimer_now_usec64() - netif->mac.prot.lwmac.pkt_start_sending_time_ticks;
     DEBUG("[LWMAC-tx]: pkt sending delay in TX: %lu us\n",
-          RTT_TICKS_TO_US(netif->mac.prot.lwmac.pkt_start_sending_time_ticks));
+          netif->mac.prot.lwmac.pkt_start_sending_time_ticks);
 #endif
 
     return true;
@@ -492,7 +491,7 @@ void gnrc_lwmac_tx_start(gnrc_netif_t *netif,
     netif->mac.tx.wr_sent = 0;
 
 #if (LWMAC_ENABLE_DUTYCYLE_RECORD == 1)
-    netif->mac.prot.lwmac.pkt_start_sending_time_ticks = rtt_get_counter();
+    netif->mac.prot.lwmac.pkt_start_sending_time_ticks = xtimer_now_usec64();
 #endif
 }
 
