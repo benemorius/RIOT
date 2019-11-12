@@ -27,6 +27,11 @@ cleanup() {
         kill "$(cat ${DHCPD_PIDFILE})"
         rm "${DHCPD_PIDFILE}"
     fi
+
+    # for ^C and arrow keys
+    stty intr \^c
+    stty icanon echo
+
     trap "" INT QUIT TERM EXIT
 }
 
@@ -73,6 +78,9 @@ START_ETHOS=1
 
 trap "cleanup" INT QUIT TERM EXIT
 
+# for ^C and arrow keys
+stty intr \^]
+stty -icanon -echo
 
 create_tap && \
 if [ ${ETHOS_ONLY} -ne 1 ]; then
