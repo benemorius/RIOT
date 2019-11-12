@@ -364,6 +364,13 @@ static int readline(char *buf, size_t size)
 
                 /* load the requested history into the current line_buf */
                 load_line_history(buf, size, &line_history_index);
+
+                /* stop at the oldest history entry */
+                if (strlen(buf) == 0) {
+                    --line_history_index;
+                    load_line_history(buf, size, &line_history_index);
+                }
+
                 replace_line(buf);
                 line_buf_ptr = buf + strlen(buf);
             }
