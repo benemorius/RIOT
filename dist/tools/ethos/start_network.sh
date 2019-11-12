@@ -21,6 +21,8 @@ cleanup() {
     remove_tap
     ip a d fd00:dead:beef::1/128 dev lo
     kill ${UHCPD_PID}
+    stty intr \^c
+    stty icanon echo
     trap "" INT QUIT TERM EXIT
 }
 
@@ -46,5 +48,8 @@ UHCPD="$(readlink -f "${ETHOS_DIR}/../uhcpd/bin")/uhcpd"
 
 trap "cleanup" INT QUIT TERM EXIT
 
+# for ^C and arrow keys
+stty intr \^]
+stty -icanon -echo
 
 create_tap && start_uhcpd && "${ETHOS_DIR}/ethos" ${TAP} ${PORT} ${BAUDRATE}
