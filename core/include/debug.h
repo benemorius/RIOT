@@ -27,6 +27,7 @@
 #include <stdio.h>
 #include "sched.h"
 #include "thread.h"
+#include "log.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -48,19 +49,25 @@ extern "C" {
  * information to stdout after verifying the stack is big enough. If `DEVELHELP`
  * is not set, this check is not performed. (CPU exception may occur)
  */
+#ifdef MODULE_LOG
+#define _DEBUG_PRINT(...) LOG_DEBUG(__VA_ARGS__)
+#else
+#define _DEBUG_PRINT(...) printf(__VA_ARGS__)
+#endif
+
 #ifdef DEVELHELP
 #include "cpu_conf.h"
 #define DEBUG_PRINT(...) \
     do { \
         if ((sched_active_thread == NULL) || (sched_active_thread->stack_size >= THREAD_EXTRA_STACKSIZE_PRINTF)) { \
-            printf(__VA_ARGS__); \
+            _DEBUG_PRINT(__VA_ARGS__); \
         } \
         else { \
             puts("Cannot debug, stack too small. Consider using DEBUG_PUTS()."); \
         } \
     } while (0)
 #else
-#define DEBUG_PRINT(...) printf(__VA_ARGS__)
+#define DEBUG_PRINT(...) _DEBUG_PRINT(__VA_ARGS__)
 #endif
 
 /**

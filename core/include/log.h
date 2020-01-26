@@ -36,6 +36,8 @@
  extern "C" {
 #endif
 
+#include <string.h>
+
 /**
  * @brief defined log levels
  *
@@ -67,6 +69,7 @@ enum {
 /**
  * @brief Default log level define
  */
+// #undef LOG_LEVEL
 #define LOG_LEVEL LOG_INFO
 #endif
 
@@ -74,24 +77,26 @@ enum {
  * @brief Log message if level <= LOG_LEVEL
  */
 #ifdef __clang__    /* following pragmas required for clang 3.8.0 */
-#define LOG(level, ...) do { \
+#define _LOG(level, file, function, line, ...) do { \
     _Pragma("clang diagnostic push") \
     _Pragma("clang diagnostic ignored \"-Wtautological-compare\"") \
-    if ((level) <= LOG_LEVEL) log_write((level), __VA_ARGS__); } while (0U) \
+    if ((level) <= LOG_LEVEL) log_write((level), file, function, line, __VA_ARGS__); } while (0U) \
     _Pragma("clang diagnostic pop")
 #else
-#define LOG(level, ...) do { \
-    if ((level) <= LOG_LEVEL) log_write((level), __VA_ARGS__); } while (0U)
+    #define _LOG(level, file, function, line, ...) do { \
+    if ((level) <= LOG_LEVEL) log_write((level), file, function, line, __VA_ARGS__); } while (0U)
 #endif /* __clang__ */
 
 /**
  * @name Logging convenience defines
  * @{
  */
-#define LOG_ERROR(...) LOG(LOG_ERROR, __VA_ARGS__)
-#define LOG_WARNING(...) LOG(LOG_WARNING, __VA_ARGS__)
-#define LOG_INFO(...) LOG(LOG_INFO, __VA_ARGS__)
-#define LOG_DEBUG(...) LOG(LOG_DEBUG, __VA_ARGS__)
+#define __FILENAME__ (strrchr(__FILE__, '/') ? strrchr(__FILE__, '/') + 1 : __FILE__)
+#define LOG_ERROR(...) _LOG(LOG_ERROR, __FILENAME__, __func__, __LINE__, __VA_ARGS__)
+#define LOG_WARNING(...) _LOG(LOG_WARNING, __FILENAME__, __func__, __LINE__, __VA_ARGS__)
+#define LOG_INFO(...) _LOG(LOG_INFO, __FILENAME__, __func__, __LINE__, __VA_ARGS__)
+#define LOG_DEBUG(...) _LOG(LOG_DEBUG, __FILENAME__, __func__, __LINE__, __VA_ARGS__)
+#define LOG(level, ...) _LOG(level, __FILENAME__, __func__, __LINE__, __VA_ARGS__)
 /** @} */
 
 #ifdef MODULE_LOG
@@ -102,7 +107,7 @@ enum {
 /**
  * @brief Default log_write function, just maps to printf
  */
-#define log_write(level, ...) printf(__VA_ARGS__)
+#define log_write(level, file, function, line, ...) printf(__VA_ARGS__)
 #endif
 
 #ifdef __cplusplus
