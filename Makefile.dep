@@ -650,7 +650,7 @@ endif
 ifneq (,$(filter gnrc_lwmac,$(USEMODULE)))
   USEMODULE += gnrc_netif
   USEMODULE += gnrc_mac
-  FEATURES_REQUIRED += periph_rtt
+#   FEATURES_REQUIRED += periph_rtt
 endif
 
 ifneq (,$(filter pthread,$(USEMODULE)))
@@ -1002,6 +1002,60 @@ endif
 # Enable periph_uart when periph_uart_nonblocking is enabled
 ifneq (,$(filter periph_uart_nonblocking,$(USEMODULE)))
   FEATURES_REQUIRED += periph_uart
+endif
+
+ifneq (,$(filter log_dmesg, $(USEMODULE)))
+  USEMODULE += xtimer
+endif
+
+ifneq (,$(filter util, $(USEMODULE)))
+
+  ifneq (,$(filter shell, $(USEMODULE)))
+    USEMODULE += shell_commands
+    USEMODULE += saul_default
+    USEMODULE += periph_adc
+    USEMODULE += periph_rtc
+    USEMODULE += ps
+  endif
+
+  ifneq (,$(filter gnrc_netdev_default, $(USEMODULE)))
+    USEMODULE += fib
+    USEMODULE += netstats_l2
+    USEMODULE += netstats_ipv6
+    USEMODULE += gnrc_pktbuf_cmd
+  endif
+
+  ifneq (,$(filter gnrc_rpl, $(USEMODULE)))
+    USEMODULE += netstats_rpl
+  endif
+
+  ifneq (,$(filter nanocoap_sock, $(USEMODULE)))
+    USEMODULE += gnrc_sock_udp
+#     USEMODULE += riotboot_flashwrite
+  endif
+
+  ifneq (,$(filter gnrc_sock_udp, $(USEMODULE)))
+#     USEMODULE += posix_sockets
+  endif
+
+  ifneq (,$(filter tinydtls, $(USEPKG)))
+    USEMODULE += nanocoap_sock
+  endif
+
+endif
+
+ifneq (,$(filter pcom, $(USEMODULE)))
+    USEMODULE += vfs
+endif
+
+ifneq (,$(filter telnet_server, $(USEMODULE)))
+    USEMODULE += posix_sockets
+    USEMODULE += posix_inet
+    USEMODULE += gnrc_tcp
+    USEMODULE += shell
+    USEMODULE += pipe
+    # for util_all_shell_commands - undesirable dependency
+    USEMODULE += util
 endif
 
 # Enable periph_gpio when periph_gpio_irq is enabled

@@ -102,6 +102,10 @@
 #endif
 #endif
 
+#ifdef MODULE_UTIL
+#include "util.h"
+#endif
+
 #define ENABLE_DEBUG (0)
 #include "debug.h"
 
@@ -114,6 +118,10 @@ void auto_init(void)
 #ifdef MODULE_XTIMER
     DEBUG("Auto init xtimer module.\n");
     xtimer_init();
+#ifdef MODULE_LOG_DMESG
+    log_dmesg_enable();
+//     dmesg_attach(stdout);
+#endif
 #endif
 #ifdef MODULE_SCHEDSTATISTICS
     init_schedstatistics();
@@ -624,4 +632,12 @@ void auto_init(void)
     test_utils_interactive_sync();
 #endif
 #endif /* MODULE_TEST_UTILS_INTERACTIVE_SYNC */
+
+#ifdef MODULE_UTIL
+    DEBUG("auto_init util\n");
+
+    extern void auto_init_util(void);
+    auto_init_util();
+
+    #endif /* MODULE_UTIL */
 }
