@@ -44,6 +44,15 @@ void auto_init(void)
         extern void xtimer_init(void);
         xtimer_init();
     }
+    if (IS_USED(MODULE_LOG_DMESG)) {
+        LOG_DEBUG("Auto init dmesg.\n");
+        extern void log_dmesg_enable(void);
+        log_dmesg_enable();
+        if (!IS_USED(MODULE_ETHOS)) {
+            extern void dmesg_attach(FILE *file);
+            dmesg_attach(stdout);
+        }
+    }
     if (IS_USED(MODULE_SCHEDSTATISTICS)) {
         LOG_DEBUG("Auto init schedstatistics.\n");
         extern void init_schedstatistics(void);
