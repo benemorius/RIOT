@@ -217,6 +217,11 @@ ssize_t sock_udp_recv_buf(sock_udp_t *sock, void **data, void **buf_ctx,
     if (res < 0) {
         return res;
     }
+
+    gnrc_pktsnip_t *netif = gnrc_pktsnip_search_type(pkt, GNRC_NETTYPE_NETIF);
+    gnrc_netif_hdr_t *netif_hdr = netif->data;
+    sock->rssi = netif_hdr->rssi;
+
     udp = gnrc_pktsnip_search_type(pkt, GNRC_NETTYPE_UDP);
     assert(udp);
     hdr = udp->data;
@@ -234,9 +239,17 @@ ssize_t sock_udp_recv_buf(sock_udp_t *sock, void **data, void **buf_ctx,
          (memcmp(&sock->remote.addr, &tmp.addr, sizeof(ipv6_addr_t)) != 0)))) {
         gnrc_pktbuf_release(pkt);
         return -EPROTO;
+//         printf("gnrc_sock_udp.c -EPROTO\n");
     }
+
+    /* set local address */
+    ipv6_hdr_t *ipv6_hdr = gnrc_ipv6_get_header(pkt);
+    assert(ipv6_hdr != NULL);
+    memcpy(&sock->local.addr, &ipv6_hdr->dst, sizeof(ipv6_addr_t));
+
     *data = pkt->data;
     *buf_ctx = pkt;
+
     res = (int)pkt->size;
     return res;
 }

@@ -100,6 +100,10 @@ ifneq (,$(filter ssp,$(USEMODULE)))
   include $(RIOTBASE)/sys/ssp/Makefile.include
 endif
 
+ifneq (,$(filter util,$(USEMODULE)))
+  include $(RIOTBASE)/sys/util/Makefile.include
+endif
+
 ifneq (native,$(BOARD))
   INCLUDES += -I$(RIOTBASE)/sys/libc/include
 endif

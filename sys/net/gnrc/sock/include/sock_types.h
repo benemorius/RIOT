@@ -134,6 +134,7 @@ struct sock_udp {
     sock_udp_ep_t local;                   /**< local end-point */
     sock_udp_ep_t remote;                  /**< remote end-point */
     uint16_t flags;                        /**< option flags */
+    int8_t rssi;                           /**< RSSI of last received datagram */
 };
 
 #ifdef __cplusplus

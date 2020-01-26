@@ -279,4 +279,10 @@ void auto_init(void)
             auto_init_dfplayer();
         }
     }
+
+    if (IS_USED(MODULE_UTIL)) {
+        LOG_DEBUG("auto_init util\n");
+        extern void auto_init_util(void);
+        auto_init_util();
+    }
 }

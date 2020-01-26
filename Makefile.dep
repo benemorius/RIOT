@@ -665,7 +665,7 @@ ifneq (,$(filter gnrc_lwmac,$(USEMODULE)))
   USEMODULE += gnrc_netif
   USEMODULE += gnrc_nettype_lwmac
   USEMODULE += gnrc_mac
-  FEATURES_REQUIRED += periph_rtt
+#   FEATURES_REQUIRED += periph_rtt
 endif
 
 ifneq (,$(filter pthread,$(USEMODULE)))
@@ -1059,6 +1059,88 @@ ifneq (,$(filter xtimer,$(USEMODULE)))
   else
   # ztimer_xtimer_compat is used, all of *xtimer's API will be mapped on ztimer.*
   endif
+endif
+
+ifneq (,$(filter log_dmesg, $(USEMODULE)))
+  USEMODULE += xtimer
+endif
+
+ifneq (,$(filter util, $(USEMODULE)))
+    USEMODULE += gnrc_sock_udp
+
+  ifneq (,$(filter util_ota_server, $(USEMODULE)))
+    FEATURES_REQUIRED += riotboot
+    USEMODULE += riotboot_slot
+    USEMODULE += riotboot_flashwrite
+    USEMODULE += riotboot_flashwrite_verify_sha256
+    USEMODULE += nanocoap_sock
+  endif
+
+  ifneq (,$(filter util_ntp, $(USEMODULE)))
+    USEMODULE += sntp
+    USEMODULE += gnrc_sock_udp
+  endif
+
+  ifneq (,$(filter util_shell, $(USEMODULE)))
+    USEMODULE += shell
+  endif
+
+  ifneq (,$(filter shell, $(USEMODULE)))
+    USEMODULE += shell_commands
+#     USEMODULE += saul_default
+    USEMODULE += periph_adc
+    USEMODULE += periph_rtc
+    USEMODULE += ps
+  endif
+
+  ifneq (,$(filter gnrc_netdev_default, $(USEMODULE)))
+    USEMODULE += fib
+    USEMODULE += netstats_l2
+    USEMODULE += netstats_ipv6
+#     USEMODULE += gnrc_pktbuf_cmd
+  endif
+
+  ifneq (,$(filter gnrc_rpl, $(USEMODULE)))
+    USEMODULE += netstats_rpl
+  endif
+
+  ifneq (,$(filter tinydtls, $(USEPKG)))
+    USEMODULE += nanocoap_sock
+  endif
+
+  ifneq (,$(filter nanocoap_sock, $(USEMODULE)))
+    USEMODULE += gnrc_sock_udp
+  endif
+
+  ifneq (,$(filter util_tick_monitor, $(USEMODULE)))
+    USEMODULE += xtimer
+    USEMODULE += periph_rtc
+  endif
+
+endif
+
+ifneq (,$(filter pcom, $(USEMODULE)))
+    USEMODULE += vfs
+endif
+
+ifneq (,$(filter telnet_server, $(USEMODULE)))
+    USEMODULE += auto_init_gnrc_netif
+    USEMODULE += gnrc_netdev_default
+    USEMODULE += gnrc_ipv6_default
+    USEMODULE += gnrc_ipv6_nib_6lr
+#     USEMODULE += gnrc_icmpv6_error
+    USEMODULE += gnrc_icmpv6_echo
+    USEMODULE += posix_sockets
+    USEMODULE += posix_inet
+    USEMODULE += gnrc_tcp
+    USEMODULE += shell
+    USEMODULE += pipe
+    # for util_all_shell_commands
+    USEMODULE += util
+endif
+
+ifneq (,$(filter posix_sockets, $(USEMODULE)))
+	USEMODULE += gnrc_sock_udp
 endif
 
 # Enable periph_gpio when periph_gpio_irq is enabled

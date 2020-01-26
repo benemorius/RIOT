@@ -1,0 +1,4 @@
+PSEUDOMODULES += util_ntp
+PSEUDOMODULES += util_ota_server
+PSEUDOMODULES += util_shell
+PSEUDOMODULES += util_tick_monitor
