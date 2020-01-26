@@ -270,7 +270,7 @@ gnrc_pktsnip_t *gnrc_pktbuf_start_write(gnrc_pktsnip_t *pkt)
 #ifdef MODULE_OD
 static inline void _print_chunk(void *chunk, size_t size, int num)
 {
-    printf("=========== chunk %3d (%-10p size: %4u) ===========\n", num, chunk,
+    DEBUG("=========== chunk %3d (%-10p size: %4u) ===========\n", num, chunk,
            (unsigned int)size);
     od_hex_dump(chunk, size, OD_WIDTH_DEFAULT);
 }
@@ -302,9 +302,9 @@ void gnrc_pktbuf_stats(void)
     uint8_t *chunk = &_pktbuf[0];
     int count = 0;
 
-    printf("packet buffer: first byte: %p, last byte: %p (size: %u)\n",
+    DEBUG("packet buffer: first byte: %p, last byte: %p (size: %u)\n",
            (void *)&_pktbuf[0], (void *)&_pktbuf[GNRC_PKTBUF_SIZE], GNRC_PKTBUF_SIZE);
-    printf("  position of last byte used: %" PRIu16 "\n", max_byte_count);
+    DEBUG("  position of last byte used: %" PRIu16 "\n", max_byte_count);
     if (ptr == NULL) {  /* packet buffer is completely full */
         _print_chunk(chunk, GNRC_PKTBUF_SIZE, count++);
     }
