@@ -28,6 +28,11 @@
 #include "log.h"
 
 #include "periph/pm.h"
+#include "periph/rtc.h"
+
+#include <time.h>
+#include <sys/time.h>
+#include "xtimer.h"
 
 #define ENABLE_DEBUG (0)
 #include "debug.h"
@@ -37,12 +42,44 @@
 #endif
 
 extern int main(void);
+
+#ifdef MODULE_PERIPH_RTC
+extern int settimeofday(const struct timeval *restrict tp, const void *restrict tzp);
+
+static void set_system_time_from_rtc(void)
+{
+    struct tm tm;
+    if (rtc_get_time(&tm) == 0) {
+        /* wait for rtc tick */
+        int current_tm_sec = tm.tm_sec;
+        while (tm.tm_sec == current_tm_sec) {
+            if (rtc_get_time(&tm) != 0) {
+                LOG_ERROR("[kernel_init] error getting time from RTC\n");
+                return;
+            }
+        }
+
+        time_t time = mktime(&tm);
+        const struct timeval tv = {time, XTIMER_BACKOFF * 6};
+        settimeofday(&tv, NULL);
+        LOG_INFO("[kernel_init] system time set from RTC\n");
+    }
+    else {
+        LOG_ERROR("[kernel_init] error getting time from RTC\n");
+    }
+}
+#endif
+
 static void *main_trampoline(void *arg)
 {
     (void) arg;
 
 #ifdef MODULE_AUTO_INIT
     auto_init();
+#endif
+
+#ifdef MODULE_PERIPH_RTC
+    set_system_time_from_rtc();
 #endif
 
     LOG_INFO("main(): This is RIOT! (Version: " RIOT_VERSION ")\n");
