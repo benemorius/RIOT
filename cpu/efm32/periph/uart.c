@@ -24,6 +24,7 @@
 
 #include "periph/uart.h"
 #include "periph/gpio.h"
+#include "pm_layered.h"
 
 #include "em_usart.h"
 #include "em_usart_utils.h"
@@ -39,6 +40,9 @@
 #include "em_leuart.h"
 #include "em_leuart_utils.h"
 #endif
+
+#define UART_RX_PM_BLOCKER (1)
+#define UART_TX_PM_BLOCKER (2)
 
 /**
  * @brief   Allocate memory to store the callback functions
@@ -98,6 +102,8 @@ int uart_init(uart_t dev, uint32_t baudrate, uart_rx_cb_t rx_cb, void *arg)
         uart->ROUTEPEN = USART_ROUTEPEN_RXPEN | USART_ROUTEPEN_TXPEN;
 #endif
 
+        pm_block(UART_RX_PM_BLOCKER);
+
         /* enable receive interrupt */
         USART_IntEnable(uart, USART_IEN_RXDATAV);
 
@@ -126,6 +132,8 @@ int uart_init(uart_t dev, uint32_t baudrate, uart_rx_cb_t rx_cb, void *arg)
         leuart->ROUTELOC0 = uart_config[dev].loc;
         leuart->ROUTEPEN = LEUART_ROUTEPEN_RXPEN | LEUART_ROUTEPEN_TXPEN;
 #endif
+
+//         pm_block(UART_RX_PM_BLOCKER);
 
         /* enable receive interrupt */
         LEUART_IntEnable(leuart, LEUART_IEN_RXDATAV);
@@ -181,6 +189,7 @@ int uart_mode(uart_t dev, uart_data_bits_t data_bits, uart_parity_t parity,
 
 void uart_write(uart_t dev, const uint8_t *data, size_t len)
 {
+    pm_block(UART_TX_PM_BLOCKER);
 #ifdef USE_LEUART
     if (_is_usart(dev)) {
 #endif
@@ -205,6 +214,7 @@ void uart_write(uart_t dev, const uint8_t *data, size_t len)
         while (!(leuart->STATUS & LEUART_STATUS_TXC)) {}
     }
 #endif
+    pm_unblock(UART_TX_PM_BLOCKER);
 }
 
 void uart_poweron(uart_t dev)
