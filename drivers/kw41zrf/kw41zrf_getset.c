@@ -110,6 +110,11 @@ void kw41zrf_set_pan(kw41zrf_t *dev, uint16_t pan)
                             & ~ZLL_MACSHORTADDRS0_MACPANID0_MASK) |
                             ZLL_MACSHORTADDRS0_MACPANID0(pan);
 
+    /* ignore panid check for long -> short with panid compression */
+    ZLL->LENIENCY_LSB |= 1 << 25;
+    /* ignore panid check for short -> short with panid compression */
+    ZLL->LENIENCY_LSB |= 1 << 15;
+
     DEBUG("[kw41zrf] set pan to: 0x%x\n", pan);
 }
 
