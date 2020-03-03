@@ -65,6 +65,10 @@ size_t ieee802154_set_frame_hdr(uint8_t *buf, const uint8_t *src, size_t src_len
             buf[1] |= IEEE802154_FCF_DST_ADDR_SHORT;
             buf[pos++] = dst[1];
             buf[pos++] = dst[0];
+            if (dst[0] == 0xff && dst[1] == 0xff) {
+                /* do not request ACKs for broadcast address */
+                buf[0] &= ~IEEE802154_FCF_ACK_REQ;
+            }
             break;
         case 8:
             buf[1] |= IEEE802154_FCF_DST_ADDR_LONG;
