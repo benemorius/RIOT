@@ -21,6 +21,7 @@
  * @author      Johann Fischer <j.fischer@phytec.de>
  * @author      Jonas Remmert <j.remmert@phytec.de>
  * @author      Joakim Nohlgård <joakim.nohlgard@eistec.se>
+ * @author      Thomas Stilwell <stilwellt@openlabs.co>
  *
  * @}
  */
@@ -28,22 +29,38 @@
 #include "cpu.h"
 #include "assert.h"
 #include "periph/pwm.h"
+#include "pm_layered.h"
 
-/* This driver uses the FlexTimer module (FTM) for generating PWM signals, but
- * not all Kinetis CPUs have such a module. This preprocessor condition prevents
- * compilation errors when the CPU header lacks the register definitions for the
- * FTM */
-#ifdef FTM0
+#ifndef PWM_PM_BLOCKER
+#define PWM_PM_BLOCKER           KINETIS_PM_STOP
+#endif
+
+static bool _is_powered_on[PWM_NUMOF];
 
 #define PRESCALER_MAX       (7U)
 
+#ifdef FTM0
 static inline FTM_Type *ftm(pwm_t pwm)
 {
     return pwm_config[pwm].ftm;
 }
+#else /* FTM */
+static inline TPM_Type *tpm(pwm_t pwm)
+{
+    return pwm_config[pwm].tpm;
+}
+#endif /* FTM */
 
 static void poweron(pwm_t pwm)
 {
+    if (_is_powered_on[pwm]) {
+        return;
+    }
+
+    pm_block(PWM_PM_BLOCKER);
+    _is_powered_on[pwm] = true;
+
+#ifdef FTM0
     int ftm = pwm_config[pwm].ftm_num;
 
 #ifdef SIM_SCGC6_FTM2_SHIFT
@@ -55,6 +72,12 @@ static void poweron(pwm_t pwm)
     else if (ftm == 2) {
         BITBAND_REG32(SIM->SCGC3, SIM_SCGC3_FTM2_SHIFT) = 1;
     }
+#endif /* SIM_SCGC6_FTM2_SHIFT */
+
+#else /* FTM0 */
+    bit_set32(&SIM->SCGC6, SIM_SCGC6_TPM0_SHIFT + pwm_config[pwm].tpm_num);
+    SIM->SOPT2 |= SIM_SOPT2_TPMSRC(1);
+
 #endif
 }
 
@@ -84,6 +107,8 @@ uint32_t pwm_init(pwm_t pwm, pwm_mode_t mode, uint32_t freq, uint16_t res)
 
     /* configure the used timer */
     poweron(pwm);
+
+#ifdef FTM0
     /* disable write protect for changing settings */
     ftm(pwm)->MODE = FTM_MODE_WPDIS_MASK;
     /* clear any existing configuration */
@@ -113,6 +138,37 @@ uint32_t pwm_init(pwm_t pwm, pwm_mode_t mode, uint32_t freq, uint16_t res)
     /* and now we start the actual waveform generation */
     ftm(pwm)->SC |= FTM_SC_CLKS(1);
 
+#else /* FTM0 */
+
+    /* apply prescaler and set resolution */
+    tpm(pwm)->SC = TPM_SC_PS(pre);
+    tpm(pwm)->CNT = 0;
+    tpm(pwm)->MOD = (res - 1);
+
+    /* set CPWMS bit in the SC register in case of center aligned mode */
+    if (mode == PWM_CENTER) {
+        tpm(pwm)->SC |= TPM_SC_CPWMS(1);
+    }
+
+    /* setup the configured channels */
+    for (int i = 0; i < (int)pwm_config[pwm].chan_numof; i++) {
+        /* disable channel before configuring */
+        tpm(pwm)->CONTROLS[pwm_config[pwm].chan[i].ftm_chan].CnSC = 0;
+        while ((tpm(pwm)->CONTROLS[pwm_config[pwm].chan[i].ftm_chan].CnSC &
+                ~(TPM_CnSC_CHF_MASK)) != 0) {}
+        /* configure the used pin */
+        gpio_init_port(pwm_config[pwm].chan[i].pin,
+                       PORT_PCR_MUX(pwm_config[pwm].chan[i].af));
+        /* set the given mode */
+        tpm(pwm)->CONTROLS[pwm_config[pwm].chan[i].ftm_chan].CnSC = mode;
+        /* and reset the PWM to 0% duty cycle */
+        tpm(pwm)->CONTROLS[pwm_config[pwm].chan[i].ftm_chan].CnV = 0;
+    }
+
+    /* and now we start the actual waveform generation */
+    tpm(pwm)->SC |= TPM_SC_CMOD(1);
+#endif /* FTM0 */
+
     /* finally we need to return the actual applied PWM frequency */
     return (CLOCK_BUSCLOCK >> pre) / res;
 }
@@ -126,19 +182,39 @@ uint8_t pwm_channels(pwm_t pwm)
 void pwm_set(pwm_t pwm, uint8_t channel, uint16_t value)
 {
     assert((pwm < PWM_NUMOF) && (channel < pwm_config[pwm].chan_numof));
+#ifdef FTM0
     ftm(pwm)->CONTROLS[pwm_config[pwm].chan[channel].ftm_chan].CnV = value;
+#else
+    tpm(pwm)->CONTROLS[pwm_config[pwm].chan[channel].ftm_chan].CnV = value;
+#endif
 }
 
 void pwm_poweron(pwm_t pwm)
 {
     assert(pwm < PWM_NUMOF);
     poweron(pwm);
+
+    /* enable PWM generation */
+#ifdef FTM0
     ftm(pwm)->SC |= FTM_SC_CLKS(1);
+#else
+    tpm(pwm)->SC |= TPM_SC_CMOD(1);
+#endif /* FTM0 */
 }
 
 void pwm_poweroff(pwm_t pwm)
 {
     assert(pwm < PWM_NUMOF);
+
+    if (!_is_powered_on[pwm]) {
+        return;
+    }
+
+    pm_unblock(PWM_PM_BLOCKER);
+    _is_powered_on[pwm] = false;
+
+#ifdef FTM0
+
     int ftm_num = pwm_config[pwm].ftm_num;
 
     /* disable PWM generation */
@@ -154,7 +230,16 @@ void pwm_poweroff(pwm_t pwm)
     else if (ftm_num == 2) {
         BITBAND_REG32(SIM->SCGC3, SIM_SCGC3_FTM2_SHIFT) = 0;
     }
-#endif
-}
+#endif /* SIM_SCGC6_FTM2_SHIFT */
 
-#endif /* defined(FTM0) */
+#else /* FTM0 */
+
+    /* disable PWM generation */
+    tpm(pwm)->SC &= ~(TPM_SC_CMOD_MASK);
+
+    /* and power of the peripheral */
+    bit_clear32(&SIM->SCGC6, SIM_SCGC6_TPM0_SHIFT + pwm_config[pwm].tpm_num);
+    SIM->SOPT2 &= ~(SIM_SOPT2_TPMSRC_MASK);
+
+#endif /* FTM0 */
+}
