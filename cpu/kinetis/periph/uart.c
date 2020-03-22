@@ -28,6 +28,8 @@
 #include "log.h"
 #include "cpu.h"
 #include "bit.h"
+#include "tsrb.h"
+#include "mutex.h"
 #include "periph_conf.h"
 #include "periph/uart.h"
 #include "periph/gpio.h"
@@ -117,7 +119,17 @@ typedef struct {
     void *arg;              /**< argument to both callback routines */
     unsigned active;        /**< set to 1 while the receiver is active, to avoid mismatched PM_BLOCK/PM_UNBLOCK */
     unsigned enabled;       /**< set to 1 while the receiver is enabled, to avoid mismatched PM_BLOCK/PM_UNBLOCK */
+    unsigned char tx_buf_data[1024 * 16];  /**< transmit DMA buffer */
+    mutex_t tx_mutex;
+    mutex_t tx_return_mutex;
+    tsrb_t tx_rb;
 } uart_isr_ctx_t;
+
+volatile bool dma_is_in;
+volatile bool dma_memcpy_is_in;
+volatile bool dma_memcpy_done = true;
+bool uart_no_dma;
+bool pm_blocked;
 
 /**
  * @brief Runtime configuration space, holds pointers to callback functions for RX
@@ -214,6 +226,9 @@ int uart_init(uart_t uart, uint32_t baudrate, uart_rx_cb_t rx_cb, void *arg)
 {
     assert(uart < UART_NUMOF);
 
+    tsrb_init(&config[uart].tx_rb, config[uart].tx_buf_data,
+              sizeof(config[uart].tx_buf_data));
+
     /* disable interrupts from UART module */
     NVIC_DisableIRQ(uart_config[uart].irqn);
 
@@ -276,6 +291,8 @@ void uart_poweron(uart_t uart)
             break;
     }
 
+    irq_restore(state);
+
     if (!config[uart].enabled) {
         config[uart].enabled = 1;
 
@@ -314,12 +331,15 @@ void uart_poweron(uart_t uart)
         }
     }
 
-    irq_restore(state);
 }
 
 void uart_poweroff(uart_t uart)
 {
     assert(uart < UART_NUMOF);
+
+    while (!dma_memcpy_done) {}
+    while (dma_is_in) {}
+
     unsigned state = irq_disable();
     if (config[uart].rx_cb) {
         if (config[uart].enabled) {
@@ -461,9 +481,11 @@ static inline void uart_init_uart(uart_t uart, uint32_t baudrate)
 
 KINETIS_UART_WRITE_INLINE void uart_write_uart(uart_t uart, const uint8_t *data, size_t len)
 {
+#if DEVELHELP
     if (!config[uart].enabled) {
         return;
     }
+#endif
 
     UART_Type *dev = uart_config[uart].dev;
 
@@ -640,6 +662,80 @@ static inline void uart_init_lpuart(uart_t uart, uint32_t baudrate)
     /* set baud rate, enable RX active edge interrupt */
     dev->BAUD = LPUART_BAUD_OSR(best_osr - 1) | LPUART_BAUD_SBR(sbr);
 
+    mutex_init(&config[uart].tx_mutex);
+    mutex_init(&config[uart].tx_return_mutex);
+
+    /* enable clock for DMAMUX peripheral */
+    SIM->SCGC6 |= SIM_SCGC6_DMAMUX_MASK;
+
+    /* disable DMA channel in case it was configured */
+    DMAMUX0->CHCFG[0] = 0;
+    /* total bytes to transfer per major loop iteration */
+    DMA0->TCD[0].NBYTES_MLNO = 1;
+    /* source data chunk size per minor iteration */
+    DMA0->TCD[0].SOFF = 1;
+    /* 8 bit source data transfer size */
+    DMA0->TCD[0].ATTR &= ~DMA_ATTR_SSIZE_MASK;
+    /* destination address */
+    DMA0->TCD[0].DADDR = (uint32_t)&dev->DATA;
+    /* destination data chunk size */
+    DMA0->TCD[0].DOFF = 0;
+    /* 8 bit destination data transfer size */
+    DMA0->TCD[0].ATTR &= ~DMA_ATTR_DSIZE_MASK;
+    /* destination address adjustment on major iteration count completion */
+    DMA0->TCD[0].DLAST_SGA = 0;
+    /* enable ERQ disabled on major loop iteration count completion */
+    DMA0->TCD[0].CSR |= DMA_CSR_DREQ_MASK;
+    /* enable interrupt on DMA error */
+    DMA0->EEI |= DMA_EEI_EEI0_MASK;
+//     NVIC_EnableIRQ(DMA_Error_IRQn);
+    /* enable interrupt on major iteration count completion */
+    DMA0->TCD[0].CSR |= DMA_CSR_INTMAJOR_MASK;
+    /* TODO set this priority higher than any isr which might call uart_write() */
+    NVIC_EnableIRQ(DMA0_IRQn);
+    NVIC_SetPriority(DMA0_IRQn, 0);
+    /* set DMA channel 0 source to uart tx */
+    DMAMUX0->CHCFG[0] = DMAMUX_CHCFG_SOURCE(3) | DMAMUX_CHCFG_ENBL_MASK;
+
+    /* disable DMA channel in case it was configured */
+    DMAMUX0->CHCFG[1] = 0;
+    /* starting major iteration count */
+    DMA0->TCD[1].BITER_ELINKNO = 1;
+    /* current major iteration count */
+    DMA0->TCD[1].CITER_ELINKNO = DMA0->TCD[1].BITER_ELINKNO;
+    /* source data chunk size per minor iteration */
+    DMA0->TCD[1].SOFF = 1;
+    /* source address adjustment on major iteration count completion */
+    DMA0->TCD[0].SLAST = 0;
+    /* 8 bit data transfer size */
+    DMA0->TCD[1].ATTR = DMA_ATTR_SSIZE(0) | DMA_ATTR_DSIZE(0);
+    /* destination data chunk size per minor iteration */
+    DMA0->TCD[1].DOFF = 1;
+    /* destination address adjustment on major iteration count completion */
+    DMA0->TCD[1].DLAST_SGA = 0;
+    /* enable interrupt on DMA error */
+    DMA0->EEI |= DMA_EEI_EEI1_MASK;
+    /* enable interrupt on major iteration count completion */
+    DMA0->TCD[1].CSR = DMA_CSR_INTMAJOR_MASK;
+    /* TODO set this priority higher than any isr which might call uart_write() */
+    NVIC_SetPriority(DMA1_IRQn, 1);
+    NVIC_EnableIRQ(DMA1_IRQn);
+    NVIC_SetPriority(RTC_IRQn, 2);
+    NVIC_SetPriority(LPUART0_IRQn, 2);
+
+//     NVIC_DisableIRQ(Radio_0_IRQn);
+//     NVIC_DisableIRQ(Radio_1_IRQn);
+    NVIC_SetPriority(Radio_0_IRQn, 2);
+    NVIC_SetPriority(Radio_1_IRQn, 2);
+
+    for (int i = 2; i < CPU_IRQ_NUMOF; i++) {
+        NVIC_SetPriority(i, 2);
+    }
+
+    /* set DMA channel 1 source to always enabled */
+//     DMAMUX0->CHCFG[1] = DMAMUX_CHCFG_SOURCE(60) | DMAMUX_CHCFG_ENBL_MASK;
+
+
     if (config[uart].rx_cb) {
         /* enable RX interrupt + error interrupts */
         dev->CTRL |= LPUART_CTRL_RIE_MASK |
@@ -652,20 +748,267 @@ static inline void uart_init_lpuart(uart_t uart, uint32_t baudrate)
     dev->STAT = s;
 }
 
-KINETIS_UART_WRITE_INLINE void uart_write_lpuart(uart_t uart, const uint8_t *data, size_t len)
+size_t buf_len;
+size_t in_len;
+const uint8_t *in_data;
+#include "board.h"
+#include "xtimer.h"
+
+static void dma_start(uart_t uart)
 {
-    if (!config[uart].enabled) {
+    LPUART_Type *dev = uart_config[uart].dev;
+
+    if (!pm_blocked) {
+        PM_BLOCK(KINETIS_PM_WAIT);
+//         LED0_ON;
+        /* enable TX complete interrupt */
+        dev->CTRL |= LPUART_CTRL_TCIE_MASK;
+        pm_blocked = true;
+    }
+
+    dma_is_in = true;
+
+    /* set up DMA transfer from tx_rb to UART->DATA */
+
+    buf_len = tsrb_avail(&config[uart].tx_rb);
+    volatile size_t bytes_available = tsrb_avail(&config[uart].tx_rb);
+    volatile uint8_t empty = tsrb_empty(&config[uart].tx_rb);
+    (void)bytes_available;
+    (void)empty;
+
+    if (buf_len == 0) {
+        dma_is_in = false;
         return;
     }
 
-    LPUART_Type *dev = uart_config[uart].dev;
-
-    for (size_t i = 0; i < len; i++) {
-        while ((dev->STAT & LPUART_STAT_TDRE_MASK) == 0) {}
-        dev->DATA = data[i];
+    if (buf_len > sizeof(config[uart].tx_buf_data) / 8) {
+        buf_len = sizeof(config[uart].tx_buf_data) / 8;
     }
-    /* Wait for transmission complete */
-    while ((dev->STAT & LPUART_STAT_TC_MASK) == 0) {}
+
+    unsigned char *read_ptr = config[uart].tx_buf_data
+                   + (config[uart].tx_rb.reads & (config[uart].tx_rb.size - 1));
+
+    /* We mustn't let the DMA engine read past the end of the ring buffer, so
+     * check for that and break the transfer in two if necessary. The second
+     * transfer for the remaining data will be started for us by the ISR.
+     */
+    if (read_ptr + buf_len >
+        &config[uart].tx_buf_data[sizeof(config[uart].tx_buf_data)]
+    ) {
+        buf_len = &config[uart].tx_buf_data[sizeof(config[uart].tx_buf_data)]
+                  - read_ptr;
+    }
+
+    /* starting major iteration count */
+    DMA0->TCD[0].BITER_ELINKNO = buf_len;
+    /* current major iteration count */
+    DMA0->TCD[0].CITER_ELINKNO = DMA0->TCD[0].BITER_ELINKNO;
+    /* source data address */
+    DMA0->TCD[0].SADDR = (uint32_t)read_ptr;
+    /* enable DMA request channel. This gets disabled automatically */
+    DMA0->ERQ |= DMA_ERQ_ERQ0_MASK;
+
+    /* enable DMA request on transmit data register empty */
+    LPUART0->BAUD |= LPUART_BAUD_TDMAE_MASK;
+
+    assert(DMA0->ERR == 0);
+    if (DMA0->ERR != 0) {
+        while (1) {}
+    }
+
+    /* release uart_write() to return now as we've copied the data */
+//     mutex_unlock(&config[uart].tx_return_mutex);
+}
+
+static void memcpy_start(uart_t uart)
+{
+    uint32_t irq_state;
+    if (in_len) {
+//         LED0_ON;
+        PM_BLOCK(KINETIS_PM_STOP);
+        dma_memcpy_done = false;
+
+        /* block until the ring buffer has enough free memory */
+        size_t bytes_pushed;
+//         irq_restore(irq_state);
+        do {
+            bytes_pushed = tsrb_free(&config[uart].tx_rb);
+        } while (bytes_pushed == 0);
+        irq_state = irq_disable();
+
+//         irq_state = irq_disable();
+
+        if (in_len < bytes_pushed) {
+            bytes_pushed = in_len;
+        }
+
+        unsigned char *write_ptr = config[uart].tx_buf_data
+        + (config[uart].tx_rb.writes & (config[uart].tx_rb.size - 1));
+
+        /* wrap at the end of the ring buffer */
+        if (write_ptr + bytes_pushed >
+            &config[uart].tx_buf_data[sizeof(config[uart].tx_buf_data)]
+        ) {
+            bytes_pushed = &config[uart].tx_buf_data[sizeof(config[uart].tx_buf_data)]
+            - write_ptr;
+        }
+
+        /* set up DMA transfer from *data to ring buffer */
+        /* source data address */
+        DMA0->TCD[1].SADDR = (uint32_t)in_data;
+        /* destination address */
+        DMA0->TCD[1].DADDR = (uint32_t)write_ptr;
+        /* total bytes to transfer per major loop iteration */
+        DMA0->TCD[1].NBYTES_MLNO = bytes_pushed;
+        /* begin the DMA transfer now */
+        DMA0->TCD[1].CSR |= DMA_CSR_START_MASK;
+
+        config[uart].tx_rb.writes += bytes_pushed;
+        in_data += bytes_pushed;
+        in_len -= bytes_pushed;
+
+        irq_restore(irq_state);
+    }
+}
+
+KINETIS_UART_WRITE_INLINE void uart_write_lpuart(uart_t uart, const uint8_t *data, size_t len)
+{
+    /* TODO what happens when this is called with IRQs disabled? */
+
+//     uint32_t irq_state;
+#if DEVELHELP
+    if (!config[uart].enabled) {
+        return;
+    }
+#endif
+
+    static bool only_once = false;
+    if (only_once) {
+        return;
+    }
+//     only_once = true;
+
+//     if (irq_is_in()) {
+//         return;
+//     }
+
+//     assert (len <= sizeof(config[uart].tx_buf_data));
+
+//     unsigned irq_state = irq_disable();
+
+    /* we only support one reentrant call at a time, so this needs to spin */
+
+//     if (mutex_trylock(&config[uart].tx_mutex) == 0) {
+//         irq_restore(irq_state);
+//         while (mutex_trylock(&config[uart].tx_mutex) == 0) {}
+//         irq_state = irq_disable();
+//     }
+
+//     assert (dma_memcpy_done);
+    if (!dma_memcpy_done) {
+//         irq_restore(irq_state);
+        while (!dma_memcpy_done) {}
+        while (!dma_memcpy_done) {}
+        while (!dma_memcpy_done) {}
+        while (!dma_memcpy_done) {}
+//         irq_state = irq_disable();
+    }
+//     dma_memcpy_done = false;
+
+
+//     dma_memcpy_done = false;
+
+
+//     irq_state = irq_disable();
+
+    in_len = len;
+    in_data = data;
+    memcpy_start(uart);
+
+//     irq_restore(irq_state);
+
+    while (!dma_memcpy_done) {}
+
+    /* to simulate the old behavior of blocking until TX complete */
+    if (uart_no_dma) {
+        while (dma_is_in) {}
+    }
+
+    return;
+
+
+
+
+//     assert (len <= sizeof(config[uart].tx_buf_data));
+//     size_t bytes_added = 0;
+//     while (bytes_added < len) {
+//         bytes_added += tsrb_add(&config[uart].tx_rb, data, len);
+//         if (bytes_added < len) {
+//             LOG_WARNING("DMA buffer full. Blocking\n");
+//             while (dma_is_in) {}
+// //             continue;
+//         }
+//     }
+//
+// //     irq_restore(irq_state);
+//
+//     irq_state = irq_disable();
+//     if (!dma_is_in) {
+//         dma_start(uart);
+//     }
+//     irq_restore(irq_state);
+//
+//     mutex_unlock(&config[uart].tx_mutex);
+//
+//     return;
+
+
+
+
+    /* double lock this to wait until isr releases it */
+//     while (mutex_trylock(&config[uart].tx_return_mutex) == 0) {}
+//     mutex_lock(&config[uart].tx_return_mutex);
+//     mutex_unlock(&config[uart].tx_return_mutex);
+
+
+
+//     while (mutex_trylock(&config[uart].tx_mutex) == 0) {}
+//     mutex_lock(&config[uart].tx_mutex);
+//     mutex_unlock(&config[uart].tx_mutex);
+
+//     for (size_t i = 0; i < len; i++) {
+// //         ringbuffer_add_one(config[uart].tx_buf, data[i]);
+//
+//
+    //         /* begin the DMA transfer now */
+// //         DMA0->TCD[0].CSR |= DMA_CSR_START_MASK;
+//
+// //         while (!(DMA0->TCD[0].CSR & DMA_CSR_DONE_MASK)) {}
+//
+// //         dev->BAUD |= LPUART_BAUD_TDMAE_MASK;
+//
+//         while (!(DMA0->INT & DMA_INT_INT0_MASK)) {}
+//         DMA0->INT |= DMA_INT_INT0_MASK;
+//         /* disable dma channel */
+//         DMAMUX0->CHCFG[0] = 0;
+//
+//         /* Wait for transmission complete */
+//         while ((dev->STAT & LPUART_STAT_TDRE_MASK) == 0) {}
+// //         while (!(dev->STAT & LPUART_STAT_TDRE_MASK)) {}
+//     }
+//
+//     dev->BAUD &= ~LPUART_BAUD_TDMAE_MASK;
+//
+//     return;
+
+//     LPUART_Type *dev = uart_config[uart].dev;
+//
+//     for (size_t i = 0; i < len; i++) {
+//         while ((dev->STAT & LPUART_STAT_TDRE_MASK) == 0) {}
+//         dev->DATA = data[i];
+//     }
+//     /* Wait for transmission complete */
+//     while ((dev->STAT & LPUART_STAT_TC_MASK) == 0) {}
 }
 
 static inline void uart_poweron_lpuart(uart_t uart)
@@ -698,6 +1041,15 @@ static inline void irq_handler_lpuart(uart_t uart)
     uint32_t stat = dev->STAT;
     /* Clear all IRQ flags */
     dev->STAT = stat;
+
+    if (pm_blocked && (stat & LPUART_STAT_TC_MASK)) {
+        PM_UNBLOCK(KINETIS_PM_WAIT);
+        pm_blocked = false;
+//         LED0_OFF;
+
+        /* disable TX complete interrupt */
+        dev->CTRL &= ~LPUART_CTRL_TCIE_MASK;
+    }
 
     if (stat & LPUART_STAT_RDRF_MASK) {
         /* RDRF flag will be cleared when LPUART_DATA is read */
@@ -741,6 +1093,77 @@ static inline void irq_handler_lpuart(uart_t uart)
     cortexm_isr_end();
 }
 #endif
+
+void isr_dma0(void)
+{
+    uint32_t irq_flags = DMA0->INT;
+    /* clear flags */
+//     DMA0->INT = irq_flags;
+
+    /* DMA from internal buffer to UART->DATA transmit register */
+    if (irq_flags & DMA_INT_INT0_MASK) {
+        DMA0->INT = DMA_INT_INT0_MASK;
+
+        assert(DMA0->ERR == 0);
+        if (DMA0->ERR != 0) {
+            while (1) {}
+        }
+
+        /* disable DMA request on transmit data register empty */
+        LPUART0->BAUD &= ~LPUART_BAUD_TDMAE_MASK;
+
+        /* allow uart_write() to be entered again as we're done with buf */
+//         mutex_unlock(&config[UART_DEV(0)].tx_mutex);
+
+        tsrb_drop(&config[UART_DEV(0)].tx_rb, buf_len);
+
+        volatile size_t bytes_available = tsrb_avail(&config[UART_DEV(0)].tx_rb);
+        volatile uint8_t empty = tsrb_empty(&config[UART_DEV(0)].tx_rb);
+        (void)empty;
+        if (bytes_available) {
+            dma_start(UART_DEV(0));
+        }
+        else {
+            dma_is_in = false;
+        }
+
+        assert(DMA0->ERR == 0);
+        if (DMA0->ERR != 0) {
+            while (1) {}
+        }
+    }
+}
+
+void isr_dma1(void)
+{
+    uint32_t irq_flags = DMA0->INT;
+    /* clear flags */
+//     DMA0->INT = irq_flags;
+
+    /* DMA from uart_write() data to internal buffer */
+    if (irq_flags & DMA_INT_INT1_MASK) {
+        DMA0->INT = DMA_INT_INT1_MASK;
+
+        if (!dma_is_in && tsrb_avail(&config[UART_DEV(0)].tx_rb)) {
+            dma_start(UART_DEV(0));
+        }
+
+        dma_memcpy_done = true;
+        PM_UNBLOCK(KINETIS_PM_STOP);
+//         LED0_OFF;
+        memcpy_start(UART_DEV(0));
+
+//         mutex_unlock(&config[UART_DEV(0)].tx_mutex);
+    }
+}
+
+void isr_dma_error(void)
+{
+    assert(DMA0->ERR == 0);
+    if (DMA0->ERR != 0) {
+        while (1) {}
+    }
+}
 
 #ifdef LPUART_0_ISR
 void LPUART_0_ISR(void)
