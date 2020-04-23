@@ -26,11 +26,17 @@ static uint8_t _get_prefix_len(char *addr)
     return prefix_len;
 }
 
-ssize_t udp_send(const char *dest_ipv6, uint16_t port, const char *data, size_t data_len)
+ssize_t udp_send(char *dest_ipv6, uint16_t port, const char *data, size_t data_len)
 {
     sock_udp_ep_t remote = SOCK_IPV6_EP_ANY;
-    ipv6_addr_from_str((ipv6_addr_t *)&remote.addr.ipv6, dest_ipv6);
     remote.port = port;
+
+    char *netif = ipv6_addr_split_iface(dest_ipv6);
+    if (netif) {
+        remote.netif = atoi(netif);
+    }
+
+    ipv6_addr_from_str((ipv6_addr_t *)&remote.addr.ipv6, dest_ipv6);
 
     ssize_t res;
     if ((res = sock_udp_send(NULL, data, data_len, &remote)) < 0)

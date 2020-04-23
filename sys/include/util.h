@@ -33,7 +33,7 @@ typedef struct {
     int8_t rssi;
 } udp_server_t;
 
-ssize_t udp_send(const char *dest_ipv6, uint16_t port, const char *data, size_t data_len);
+ssize_t udp_send(char *dest_ipv6, uint16_t port, const char *data, size_t data_len);
 int udp_start_server(udp_server_t *srv);
 #endif
 
