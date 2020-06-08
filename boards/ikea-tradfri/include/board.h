@@ -34,7 +34,7 @@ extern "C" {
  * The timer runs at 250 KHz to increase accuracy.
  * @{
  */
-#define XTIMER_HZ           (250000UL)
+#define XTIMER_HZ           (32768UL)
 #define XTIMER_WIDTH        (16)
 /** @} */
 
