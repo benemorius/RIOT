@@ -22,10 +22,15 @@
 #include "periph_conf.h"
 #include "periph/gpio.h"
 #include "periph/pwm.h"
+#include "pm_layered.h"
 
 #include "em_cmu.h"
 #include "em_timer.h"
 #include "em_timer_utils.h"
+
+#ifndef EFM32_PWM_PM_BLOCKER
+#define EFM32_PWM_PM_BLOCKER 1
+#endif
 
 uint32_t pwm_init(pwm_t dev, pwm_mode_t mode, uint32_t freq, uint16_t res)
 {
@@ -83,7 +88,7 @@ uint32_t pwm_init(pwm_t dev, pwm_mode_t mode, uint32_t freq, uint16_t res)
     }
 
     /* enable peripheral */
-    TIMER_Enable(pwm_config[dev].dev, true);
+    pwm_start(dev);
 
     return freq_timer / TIMER_Prescaler2Div(prescaler) / res;
 }
@@ -106,12 +111,14 @@ void pwm_start(pwm_t dev)
 {
     assert(dev < PWM_NUMOF);
     TIMER_Enable(pwm_config[dev].dev, true);
+    pm_block(EFM32_PWM_PM_BLOCKER);
 }
 
 void pwm_stop(pwm_t dev)
 {
     assert(dev < PWM_NUMOF);
     TIMER_Enable(pwm_config[dev].dev, false);
+    pm_unblock(EFM32_PWM_PM_BLOCKER);
 }
 
 void pwm_poweron(pwm_t dev)
