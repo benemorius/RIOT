@@ -20,6 +20,8 @@ ifneq (,$(filter nimble_controller,$(USEMODULE)))
   ifneq (,$(filter nimble_drivers_nrf5x,$(USEMODULE)))
     INCLUDES += $(NIMIBASE)/nimble/drivers/$(CPU_FAM)/include
   endif
+else
+  CFLAGS += -DMYNEWT_VAL_BLE_CONTROLLER=0
 endif
 
 # include nimble host headers
@@ -34,7 +36,7 @@ ifneq (,$(filter nimble_host_util,$(USEMODULE)))
 endif
 
 # include tinycrypt headers
-ifneq (,$(filter nimble_controller,$(USEMODULE)))
+ifneq (,$(filter nimble_host,$(USEMODULE)))
   INCLUDES += $(NIMIBASE)/ext/tinycrypt/include
 endif
 
