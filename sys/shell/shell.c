@@ -759,7 +759,11 @@ void shell_run_once(const shell_command_t *shell_commands,
             default:
                 strcpy(fix_me, line_buf);
                 handle_input_line(shell_commands, fix_me);
-                push_line_history(line_buf, len);
+
+                /* add line to history if it isn't empty */
+                if (*fix_me) {
+                    push_line_history(line_buf, len);
+                }
                 break;
         }
 
