@@ -27,8 +27,11 @@
 
 #ifdef MODULE_PM_LAYERED
 #include "pm_layered.h"
+#endif
 
-#endif /* MODULE_PM_LAYERED */
+#ifdef MODULE_XTIMER
+#include "xtimer.h"
+#endif
 
 static void _print_usage(void) {
     puts("Usage:");
@@ -37,11 +40,27 @@ static void _print_usage(void) {
     puts("\tpm set <mode>: manually set power mode (lasts until WFI returns)");
     puts("\tpm block <mode>: manually block power mode");
     puts("\tpm unblock <mode>: manually unblock power mode");
+#ifdef MODULE_XTIMER
+    puts("\tpm xsleep <mode> <msec>: unblock <mode> while sleeping for <msec> using xtimer");
+#endif
 #endif /* MODULE_PM_LAYERED */
     puts("\tpm off: call pm_off()");
 }
 
 #ifdef MODULE_PM_LAYERED
+static int get_lowest_allowed_mode(void)
+{
+    pm_blocker_t pm_blocker = pm_get_blocker();
+
+    uint8_t lowest_allowed_mode = 0;
+    for (unsigned i = 0; i < PM_NUM_MODES; i++) {
+        if (pm_blocker.val_u8[i]) {
+            lowest_allowed_mode = i + 1;
+        }
+    }
+    return lowest_allowed_mode;
+}
+
 static int check_mode(int argc, char **argv)
 {
     if (argc != 3) {
@@ -123,19 +142,41 @@ static int cmd_unblock(char *arg)
 static int cmd_show(char *arg)
 {
     (void)arg;
-    uint8_t lowest_allowed_mode = 0;
 
     pm_blocker_t pm_blocker = pm_get_blocker();
     for (unsigned i = 0; i < PM_NUM_MODES; i++) {
         printf("mode %u blockers: %u \n", i, pm_blocker.val_u8[i]);
-        if (pm_blocker.val_u8[i]) {
-            lowest_allowed_mode = i + 1;
-        }
     }
 
-    printf("Lowest allowed mode: %u\n", lowest_allowed_mode);
+    printf("Lowest allowed mode: %u\n", get_lowest_allowed_mode());
     return 0;
 }
+
+#ifdef MODULE_XTIMER
+static int cmd_xsleep(int argc, char **argv)
+{
+    if (argc != 4) {
+        printf("Usage: %s %s <power mode> <msec>\n", argv[0], argv[1]);
+        return -1;
+    }
+
+    unsigned long msec = atol(argv[3]);
+
+    cmd_unblock(argv[2]);
+
+    printf("sleeping with xtimer_usleep() in mode %i for %lu msec\n",
+           get_lowest_allowed_mode(), msec);
+
+    /* If xtimer is still running in the mode we've ended up in, then this will
+     * return as expected. If xtimer isn't running then this won't return. */
+    xtimer_usleep(US_PER_MS * msec);
+    puts("CPU has returned from sleep");
+
+    cmd_block(argv[2]);
+
+    return 0;
+}
+#endif /* MODULE_XTIMER */
 #endif /* MODULE_PM_LAYERED */
 
 static int cmd_off(char *arg)
@@ -187,6 +228,12 @@ int _pm_handler(int argc, char **argv)
 
         return cmd_set(argv[2]);
     }
+
+#ifdef MODULE_XTIMER
+    if (!strcmp(argv[1], "xsleep")) {
+        return cmd_xsleep(argc, argv);
+    }
+#endif /* MODULE_XTIMER */
 #endif /* MODULE_PM_LAYERED */
 
     if (!strcmp(argv[1], "off")) {
