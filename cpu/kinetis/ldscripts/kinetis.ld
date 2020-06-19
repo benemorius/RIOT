@@ -24,10 +24,21 @@ OUTPUT_ARCH(arm)
 
 _vectors_length = 0x400;
 _flashsec_length = 0x10;
+m_sector_size =  ( 2 * 1024 );
+__vector_table_size__ = (48*4);
+__region_ROM_start__   =  (0x00000000);
+__region_ROM_end__     =  (0x0007FFFF);
+
+m_fsl_prodInfo_start = (__region_ROM_end__ - m_sector_size + 1);
+m_fsl_prodInfo_end   = (__region_ROM_end__);
+FREESCALE_PROD_DATA_BASE_ADDR = m_fsl_prodInfo_start;
 
 INCLUDE cortexm_rom_offset.ld
 
 _flash_sec_offset = _vectors_length + _rom_offset;
+
+__ram_vector_table__ = DEFINED(__ram_vector_table__) ? __ram_vector_table__ : 1;
+__ram_vector_table_size__ = DEFINED(__ram_vector_table__) ? __vector_table_size__ : 0;
 
 MEMORY
 {
@@ -42,12 +53,26 @@ SECTIONS
     /* Interrupt vectors 0x00-0x3ff. */
     .vector :
     {
+        __VECTOR_TABLE = .;
         _isr_vectors = .;
         KEEP(*(SORT(.vector*)))
     } > vectors
     ASSERT (SIZEOF(.vector) == _vectors_length, "Interrupt vector table of invalid size.")
     ASSERT (ADDR(.vector) == _rom_offset, "Interrupt vector table at invalid location (linker-script error?)")
     ASSERT (LOADADDR(.vector) == _rom_offset, "Interrupt vector table at invalid location (linker-script error?)")
+
+    .interrupts_ram :
+    {
+        . = ALIGN(4);
+        __VECTOR_RAM__ = .;
+        __interrupts_ram_start__ = .; /* Create a global symbol at data start */
+        *(.m_interrupts_ram)     /* This is a user defined section */
+        . += __ram_vector_table_size__;
+        . = ALIGN(4);
+        __interrupts_ram_end__ = .; /* Define a global symbol at data end */
+    } > ram
+    __VECTOR_RAM = __VECTOR_RAM__;
+    __RAM_VECTOR_TABLE_SIZE_BYTES = (__interrupts_ram_end__ - __interrupts_ram_start__);
 
     /* Flash configuration field, very important in order to not accidentally lock the device */
     /* Flash configuration field 0x400-0x40f. */

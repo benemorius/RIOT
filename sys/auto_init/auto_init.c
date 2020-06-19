@@ -87,6 +87,11 @@ void auto_init(void)
         extern void gnrc_pktdump_init(void);
         gnrc_pktdump_init();
     }
+    if (IS_USED(MODULE_MCUX_KW41Z)) {
+        LOG_DEBUG("Auto init mcux_kw41z.\n");
+        extern void mcux_kw41z_main(void);
+        mcux_kw41z_main();
+    }
     if (IS_USED(MODULE_AUTO_INIT_GNRC_SIXLOWPAN)) {
         LOG_DEBUG("Auto init gnrc_sixlowpan.\n");
         extern void gnrc_sixlowpan_init(void);

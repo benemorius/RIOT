@@ -1,0 +1,55 @@
+PSEUDOMODULES += mcux_kw41z
+
+BDIR = $(PKGDIRBASE)/mcux_kw41z/bluetooth_1.2.8
+FDIR = $(PKGDIRBASE)/mcux_kw41z/framework_5.3.8
+MDIR = $(PKGDIRBASE)/mcux_kw41z/MKW41Z4
+
+INCLUDES += -I$(CURDIR)
+
+INCLUDES += -isystem$(RIOTPKG)/$(PKG_NAME)/mcux_kw41z/contrib/include
+
+INCLUDES += -isystem$(BDIR)/host/interface
+
+INCLUDES += -isystem$(FDIR)/MemManager/Interface
+INCLUDES += -isystem$(FDIR)/OSAbstraction/Interface
+INCLUDES += -isystem$(FDIR)/NVM/Interface
+INCLUDES += -isystem$(FDIR)/TimersManager/Interface
+INCLUDES += -isystem$(FDIR)/RNG/Interface
+INCLUDES += -isystem$(FDIR)/LED/Interface
+INCLUDES += -isystem$(FDIR)/DCDC/Interface
+INCLUDES += -isystem$(FDIR)/MWSCoexistence/Interface
+INCLUDES += -isystem$(FDIR)/SerialManager/Interface
+INCLUDES += -isystem$(FDIR)/LowPower/Interface/MKW41Z
+INCLUDES += -isystem$(FDIR)/FSCI/Interface
+INCLUDES += -isystem$(FDIR)/OtaSupport/Interface
+INCLUDES += -isystem$(FDIR)/Shell/Interface
+INCLUDES += -isystem$(FDIR)/Messaging/Interface
+INCLUDES += -isystem$(FDIR)/Keyboard/Interface
+INCLUDES += -isystem$(FDIR)/Flash/External/Interface
+INCLUDES += -isystem$(FDIR)/Flash/Internal
+INCLUDES += -isystem$(FDIR)/Panic/Interface
+INCLUDES += -isystem$(FDIR)/GPIO
+INCLUDES += -isystem$(FDIR)/ModuleInfo
+INCLUDES += -isystem$(FDIR)/SecLib
+INCLUDES += -isystem$(FDIR)/Common
+INCLUDES += -isystem$(FDIR)/FunctionLib
+INCLUDES += -isystem$(FDIR)/Lists
+INCLUDES += -isystem$(FDIR)/XCVR/MKW41Z4
+
+INCLUDES += -isystem$(MDIR)
+INCLUDES += -isystem$(MDIR)/drivers
+INCLUDES += -isystem$(MDIR)/utilities
+
+INCLUDES += -isystem$(BDIR)/host/config
+INCLUDES += -isystem$(BDIR)/controller/interface
+INCLUDES += -isystem$(BDIR)/hci_transport/interface
+INCLUDES += -isystem$(BDIR)/application/common
+INCLUDES += -isystem$(BDIR)/application/common/gatt_db
+INCLUDES += -isystem$(BDIR)/application/common/gatt_db/macros
+INCLUDES += -isystem$(BDIR)/profiles/battery
+INCLUDES += -isystem$(BDIR)/profiles/device_info
+INCLUDES += -isystem$(BDIR)/profiles/temperature
+
+CFLAGS += -DCPU_MKW41Z512VHT4
+
+# $(foreach v, $(.VARIABLES), $(info $(v) = $($(v))))

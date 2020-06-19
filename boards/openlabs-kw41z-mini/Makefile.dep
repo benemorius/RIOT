@@ -3,6 +3,12 @@ ifneq (,$(filter saul_default,$(USEMODULE)))
   USEMODULE += saul_gpio
 endif
 
+ifneq (,$(filter nimble,$(USEPKG)))
+  USEPKG += mcux_kw41z
+  # this causes the build system to skip building nimble_controller
+  USEMODULE += nimble_host
+endif
+
 ifneq (,$(filter netdev_default,$(USEMODULE)))
   USEMODULE += kw41zrf
 endif

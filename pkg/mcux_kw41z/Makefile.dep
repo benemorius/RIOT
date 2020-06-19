@@ -1,0 +1,30 @@
+# USEMODULE += mcux_kw41z_hci_transport
+USEMODULE += mcux_kw41z_timersmanager
+
+USEMODULE += mcux_kw41z_riot_contrib
+USEMODULE += mcux_kw41z_functionlib
+USEMODULE += mcux_kw41z_memmanager
+USEMODULE += mcux_kw41z_lists
+USEMODULE += mcux_kw41z_flash
+
+ifneq (,$(filter mcux_kw41z_riot_contrib,$(USEMODULE)))
+  USEMODULE += mcux_kw41z_vendor_ble
+  USEMODULE += mcux_kw41z_vendor_seclib
+  USEMODULE += mcux_kw41z_vendor_controller
+  USEMODULE += mcux_kw41z_xcvr
+  USEMODULE += mcux_kw41z_xcvr_configs
+  USEMODULE += mcux_kw41z_rng
+  USEMODULE += mcux_kw41z_seclib
+endif
+
+ifneq (,$(filter mcux_kw41z_xcvr,$(USEMODULE)))
+  USEMODULE += mcux_kw41z_drivers
+  USEMODULE += mcux_kw41z_mwscoexistence
+#   USEMODULE += mcux_kw41z_lowpower
+endif
+
+# USEMODULE += mcux_kw41z_messaging
+
+USEMODULE += core_thread_flags
+USEMODULE += xtimer
+USEMODULE += sema

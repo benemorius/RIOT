@@ -13,3 +13,6 @@ FEATURES_PROVIDED += periph_spi
 FEATURES_PROVIDED += periph_timer
 FEATURES_PROVIDED += periph_uart
 FEATURES_PROVIDED += riotboot
+
+# provided by pkg mcux_kw41z
+FEATURES_PROVIDED += ble_nimble
