@@ -455,7 +455,7 @@ static void kw41zrf_dcoc_dac_init_cal(void)
     XCVR_RX_DIG->AGC_CTRL_1 = agc_ctrl_1_stack; /* Save state of RX_DIG_CTRL for later restore */
 }
 
-static int kw41zrf_xcvr_configure(kw41zrf_t *dev,
+int kw41zrf_xcvr_configure(kw41zrf_t *dev,
     const xcvr_common_config_t *com_config,
     const xcvr_mode_config_t *mode_config,
     const xcvr_mode_datarate_config_t *mode_datarate_config,
@@ -844,22 +844,26 @@ static int kw41zrf_xcvr_configure(kw41zrf_t *dev,
 
     XCVR_TX_DIG->GFSK_CTRL = mode_config->tx_gfsk_ctrl;
 
-    /* Force receiver warmup */
-    bit_set32(&XCVR_TSM->CTRL, XCVR_TSM_CTRL_FORCE_RX_EN_SHIFT);
-    /* Wait for TSM to reach the end of warmup (unless you want to capture some samples during DCOC cal phase) */
-    uint32_t end_of_rx_wu = XCVR_CTRL_XCVR_STATUS_TSM_COUNT(
-        (XCVR_TSM->END_OF_SEQ & XCVR_TSM_END_OF_SEQ_END_OF_RX_WU_MASK) >>
-            XCVR_TSM_END_OF_SEQ_END_OF_RX_WU_SHIFT);
-    while ((XCVR_MISC->XCVR_STATUS & XCVR_CTRL_XCVR_STATUS_TSM_COUNT_MASK) != end_of_rx_wu) {};
+    static bool did_trim = false;
+    if (!did_trim) {
+        did_trim = true;
+        /* Force receiver warmup */
+        bit_set32(&XCVR_TSM->CTRL, XCVR_TSM_CTRL_FORCE_RX_EN_SHIFT);
+        /* Wait for TSM to reach the end of warmup (unless you want to capture some samples during DCOC cal phase) */
+        uint32_t end_of_rx_wu = XCVR_CTRL_XCVR_STATUS_TSM_COUNT(
+            (XCVR_TSM->END_OF_SEQ & XCVR_TSM_END_OF_SEQ_END_OF_RX_WU_MASK) >>
+                XCVR_TSM_END_OF_SEQ_END_OF_RX_WU_SHIFT);
+        while ((XCVR_MISC->XCVR_STATUS & XCVR_CTRL_XCVR_STATUS_TSM_COUNT_MASK) != end_of_rx_wu) {};
 
-    int res = kw41zrf_rx_bba_dcoc_dac_trim_DCest();
-    if (res < 0) {
-        config_status = res;
+        int res = kw41zrf_rx_bba_dcoc_dac_trim_DCest();
+        if (res < 0) {
+            config_status = res;
+        }
+        //~ DCOC_DAC_INIT_Cal(0);
+        kw41zrf_dcoc_dac_init_cal();
+        /* Force receiver warmdown */
+        bit_clear32(&XCVR_TSM->CTRL, XCVR_TSM_CTRL_FORCE_RX_EN_SHIFT);
     }
-    //~ DCOC_DAC_INIT_Cal(0);
-    kw41zrf_dcoc_dac_init_cal();
-    /* Force receiver warmdown */
-    bit_clear32(&XCVR_TSM->CTRL, XCVR_TSM_CTRL_FORCE_RX_EN_SHIFT);
 
     return config_status;
 }

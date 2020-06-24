@@ -24,6 +24,7 @@
 
 #include "log.h"
 #include "random.h"
+#include "xtimer.h"
 #include "thread_flags.h"
 #include "net/eui64.h"
 #include "net/ieee802154.h"
@@ -35,6 +36,11 @@
 #include "kw41zrf_intern.h"
 #include "kw41zrf_getset.h"
 #include "vendor/MKW41Z4.h"
+#include "vendor/XCVR/MKW41Z4/fsl_xcvr.h"
+
+#ifdef MODULE_KW41ZRF_MWS
+#include "MWS.h"
+#endif
 
 #ifdef MODULE_OD
 #include "od.h"
@@ -53,6 +59,11 @@
 #define KW41ZRF_CSMA_UNIT_TIME        20
 
 static void kw41zrf_netdev_isr(netdev_t *netdev);
+static int kw41zrf_netdev_set_state(kw41zrf_t *dev, netopt_state_t state);
+
+#ifdef MODULE_KW41ZRF_MWS
+static uint32_t kw41zrf_mws_callback(mwsEvents_t event);
+#endif
 
 /* True while we've already queued a callback and don't need to queue another */
 static atomic_bool irq_is_queued = false;
@@ -61,7 +72,10 @@ static atomic_bool irq_is_queued = false;
 static bool blocking_for_irq = false;
 
 /* Set this to a flag bit that is not used by the MAC implementation */
-#define KW41ZRF_THREAD_FLAG_ISR (1u << 8)
+#define KW41ZRF_THREAD_FLAG_ISR         (1u << 8)
+#define KW41ZRF_THREAD_FLAG_MWS_ACTIVE  (1u << 7)
+
+static kw41zrf_t *_kw41zrf;
 
 static void kw41zrf_irq_handler(void *arg)
 {
@@ -85,14 +99,18 @@ static void kw41zrf_irq_handler(void *arg)
 
 static int kw41zrf_netdev_init(netdev_t *netdev)
 {
-    kw41zrf_t *dev = (kw41zrf_t *)netdev;
-    dev->thread = (thread_t *)thread_get(thread_getpid());
+    _kw41zrf = (kw41zrf_t *)netdev;
+    _kw41zrf->thread = (thread_t *)thread_get(thread_getpid());
 
     /* initialize hardware */
-    if (kw41zrf_init(dev, kw41zrf_irq_handler)) {
+    if (kw41zrf_init(_kw41zrf, kw41zrf_irq_handler)) {
         LOG_ERROR("[kw41zrf] unable to initialize device\n");
         return -1;
     }
+
+#ifdef MODULE_KW41ZRF_MWS
+    MWS_Register(gMWS_802_15_4_c, kw41zrf_mws_callback);
+#endif
 
     return 0;
 }
@@ -120,12 +138,25 @@ static inline size_t kw41zrf_tx_load(const void *buf, size_t len, size_t offset)
     return offset + len;
 }
 
+
+#include "vendor/XCVR/MKW41Z4/fsl_xcvr.h"
+int kw41zrf_xcvr_configure(kw41zrf_t *dev,
+                           const xcvr_common_config_t *com_config,
+                           const xcvr_mode_config_t *mode_config,
+                           const xcvr_mode_datarate_config_t *mode_datarate_config,
+                           const xcvr_datarate_config_t *datarate_config);
+
 /**
  * @brief set up TMR2 to trigger the TX sequence from the ISR
  */
 static void kw41zrf_tx_exec(kw41zrf_t *dev)
 {
     kw41zrf_abort_sequence(dev);
+
+//     XCVR_ChangeMode(ZIGBEE_MODE, DR_500KBPS);
+
+    kw41zrf_xcvr_configure(dev, &xcvr_common_config, &zgbe_mode_config,
+                &xcvr_ZIGBEE_500kbps_config, &xcvr_802_15_4_500kbps_config);
 
     if (dev->flags & KW41ZRF_OPT_CSMA) {
         /* Use CSMA/CA random delay in the interval [0, 2**dev->csma_be) */
@@ -221,10 +252,29 @@ static int kw41zrf_netdev_send(netdev_t *netdev, const iolist_t *iolist)
 
     kw41zrf_wait_idle(dev);
 
+    while (kw41zrf_mws_acquire(dev)) {
+        xtimer_usleep(US_PER_MS * 3);
+    }
+
+#ifdef MODULE_KW41ZRF_MWS
+//     printf("wait\n");
+    thread_flags_wait_any(KW41ZRF_THREAD_FLAG_MWS_ACTIVE);
+    thread_flags_set(dev->thread, KW41ZRF_THREAD_FLAG_MWS_ACTIVE);
+//     printf("go\n");
+#endif
+
     if (kw41zrf_is_dsm()) {
         /* bring the device out of DSM */
         kw41zrf_set_power_mode(dev, KW41ZRF_POWER_IDLE);
     }
+
+    /* switch link layer protocol back to 802.15.4 in case BLE changed it */
+    uint32_t c = XCVR_MISC->XCVR_CTRL;
+    c &= ~XCVR_CTRL_XCVR_CTRL_PROTOCOL_MASK;
+    c |= XCVR_CTRL_XCVR_CTRL_PROTOCOL(4);
+    XCVR_MISC->XCVR_CTRL = c;
+
+//     kw41zrf_netdev_set_state(_kw41zrf, NETOPT_STATE_IDLE);
 
     /* load packet data into buffer */
     for (const iolist_t *iol = iolist; iol; iol = iol->iol_next) {
@@ -301,8 +351,8 @@ static int kw41zrf_netdev_recv(netdev_t *netdev, void *buf, size_t len, void *in
     }
 
 #if defined(MODULE_OD) && ENABLE_DEBUG
-    DEBUG("[kw41zrf] recv:\n");
-    od_hex_dump((const uint8_t *)ZLL->PKT_BUFFER_RX, pkt_len, OD_WIDTH_DEFAULT);
+//     DEBUG("[kw41zrf] recv:\n");
+//     od_hex_dump((const uint8_t *)ZLL->PKT_BUFFER_RX, pkt_len, OD_WIDTH_DEFAULT);
 #endif
 
     if (pkt_len > len) {
@@ -335,7 +385,7 @@ static int kw41zrf_netdev_recv(netdev_t *netdev, void *buf, size_t len, void *in
 
 static int kw41zrf_netdev_set_state(kw41zrf_t *dev, netopt_state_t state)
 {
-    kw41zrf_wait_idle(dev);
+//     kw41zrf_wait_idle(dev);
 
     switch (state) {
         case NETOPT_STATE_OFF:
@@ -349,6 +399,10 @@ static int kw41zrf_netdev_set_state(kw41zrf_t *dev, netopt_state_t state)
             kw41zrf_abort_sequence(dev);
             kw41zrf_set_power_mode(dev, KW41ZRF_POWER_DSM);
             dev->idle_seq = XCVSEQ_DSM_IDLE;
+#ifdef MODULE_KW41ZRF_MWS
+//             kw41zrf_set_sequence(dev, dev->idle_seq);
+#endif
+//             kw41zrf_mws_release(dev);
             break;
         case NETOPT_STATE_STANDBY:
             kw41zrf_set_power_mode(dev, KW41ZRF_POWER_IDLE);
@@ -357,6 +411,12 @@ static int kw41zrf_netdev_set_state(kw41zrf_t *dev, netopt_state_t state)
             kw41zrf_set_sequence(dev, dev->idle_seq);
             break;
         case NETOPT_STATE_IDLE:
+            kw41zrf_mws_acquire(dev);
+#ifdef MODULE_KW41ZRF_MWS
+            thread_flags_wait_any(KW41ZRF_THREAD_FLAG_MWS_ACTIVE);
+            thread_flags_set(dev->thread, KW41ZRF_THREAD_FLAG_MWS_ACTIVE);
+#endif
+
             kw41zrf_set_power_mode(dev, KW41ZRF_POWER_IDLE);
             kw41zrf_abort_sequence(dev);
             dev->idle_seq = XCVSEQ_RECEIVE;
@@ -1016,6 +1076,7 @@ static uint32_t _isr_event_seq_r(kw41zrf_t *dev, uint32_t irqsts)
             DEBUG("[kw41zrf] success (R)\n");
             /* Block XCVSEQ_RECEIVE until netdev->recv has been called */
             dev->recv_blocked = 1;
+            dev->wait_for_rx = false;
             kw41zrf_set_sequence(dev, dev->idle_seq);
             if (dev->flags & KW41ZRF_OPT_TELL_RX_END) {
                 dev->netdev.netdev.event_callback(&dev->netdev.netdev, NETDEV_EVENT_RX_COMPLETE);
@@ -1041,7 +1102,28 @@ static uint32_t _isr_event_seq_t(kw41zrf_t *dev, uint32_t irqsts)
         /* Finished T sequence */
         kw41zrf_abort_sequence(dev);
         /* Go back to being idle */
+//         printf("sleeeeeep\n");
+//         kw41zrf_set_sequence(dev, XCVSEQ_RECEIVE);
         kw41zrf_set_sequence(dev, dev->idle_seq);
+//         kw41zrf_mws_release(dev);
+//         dev->wait_for_rx = true;
+
+//         if (dev->idle_seq != XCVSEQ_RECEIVE) {
+//             netapi_change_state_in(dev->thread->pid, NETOPT_STATE_SLEEP, 15);
+//         }
+
+//         kw41zrf_unmask_irqs();
+//         xtimer_usleep(30000);
+//         kw41zrf_netdev_isr((netdev_t *)dev);
+//         kw41zrf_netdev_set_state(dev, NETOPT_STATE_SLEEP);
+
+//         if (dev->idle_seq == XCVSEQ_DSM_IDLE) {
+//             kw41zrf_mws_release(dev);
+//             thread_flags_clear(KW41ZRF_THREAD_FLAG_MWS_ACTIVE);
+//         } else {
+//             MWS_SignalIdle(gMWS_802_15_4_c);
+//             dev->has_mws = false;
+//         }
 
         DEBUG("[kw41zrf] SEQIRQ (T)\n");
         handled_irqs |= ZLL_IRQSTS_SEQIRQ_MASK;
@@ -1124,7 +1206,24 @@ static uint32_t _isr_event_seq_tr(kw41zrf_t *dev, uint32_t irqsts)
         }
 
         assert(!kw41zrf_is_dsm());
+//         printf("sleeeeeep\n");
+//         kw41zrf_set_sequence(dev, XCVSEQ_RECEIVE);
         kw41zrf_set_sequence(dev, dev->idle_seq);
+//         kw41zrf_mws_release(dev);
+
+//         if (dev->idle_seq != XCVSEQ_RECEIVE) {
+//             netapi_change_state_in(dev->thread->pid, NETOPT_STATE_SLEEP, 15);
+//         }
+
+//         kw41zrf_netdev_set_state(dev, NETOPT_STATE_SLEEP);
+
+//         if (dev->idle_seq == XCVSEQ_DSM_IDLE) {
+//             kw41zrf_mws_release(dev);
+//             thread_flags_clear(KW41ZRF_THREAD_FLAG_MWS_ACTIVE);
+//         } else {
+//             MWS_SignalIdle(gMWS_802_15_4_c);
+//             dev->has_mws = false;
+//         }
 
         if (dev->flags & KW41ZRF_OPT_TELL_TX_END) {
             if (seq_ctrl_sts & ZLL_SEQ_CTRL_STS_TC3_ABORTED_MASK) {
@@ -1195,8 +1294,8 @@ static void kw41zrf_netdev_isr(netdev_t *netdev)
     ZLL->IRQSTS = irqsts;
 
     uint32_t handled_irqs = 0;
-    DEBUG("[kw41zrf] CTRL %08" PRIx32 ", IRQSTS %08" PRIx32 ", FILTERFAIL %08" PRIx32 "\n",
-          ZLL->PHY_CTRL, irqsts, ZLL->FILTERFAIL_CODE);
+//     DEBUG("[kw41zrf] CTRL %08" PRIx32 ", IRQSTS %08" PRIx32 ", FILTERFAIL %08" PRIx32 "\n",
+//           ZLL->PHY_CTRL, irqsts, ZLL->FILTERFAIL_CODE);
 
     uint8_t seq = (ZLL->PHY_CTRL & ZLL_PHY_CTRL_XCVSEQ_MASK)
                   >> ZLL_PHY_CTRL_XCVSEQ_SHIFT;
@@ -1254,5 +1353,140 @@ const netdev_driver_t kw41zrf_driver = {
     .set  = kw41zrf_netdev_set,
     .isr  = kw41zrf_netdev_isr,
 };
+
+#include "net/gnrc/netapi.h"
+#include "xtimer.h"
+
+void netapi_change_state_in(kernel_pid_t pid, netopt_state_t state, uint32_t ms)
+{
+    static xtimer_t timer;
+    static msg_t msg;
+    static netopt_state_t s;
+    s = state;
+
+    static gnrc_netapi_opt_t o;
+    o.opt = NETOPT_STATE;
+    o.context = 0;
+    o.data = (void *)&s;
+    o.data_len = sizeof(state);
+
+    msg.type = GNRC_NETAPI_MSG_TYPE_SET;
+    msg.content.ptr = (void *)&o;
+
+    xtimer_remove(&timer);
+    xtimer_set_msg(&timer, US_PER_MS * ms, &msg, pid);
+}
+
+void kw41zrf_netapi_sleep(bool sleep)
+{
+    netopt_state_t state = NETOPT_STATE_IDLE;
+    if (sleep) {
+        state = NETOPT_STATE_SLEEP;
+    }
+    gnrc_netapi_set(_kw41zrf->thread->pid, NETOPT_STATE, 0,
+                    &state, sizeof(netopt_state_t));
+}
+
+int kw41zrf_mws_acquire(kw41zrf_t *dev)
+{
+#ifdef MODULE_KW41ZRF_MWS
+    if (!dev->has_mws) {
+        printf("acquiring\n");
+        if (MWS_Acquire(gMWS_802_15_4_c, 0)) {
+            printf("rejected\n");
+            return 1;
+        }
+        dev->has_mws = true;
+//         thread_flags_wait_any(KW41ZRF_THREAD_FLAG_MWS_ACTIVE);
+    }
+#else
+    (void)dev;
+#endif
+    return 0;
+}
+
+int kw41zrf_mws_release(kw41zrf_t *dev)
+{
+#ifdef MODULE_KW41ZRF_MWS
+    if (dev->has_mws) {
+        printf("releasing\n");
+
+//         kw41zrf_abort_sequence(dev);
+
+        /* maybe cancel any pending TX here */
+
+        MWS_Release(gMWS_802_15_4_c);
+        dev->has_mws = false;
+        thread_flags_clear(KW41ZRF_THREAD_FLAG_MWS_ACTIVE);
+
+//         kw41zrf_xcvr_configure(dev, &xcvr_common_config, &ble_mode_config,
+//                                &xcvr_BLE_1mbps_config, &xcvr_1mbps_config);
+//
+//         XCVR_ChangeMode(BLE_MODE, DR_1MBPS);
+    }
+#else
+    (void)dev;
+#endif
+    return 0;
+}
+
+#ifdef MODULE_KW41ZRF_MWS
+static uint32_t kw41zrf_mws_callback(mwsEvents_t event)
+{
+    uint32_t status = 0;
+//     printf("got %u\n", event);
+
+    switch(event)
+    {
+        case gMWS_Init_c:
+            status = 0;
+            break;
+        case gMWS_Idle_c:
+        {
+            printf("idle\n");
+//             kw41zrf_mws_acquire(_kw41zrf);
+
+//             if (_kw41zrf->wait_for_rx) {
+//                 printf("waiting for rx\n");
+//                 kw41zrf_netdev_set_state(_kw41zrf, NETOPT_STATE_IDLE);
+//             }
+            status = 0;
+        }
+        break;
+        case gMWS_Active_c:
+        {
+//             if (!_kw41zrf->wait_for_rx) {
+//                 printf("set\n");
+                thread_flags_set(_kw41zrf->thread, KW41ZRF_THREAD_FLAG_MWS_ACTIVE);
+//             }
+            status = 0;
+        }
+        break;
+        case gMWS_Release_c:
+            printf("released\n");
+//             kw41zrf_mws_acquire(_kw41zrf);
+            status = 0;
+            break;
+        case gMWS_Abort_c:
+        {
+            printf("aborting\n");
+            _kw41zrf->wait_for_rx = false;
+            _kw41zrf->has_mws = true;
+            kw41zrf_netdev_set_state(_kw41zrf, NETOPT_STATE_SLEEP);
+            kw41zrf_mws_release(_kw41zrf);
+            kw41zrf_mws_acquire(_kw41zrf);
+            status = 0;
+        }
+        break;
+        case gMWS_GetInactivityDuration_c:
+            status = 10000;
+            break;
+        default:
+            status = gMWS_InvalidParameter_c;
+            break;
+    }
+    return status;
+}
+#endif
 
 /** @} */

@@ -22,6 +22,13 @@
 #include "kw41zrf.h"
 #include "kw41zrf_getset.h"
 #include "kw41zrf_intern.h"
+#include <vendor/MKW41Z4.h>
+
+#include "thread_flags.h"
+
+#ifdef MODULE_KW41ZRF_MWS
+#include "MWS.h"
+#endif
 
 #define ENABLE_DEBUG (0)
 #include "debug.h"
@@ -169,6 +176,13 @@ void kw41zrf_set_power_mode(kw41zrf_t *dev, kw41zrf_powermode_t pm)
     irq_restore(state);
 }
 
+#include "vendor/XCVR/MKW41Z4/fsl_xcvr.h"
+int kw41zrf_xcvr_configure(kw41zrf_t *dev,
+                           const xcvr_common_config_t *com_config,
+                           const xcvr_mode_config_t *mode_config,
+                           const xcvr_mode_datarate_config_t *mode_datarate_config,
+                           const xcvr_datarate_config_t *datarate_config);
+
 void kw41zrf_set_sequence(kw41zrf_t *dev, uint32_t seq)
 {
     (void) dev;
@@ -176,18 +190,31 @@ void kw41zrf_set_sequence(kw41zrf_t *dev, uint32_t seq)
     assert(!kw41zrf_is_dsm());
     unsigned back_to_sleep = 0;
     if (seq == XCVSEQ_DSM_IDLE) {
+//         configure();
+
+//         kw41zrf_xcvr_configure(dev, &xcvr_common_config, &ble_mode_config,
+//                                &xcvr_BLE_1mbps_config, &xcvr_1mbps_config);
+
+//         XCVR_ChangeMode(BLE_MODE, DR_1MBPS);
+
         back_to_sleep = 1;
         seq = XCVSEQ_IDLE;
-    }
-    else if ((seq == XCVSEQ_RECEIVE) && dev->recv_blocked) {
+
+    } else if ((seq == XCVSEQ_RECEIVE) && dev->recv_blocked) {
         /* Wait in standby until recv has been called to avoid corrupting the RX
          * buffer before the frame has been received by the higher layers */
         seq = XCVSEQ_IDLE;
+
+    } else if (seq == XCVSEQ_RECEIVE){
+//         XCVR_ChangeMode(ZIGBEE_MODE, DR_500KBPS);
+
+        kw41zrf_xcvr_configure(dev, &xcvr_common_config, &zgbe_mode_config,
+                &xcvr_ZIGBEE_500kbps_config, &xcvr_802_15_4_500kbps_config);
     }
     uint32_t seq_old = ZLL->PHY_CTRL & ZLL_PHY_CTRL_XCVSEQ_MASK;
     if (seq_old != XCVSEQ_IDLE && seq_old != XCVSEQ_RECEIVE) {
         LOG_ERROR("[kw41zrf] seq not idle: 0x%" PRIu32 "\n", seq_old);
-        assert(0);
+//         assert(0);
     }
 
     kw41zrf_abort_sequence(dev);
