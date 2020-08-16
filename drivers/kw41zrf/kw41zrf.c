@@ -233,9 +233,6 @@ int kw41zrf_reset(kw41zrf_t *dev)
     dev->rx_warmup_time = (dev->rx_warmup_time + 15) / 16;
     dev->tx_warmup_time = (dev->tx_warmup_time + 15) / 16;
 
-    dev->has_mws = false;
-    dev->wait_for_rx = false;
-
     /* Reset software link layer driver state */
     netdev_ieee802154_reset(&dev->netdev);
 

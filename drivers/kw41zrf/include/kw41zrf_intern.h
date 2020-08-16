@@ -198,12 +198,6 @@ static inline void kw41zrf_abort_sequence(kw41zrf_t *dev)
  */
 static inline uint32_t kw41zrf_is_dsm(void)
 {
-//     /* switch link layer protocol back to 802.15.4 in case BLE changed it */
-//     uint32_t c = XCVR_MISC->XCVR_CTRL;
-//     c &= ~XCVR_CTRL_XCVR_CTRL_PROTOCOL_MASK;
-//     c |= XCVR_CTRL_XCVR_CTRL_PROTOCOL(4);
-//     XCVR_MISC->XCVR_CTRL = c;
-
     return (RSIM->DSM_CONTROL & RSIM_DSM_CONTROL_ZIG_DEEP_SLEEP_STATUS_MASK);
 }
 
@@ -280,11 +274,6 @@ static inline uint32_t kw41zrf_get_timestamp(kw41zrf_t *dev)
     (void) dev;
     return ZLL->TIMESTAMP;
 }
-
-int kw41zrf_mws_acquire(kw41zrf_t *dev);
-int kw41zrf_mws_release(kw41zrf_t *dev);
-void netapi_change_state_in(kernel_pid_t pid, netopt_state_t state, uint32_t ms);
-
 
 #ifdef __cplusplus
 }

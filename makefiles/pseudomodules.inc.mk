@@ -57,7 +57,6 @@ PSEUDOMODULES += gnrc_sock_async
 PSEUDOMODULES += gnrc_sock_check_reuse
 PSEUDOMODULES += gnrc_txtsnd
 PSEUDOMODULES += heap_cmd
-PSEUDOMODULES += kw41zrf_mws
 PSEUDOMODULES += i2c_scan
 PSEUDOMODULES += ina3221_alerts
 PSEUDOMODULES += l2filter_blacklist

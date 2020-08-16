@@ -820,40 +820,6 @@ extern const xcvr_mode_datarate_config_t xcvr_MSK_1mbps_config;
 extern const xcvr_mode_datarate_config_t xcvr_MSK_500kbps_config;
 extern const xcvr_mode_datarate_config_t xcvr_MSK_250kbps_config;
 
-/*!
- * @brief  Initializes an XCVR instance.
- *
- * This function initializes the XCVR module according to the radio_mode and data_rate settings. This the only function call required to
- * start up the XCVR in most situations.
- *
- * @param radio_mode The radio mode for which the XCVR should be configured.
- * @param data_rate The data rate for which the XCVR should be configured. Only matters when GFSK/MSK radio_mode is selected.
- * @note This function encompasses the ::XCVRGetDefafultConfig() and ::XCVR_Configure() functions.
- */
-xcvrStatus_t XCVR_Init(radio_mode_t radio_mode, data_rate_t data_rate);
-
-/*!
- * @brief  Change the operating mode of the radio.
- *
- * This function changes the XCVR to a new radio operating mode.
- *
- * @param new_radio_mode The radio mode for which the XCVR should be configured.
- * @param new_data_rate The data rate for which the XCVR should be configured. Only matters when GFSK/MSK radio_mode is selected.
- * @return status of the mode change.
- */
-xcvrStatus_t XCVR_ChangeMode(radio_mode_t new_radio_mode,
-                             data_rate_t new_data_rate);
-
-/*!
- * @brief  Controls setting the XTAL trim value..
- *
- * This function enables the upper layers set a crystal trim compensation facor
- *
- * @param xtalTrim the trim value to apply to the XTAL trimming register. Only the 7 LSB are valid, setting the 8th bit returns an error.
- * @return The health status of the radio..
- */
-xcvrStatus_t XCVR_SetXtalTrim(uint8_t xtalTrim);
-
 #ifdef __cplusplus
 extern "C" {
 #endif

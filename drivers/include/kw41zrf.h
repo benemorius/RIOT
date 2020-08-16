@@ -125,8 +125,6 @@ typedef struct {
     uint32_t backoff_delay;     /**< CSMA delay for the current TX operation */
     uint32_t tx_timeout;        /**< Used to timeout waiting for ACK during TRX */
     uint8_t pm_blocked;         /**< true if we have blocked a low power mode in the CPU */
-    uint8_t has_mws;            /**< true while we have a lock on the radio */
-    uint8_t wait_for_rx;        /**< true while waiting for a reply */
     uint8_t recv_blocked;       /**< blocks moving to XCVSEQ_RECEIVE to prevent
                                  *   overwriting the RX buffer before the higher
                                  *   layers have copied it to system RAM */
