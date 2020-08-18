@@ -46,6 +46,13 @@
 #define ADC_MUX_SETTING    (1)
 #endif
 
+/**
+ * @brief   ADC supports internal VREF when ADC_REF_SETTING=0
+ */
+#ifndef ADC_VREF_EN
+#define ADC_VREF_EN    (0)
+#endif
+
 static mutex_t locks[] = {
     MUTEX_INIT,
 #ifdef ADC1
@@ -163,6 +170,22 @@ int adc_init(adc_t line)
     /* make sure the given line is valid */
     if (line >= ADC_NUMOF) {
         return -1;
+    }
+
+    /* enable internal VREF if necessary */
+    if (ADC_REF_SETTING == 0 && ADC_VREF_EN) {
+        /* enable VREF clock */
+        bit_set32(&SIM->SCGC4, SIM_SCGC4_VREF_SHIFT);
+        /* enable internal voltage reference */
+        bit_set8(&VREF->SC, VREF_SC_VREFEN_SHIFT);
+        /* enable internal 1.75V regulator to achieve datasheet performance */
+        bit_set8(&VREF->SC, VREF_SC_REGEN_SHIFT);
+        /* enable second order compensation to achieve datasheet performance */
+        bit_set8(&VREF->SC, VREF_SC_ICOMPEN_SHIFT);
+        /* enable chop oscillator to achieve datasheet performance */
+        bit_set8(&VREF->TRM, VREF_TRM_CHOPEN_SHIFT);
+        /* enable high power buffer */
+        VREF->SC |= VREF_SC_MODE_LV(1);
     }
 
     /* prepare the device: lock and power on */
