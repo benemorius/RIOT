@@ -183,11 +183,17 @@ static const adc_conf_t adc_config[] = {
  * 1: VDDA (analog supply input voltage)
  * 2-3: reserved
  */
+#ifndef ADC_REF_SETTING
 #define ADC_REF_SETTING     1
+#endif
+
 #if ADC_REF_SETTING
 #define ADC_REF_VOLTAGE     (3.3f)
 #else
 #define ADC_REF_VOLTAGE     (1.2f)
+#ifndef ADC_VREF_EN
+#define ADC_VREF_EN         1
+#endif
 #endif
 
 #define ADC_MUX_SETTING             (0) /* ADC use A mux inputs */
