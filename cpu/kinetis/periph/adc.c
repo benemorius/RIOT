@@ -39,6 +39,13 @@
  */
 #define ADC_MAX_CLK         (4000000U)
 
+/**
+ * @brief   ADC supports A/B MUX. B inputs are selected by default.
+ */
+#ifndef ADC_MUX_SETTING
+#define ADC_MUX_SETTING    (1)
+#endif
+
 static mutex_t locks[] = {
     MUTEX_INIT,
 #ifdef ADC1
@@ -193,8 +200,8 @@ int adc_init(adc_t line)
     /* set configuration register 1: clocking and precision */
     /* Set long sample time */
     dev(line)->CFG1 = ADC_CFG1_ADLSMP_MASK | adiv;
-    /* select ADxxb channels, longest sample time (20 extra ADC cycles) */
-    dev(line)->CFG2 = ADC_CFG2_MUXSEL_MASK | ADC_CFG2_ADLSTS(0);
+    /* select input mux, longest sample time (20 extra ADC cycles) */
+    dev(line)->CFG2 = ADC_CFG2_MUXSEL(ADC_MUX_SETTING) | ADC_CFG2_ADLSTS(0);
     /* select software trigger, external ref pins */
     dev(line)->SC2 = ADC_SC2_REFSEL(ADC_REF_SETTING);
     /* set an arbitrary input channel configuration */
