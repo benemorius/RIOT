@@ -190,6 +190,7 @@ static const adc_conf_t adc_config[] = {
 #define ADC_REF_VOLTAGE     (1.2f)
 #endif
 
+#define ADC_MUX_SETTING             (0) /* ADC use A mux inputs */
 #define ADC_TEMPERATURE_CHANNEL     (4)
 /** @} */
 
